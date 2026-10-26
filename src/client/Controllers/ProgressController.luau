@@ -59,7 +59,7 @@ local function renderQuests(quests: Types.QuestPayload)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 8), Size = UDim2.fromOffset(110, 20), Text = if q.done then "DONE" else string.format("%d / %d", q.progress, q.goal), TextColor3 = if q.done then UI.Cash else UI.White, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 15 }, row)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 30), Size = UDim2.fromOffset(110, 16), Text = string.format("+%d gems", q.reward), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 12 }, row)
 	end
-	questFooter.Text = string.format("Daily resets in %s  ·  Weekly in %s", formatDuration(quests.dailyResetsIn), formatDuration(quests.weeklyResetsIn))
+	questFooter.Text = string.format("Daily resets in %s  ·  Weekly board and quest reset in %s", formatDuration(quests.dailyResetsIn), formatDuration(quests.weeklyResetsIn))
 	streakLabel.Text = if quests.streakDays > 0 then string.format("%d-DAY STREAK", quests.streakDays) else ""
 end
 
@@ -86,16 +86,16 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	local tip = boardsFrame:FindFirstChild("BestTip")
 	local ko = boardsFrame:FindFirstChild("Knockouts")
 	if weekly and weekly:IsA("Frame") then
-		renderBoard(weekly, string.format("THIS WEEK · GEMS  (resets in %s)", formatDuration(boards.weekResetsIn)), boards.weekly, false)
+		renderBoard(weekly, "THIS WEEK · GEMS", boards.weekly, false)
 	end
 	if friends and friends:IsA("Frame") then
-		renderBoard(friends, "FRIENDS · GEMS THIS WEEK", boards.friends, false)
+		renderBoard(friends, "FRIENDS · THIS WEEK", boards.friends, false)
 	end
 	if tip and tip:IsA("Frame") then
 		renderBoard(tip, "BIGGEST TIP EVER", boards.bestTip, true)
 	end
 	if ko and ko:IsA("Frame") then
-		renderBoard(ko, "MOST PASSENGERS KNOCKED OUT", boards.knockouts, false)
+		renderBoard(ko, "MOST KNOCKED OUT", boards.knockouts, false)
 	end
 end
 
@@ -142,7 +142,7 @@ local function build()
 		setOpen(not isOpen)
 	end)
 
-	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 540), BackgroundTransparency = 0.05, Visible = false }, screen)
+	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 440), BackgroundTransparency = 0.05, Visible = false }, screen)
 	UI.Corner(16, panel)
 	levelLabel = UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(200, 36), Text = "LEVEL 1", TextXAlignment = Enum.TextXAlignment.Left }, panel)
 	xpBar = UI.Bar({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(300, 10) }, UI.Accent, panel)
@@ -180,7 +180,7 @@ local function build()
 	for _, slot in slots do
 		UI.Frame({ Name = slot.name, Position = UDim2.fromOffset(slot.x, slot.y), Size = UDim2.fromOffset(170, 120), BackgroundTransparency = 1 }, boardsFrame)
 	end
-	UI.Label({ Position = UDim2.fromOffset(0, 264), Size = UDim2.new(1, 0, 0, 30), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
+	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(0, 264), Size = UDim2.new(1, 0, 0, 30), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
 end
 
 local function onRound(payload: Types.RoundStatePayload)

@@ -119,14 +119,14 @@ local function renderPaint(profile: Types.ProfilePayload)
 	for i, entry in Config.Paint.Colors do
 		local current = profile.paint == entry.Name
 		local b = UI.New("TextButton", {
-			Size = UDim2.fromOffset(34, 34),
+			Size = UDim2.fromOffset(28, 28),
 			LayoutOrder = i,
 			BackgroundColor3 = entry.Color,
 			BorderSizePixel = 0,
 			Text = "",
 			AutoButtonColor = affordable and not current,
 		}, paintRow) :: TextButton
-		UI.Corner(17, b)
+		UI.Corner(14, b)
 		UI.Stroke(if current then UI.White else Color3.fromRGB(40, 40, 48), if current then 3 else 1, b)
 		if not current and affordable then
 			b.Activated:Connect(function()
@@ -135,7 +135,7 @@ local function renderPaint(profile: Types.ProfilePayload)
 		end
 	end
 	local reset = UI.New("TextButton", {
-		Size = UDim2.fromOffset(60, 34),
+		Size = UDim2.fromOffset(52, 28),
 		LayoutOrder = 99,
 		BackgroundColor3 = Color3.fromRGB(50, 50, 58),
 		BorderSizePixel = 0,
@@ -209,7 +209,7 @@ local function build()
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, upgradeList)
 	UI.Label({ Position = UDim2.fromOffset(0, 220), Size = UDim2.fromOffset(200, 22), Text = string.format("PAINT  ·  %d GEMS", Config.Paint.Price), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
 	paintRow = UI.Frame({ Position = UDim2.fromOffset(0, 248), Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, right)
-	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
+	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
 end
 
 local function onRound(payload: Types.RoundStatePayload)
