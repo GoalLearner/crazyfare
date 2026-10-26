@@ -106,7 +106,7 @@ Verification
 - [ ] Gem packs (dev products) + one-time Starter Pack in the first 2 sessions; `ProcessReceipt` idempotency
 - [ ] VIP gamepass (2× Gems, badge, horn), Pit Stop Plus (6 cards), premium vehicles (Robux or large Gem price), private servers, Premium Payouts
 - [ ] Beach map (sand slows, boardwalk shortcut) via Config map entry + unlock by cumulative Gems
-- [ ] City decoration pass in the generator: streetlights, traffic lights, storefront signs, landmark buildings; then real meshes (cab first)
+- [ ] City decoration pass in the generator: streetlights, traffic lights, storefront signs, landmark buildings; then real meshes (cab first, then the six items: the parts banana is a placeholder, owner's words 2026-10-26)
 - [ ] Layout pass: landmarks, loops, shortcuts (see DESIGN §13)
 - [ ] Sound, camera shake, passenger voice lines, music
 - [ ] Mobile touch controls

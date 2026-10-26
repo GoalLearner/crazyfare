@@ -229,7 +229,7 @@ local function buildBananaShape(root: CFrame): Part
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Shape = Enum.PartType.Cylinder
-		p.Size = Vector3.new(length, 1.3, 1.3)
+		p.Size = Vector3.new(length, 0.7, 0.7)
 		p.Color = c
 		p.Material = Enum.Material.SmoothPlastic
 		p.CFrame = root * offset
@@ -249,11 +249,11 @@ local function buildBananaShape(root: CFrame): Part
 		return p
 	end
 	local bend = math.rad(28)
-	local mid = segment("Banana", 2.2, color, CFrame.new(0, 0.7, 0))
-	segment("Left", 2.2, color, CFrame.new(-2, 1.1, 0) * CFrame.Angles(0, 0, bend), mid)
-	segment("Right", 2.2, color, CFrame.new(2, 1.1, 0) * CFrame.Angles(0, 0, -bend), mid)
-	segment("TipL", 0.8, tip, CFrame.new(-3.3, 1.75, 0) * CFrame.Angles(0, 0, bend * 1.6), mid)
-	segment("TipR", 0.8, tip, CFrame.new(3.3, 1.75, 0) * CFrame.Angles(0, 0, -bend * 1.6), mid)
+	local mid = segment("Banana", 1.2, color, CFrame.new(0, 0.4, 0))
+	segment("Left", 1.2, color, CFrame.new(-1.1, 0.62, 0) * CFrame.Angles(0, 0, bend), mid)
+	segment("Right", 1.2, color, CFrame.new(1.1, 0.62, 0) * CFrame.Angles(0, 0, -bend), mid)
+	segment("TipL", 0.45, tip, CFrame.new(-1.8, 0.98, 0) * CFrame.Angles(0, 0, bend * 1.6), mid)
+	segment("TipR", 0.45, tip, CFrame.new(1.8, 0.98, 0) * CFrame.Angles(0, 0, -bend * 1.6), mid)
 	return mid
 end
 
