@@ -69,7 +69,7 @@ local function build()
 	screen = UI.Screen("CrazyFareHud", 10)
 
 	-- Cash + quota (top-left)
-	local cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 24), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
+	local cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 76), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
 	cashLabel = UI.Label({ Size = UDim2.fromOffset(220, 56), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, cashBox)
 	quotaBar = UI.Bar({ Position = UDim2.fromOffset(0, 62), Size = UDim2.fromOffset(220, 10) }, UI.Cash, cashBox)
 	quotaLabel = UI.Label({ Position = UDim2.fromOffset(0, 74), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, cashBox)

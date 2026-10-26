@@ -13,6 +13,7 @@ task.spawn(function()
 	for _ = 1, 10 do
 		local ok = pcall(function()
 			StarterGui:SetCore("ResetButtonCallback", false)
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 		end)
 		if ok then
 			return

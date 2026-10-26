@@ -27,7 +27,7 @@ function DebugPanel.Init()
 	local debugRemote = Remotes.Get("Debug")
 	local screen = UI.Screen("CrazyFareDebug", 30)
 	local panel = UI.Frame({
-		Position = UDim2.fromOffset(24, 140),
+		Position = UDim2.fromOffset(24, 190),
 		Size = UDim2.fromOffset(120, #BUTTONS * 30 + 30),
 		BackgroundTransparency = 0.4,
 	}, screen)
