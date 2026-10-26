@@ -1,0 +1,9 @@
+Packages/
+ServerPackages/
+build/
+sourcemap.json
+.luau-defs/
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+roblox.yml

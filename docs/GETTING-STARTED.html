@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Phase 1</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --text:#e8e8ee; --muted:#9a9fae; --cash:#78f082; --warn:#fad23c; --accent:#50e6ff; --danger:#f04646; --line:#262a33; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:40px 16px 80px; }
+  h1 { font-size:34px; margin:0 0 6px; letter-spacing:-0.5px }
+  h2 { font-size:22px; margin:40px 0 12px; color:var(--accent) }
+  p.lead { color:var(--muted); margin:0 0 24px }
+  ol, ul { padding-left:22px }
+  li { margin:8px 0 }
+  code, pre { font-family:"Cascadia Code", Consolas, Menlo, monospace; font-size:14px }
+  code { background:#1f232c; padding:2px 6px; border-radius:5px }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow:auto; margin:10px 0 }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:14px 0 }
+  table { width:100%; border-collapse:collapse; margin:10px 0 }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.04em }
+  .k { color:var(--warn); white-space:nowrap }
+  .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; background:#233; color:var(--accent); margin-left:6px; vertical-align:middle }
+  .muted { color:var(--muted) }
+  .danger { color:var(--danger) }
+  kbd { background:#262a33; border:1px solid #3a3f4b; border-bottom-width:2px; border-radius:6px; padding:1px 7px; font-family:inherit; font-size:14px }
+</style>
+</head>
+<body>
+<main>
+  <h1>CrazyFare, Phase 1 is built</h1>
+  <p class="lead">Project at <code>C:\dev\crazyfare</code>. Nothing has run in Studio yet, so the first play test is yours. Steps below, then the five knobs for car feel.</p>
+
+  <h2>1. One-time setup (about 3 minutes)</h2>
+  <div class="card">
+    <p>Open a terminal (PowerShell is fine) and run these from the project folder. rokit, rojo, wally, selene and luau-lsp are already installed on this PC; the packages are already pulled. The only new thing is the Studio plugin.</p>
+<pre>cd C:\dev\crazyfare
+rojo plugin install</pre>
+    <p class="muted">If a terminal says <code>rojo</code> is not recognised, open a new terminal first (rokit added itself to PATH when it was installed).</p>
+  </div>
+
+  <h2>2. Run a 2-player test</h2>
+  <ol>
+    <li>In the terminal, from <code>C:\dev\crazyfare</code>:
+<pre>rojo serve</pre>
+      Leave it running. It says <code>Listening on 127.0.0.1:34872</code> (port may differ).</li>
+    <li>Open <strong>Roblox Studio</strong> → <strong>New</strong> → <strong>Baseplate</strong>. Any empty place works; the city is generated from code.</li>
+    <li>Studio top bar → <strong>Plugins</strong> tab → <strong>Rojo</strong> → <strong>Connect</strong>. The Rojo panel turns green and <code>ReplicatedStorage/Shared</code>, <code>ServerScriptService/Server</code> and <code>StarterPlayer/StarterPlayerScripts/Client</code> appear in the Explorer.</li>
+    <li><strong>Test</strong> tab → <strong>Clients and Servers</strong> → set <strong>Players</strong> to <strong>2</strong> → <strong>Start</strong>. Three windows open: one server, two players.</li>
+    <li>In each player window you should see: the blocked-out city, your yellow cab on the start grid, <em>READ THE BOARD</em>, then <em>3 2 1 GO</em>. Drive with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.</li>
+  </ol>
+
+  <div class="card">
+    <strong>What to try in order</strong>
+    <ol>
+      <li>Stop next to a passenger (the figures with a coloured <code>$</code> over their head). Stopping inside 12 studs claims them. The other player stopping at the same one sees <em>TAKEN</em>.</li>
+      <li>Follow the arrow under the timer to the tall coloured beacon. Stop inside it. The payout punches on screen with the tip and combo.</li>
+      <li>Drive through a glowing cyan box to get an item. <kbd>Q</kbd> uses it. Tomato homes on the nearest loaded rival and splats their windshield; <kbd>H</kbd> honks the wipers faster. Banana drops behind you.</li>
+      <li>Hold <kbd>Space</kbd> in a corner to drift: the combo meter fills, so does the boost tank. <kbd>Shift</kbd> spends the tank.</li>
+      <li>Get a rival's passenger to 0 HP (tomato + walls) and watch them bail and walk to the nearest curb.</li>
+      <li>First to <strong>$30</strong> ends the round, or the 4-minute cap does. Podium, then a new round starts on its own.</li>
+      <li>The <strong>DEBUG</strong> panel on the left (Studio only) gives items, damages or heals your passenger, adds cash and force-ends the round.</li>
+    </ol>
+    <p class="muted">Flipped? <kbd>R</kbd> resets the car (it also auto-resets after 2.5 s upside down). Map looks wrong? Stop the test and in the command bar run <code>require(game.ServerScriptService.Server.Studio.DevBlockout).Generate()</code> to see errors directly.</p>
+  </div>
+
+  <h2>3. The first 5 knobs for car feel</h2>
+  <p>All in <code>src\shared\Config.luau</code>. Rojo pushes edits live; restart the test to apply them. Change one at a time and drive a lap.</p>
+  <table>
+    <tr><th>Knob</th><th>Now</th><th>What it does</th><th>Try</th></tr>
+    <tr><td class="k">Vehicles.Stats.YellowCab.TopSpeed</td><td>90</td><td>Max studs/s on the flat. The map is 600 studs across; a red fare is a 10-second straight at this speed.</td><td>80 feels heavier, 100 feels loose</td></tr>
+    <tr><td class="k">Vehicles.Stats.YellowCab.Accel</td><td>45</td><td>Launch punch. Time to top speed is roughly TopSpeed ÷ Accel × 1.5 because the push fades as you approach the cap.</td><td>35 for weight, 60 for arcade</td></tr>
+    <tr><td class="k">Vehicles.Stats.YellowCab.Handling</td><td>6</td><td>Lateral grip rate. Higher snaps the car to its heading; lower lets it slide on every turn.</td><td>4 = slippery, 9 = on rails</td></tr>
+    <tr><td class="k">Vehicles.Stats.YellowCab.SteerMax</td><td>32°</td><td>Wheel angle at standstill. <code>Chassis.SpeedSteerFalloff</code> (0.55) removes that much of it at top speed.</td><td>28 if it spins out, 38 if corners feel wide</td></tr>
+    <tr><td class="k">Vehicles.Stats.YellowCab.DriftGrip</td><td>0.25</td><td>Share of Handling the rear tyres keep while <kbd>Space</kbd> is held. Lower = longer, wilder drifts.</td><td>0.15 for Mario Kart, 0.4 for a tidy slide</td></tr>
+  </table>
+  <p class="muted">Next layer after those: <code>Chassis.SuspensionStiffness</code> (2.5, bouncier lower), <code>Chassis.DriftSteerBonus</code> (1.3), <code>Camera.Distance / Height</code>, then the fares: <code>Fares.Tiers.*.Base</code> and <code>Tips.MaxFrac</code>.</p>
+
+  <h2>4. Decisions I made so I could build without waiting</h2>
+  <p>Nothing truly blocked Phase 1. These are the defaults; each is one line in Config or PLAN.md to flip.</p>
+  <ul>
+    <li><strong>No avatars.</strong> Players have no character; the taxi is the player. Cleaner physics, no jumping out of seats. A seated avatar can come back later for cosmetics.</li>
+    <li><strong>Controls:</strong> <kbd>W</kbd><kbd>S</kbd> throttle/brake, <kbd>A</kbd><kbd>D</kbd> steer, <kbd>Space</kbd> drift, <kbd>Shift</kbd> boost tank, <kbd>Q</kbd> item, <kbd>H</kbd> honk, <kbd>R</kbd> reset. Basic gamepad mapped.</li>
+    <li><strong>Boost tank</strong> fills from drifting and near-misses; Shift spends it. Lemon Nitro is a separate instant burst.</li>
+    <li><strong>Fare timer hits zero = the passenger bails</strong> (Crazy Taxi rules). Flag <code>Fares.TimeoutBails</code> switches it to "pays base, no tip".</li>
+    <li><strong>Tomato is the only item that costs your own passenger 15 HP</strong> when fired loaded. Banana is a trap, not an attack.</li>
+    <li><strong>Can't pick up a box while holding an item.</strong> Boxes respawn after 10 s.</li>
+    <li><strong>Solo testing works:</strong> rounds auto-start with 1 player. Set <code>Round.MinPlayers = 2</code> before publishing.</li>
+    <li><strong>Phase 1 loops single rounds</strong> (podium, then a new round). The 3-round match and Pit Stop are Phase 3, as in your plan.</li>
+  </ul>
+  <p class="muted">The full list of 15 is in <code>docs\PLAN.md</code> under "Decisions made instead of asking".</p>
+
+  <h2>5. Two things only you can answer <span class="tag">not blocking</span></h2>
+  <ul>
+    <li><strong>Is the timeout-bail too harsh?</strong> You'll know after three fares. If it feels bad, flip <code>Fares.TimeoutBails</code> to <code>false</code>.</li>
+    <li><strong>Vehicle art:</strong> stay parts-built until the loop is proven fun, or commission meshes earlier? I planned parts through Phase 4.</li>
+  </ul>
+
+  <h2>6. Honest status</h2>
+  <div class="card">
+    <p>Written: every Phase 1 system (city generator, raycast cab, fares + tips + combo, passenger HP + bail, Tomato / Banana / Nitro, single-round loop with podium, HUD, minimap, world tags, splat, debug panel). Passes the static checks: strict typing against the Roblox API, selene lint, and a Rojo build.</p>
+    <p class="danger">Not done: a real run. Expect the first test to surface runtime bugs and a car that needs tuning. Paste any red error from the Studio Output window into our chat and I'll fix it.</p>
+  </div>
+</main>
+</body>
+</html>
