@@ -122,17 +122,24 @@ local function consumeShield(victim: Player, position: Vector3): boolean
 	return true
 end
 
--- Nearest loaded rival inside LockRange, or nil.
+-- Nearest rival inside LockRange; a loaded rival wins over an empty one at any distance.
 local function pickTarget(owner: Player, from: Vector3): Player?
 	local best: Player? = nil
 	local bestDist = Config.Items.Tomato.LockRange
+	local bestLoaded = false
 	for player, entry in VehicleService.GetAll() do
-		if player ~= owner and PassengerService.GetLoaded(player) then
-			local d = (entry.chassis.Position - from).Magnitude
-			if d < bestDist then
-				bestDist = d
-				best = player
-			end
+		if player == owner or entry.chassis.Anchored then
+			continue
+		end
+		local d = (entry.chassis.Position - from).Magnitude
+		if d > Config.Items.Tomato.LockRange then
+			continue
+		end
+		local loaded = PassengerService.GetLoaded(player) ~= nil
+		if (loaded and not bestLoaded) or (loaded == bestLoaded and d < bestDist) then
+			best = player
+			bestDist = d
+			bestLoaded = loaded
 		end
 	end
 	return best
@@ -210,18 +217,48 @@ local function placeTrap(owner: Player, kind: string, part: Part, position: Vect
 	})
 end
 
+-- A crescent: three short segments bent along an arc, brown tips, all welded to the middle one.
+local function buildBananaShape(root: CFrame): Part
+	local color = Config.Items.Pool.Banana.Color
+	local tip = Color3.fromRGB(90, 60, 30)
+	local function segment(name: string, length: number, c: Color3, offset: CFrame, parent: Part?): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Shape = Enum.PartType.Cylinder
+		p.Size = Vector3.new(length, 1.3, 1.3)
+		p.Color = c
+		p.Material = Enum.Material.SmoothPlastic
+		p.CFrame = root * offset
+		p.Anchored = parent == nil
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		if parent then
+			local w = Instance.new("Weld")
+			w.Part0 = parent
+			w.Part1 = p
+			w.C0 = parent.CFrame:ToObjectSpace(p.CFrame)
+			w.Parent = p
+			p.Parent = parent
+		end
+		return p
+	end
+	local bend = math.rad(28)
+	local mid = segment("Banana", 2.2, color, CFrame.new(0, 0.7, 0))
+	segment("Left", 2.2, color, CFrame.new(-2, 1.1, 0) * CFrame.Angles(0, 0, bend), mid)
+	segment("Right", 2.2, color, CFrame.new(2, 1.1, 0) * CFrame.Angles(0, 0, -bend), mid)
+	segment("TipL", 0.8, tip, CFrame.new(-3.3, 1.75, 0) * CFrame.Angles(0, 0, bend * 1.6), mid)
+	segment("TipR", 0.8, tip, CFrame.new(3.3, 1.75, 0) * CFrame.Angles(0, 0, -bend * 1.6), mid)
+	return mid
+end
+
 local function dropBanana(owner: Player, entry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.Banana
 	local ground = behindCar(entry, cfg.DropBack)
 	local position = ground + Vector3.new(0, 0.5, 0)
-	local part = Instance.new("Part")
-	part.Name = "Banana"
-	part.Shape = Enum.PartType.Cylinder
-	part.Size = Vector3.new(3.4, 1.4, 1.4)
-	part.Color = Config.Items.Pool.Banana.Color
-	part.Material = Enum.Material.Neon
-	part.Material = Enum.Material.SmoothPlastic
-	part.CFrame = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local root = CFrame.new(ground) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local part = buildBananaShape(root)
 	placeTrap(owner, "Banana", part, position, cfg.TriggerRadius, cfg.OwnerImmunity, cfg.Lifetime)
 end
 

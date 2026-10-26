@@ -178,8 +178,8 @@ Config.Items = {
 	SelfCostItems = { Tomato = true } :: { [string]: boolean },
 	Tomato = {
 		Speed = 130,
-		TurnRate = 3.5, -- radians/s of homing
-		LockRange = 250, -- nearest loaded rival inside this at launch
+		TurnRate = 5, -- radians/s of homing
+		LockRange = 400, -- nearest rival inside this at launch (loaded rivals preferred)
 		HitRadius = 7,
 		Lifetime = 4,
 		Damage = 30,
