@@ -110,4 +110,65 @@ function VehicleRig.Rig(imported: Instance?, vehicleId: string, targetLength: nu
 	return mesh
 end
 
+-- Rig everything imported into the Workspace in one go, by file name. Items go to ReplicatedStorage.ItemModels.
+-- Command bar:  require(game.ServerScriptService.Server.Studio.VehicleRig).RigAll()
+local VEHICLE_BY_NAME: { [string]: string } = {
+	taxi = "YellowCab",
+	sedan = "NightCab",
+	delivery = "IceCreamTruck",
+	["kart-oozi"] = "GoKart",
+	["kart-oobi"] = "GoKart",
+	["kart-oodi"] = "GoKart",
+	["kart-ooli"] = "GoKart",
+	["kart-oopi"] = "GoKart",
+}
+local ITEM_BY_NAME: { [string]: string } = {
+	banana = "Banana",
+	tomato = "Tomato",
+	lemon = "Lemon",
+}
+
+function VehicleRig.RigAll()
+	local rigged = 0
+	for _, inst in workspace:GetChildren() do
+		if not inst:IsA("Model") or inst:FindFirstChild("Chassis") then
+			continue
+		end
+		local key = string.lower(inst.Name)
+		local vehicleId = VEHICLE_BY_NAME[key]
+		local itemName = ITEM_BY_NAME[key]
+		if vehicleId then
+			local length = if vehicleId == "GoKart" then 8 else 11
+			VehicleRig.Rig(inst, vehicleId, length)
+			rigged += 1
+		elseif itemName then
+			local folder = ReplicatedStorage:FindFirstChild("ItemModels")
+			if not folder then
+				folder = Instance.new("Folder")
+				folder.Name = "ItemModels"
+				folder.Parent = ReplicatedStorage
+			end
+			local old = folder:FindFirstChild(itemName)
+			if old then
+				old:Destroy()
+			end
+			if not inst.PrimaryPart then
+				for _, part in inst:GetDescendants() do
+					if part:IsA("BasePart") then
+						inst.PrimaryPart = part
+						break
+					end
+				end
+			end
+			inst.Name = itemName
+			inst.Parent = folder
+			print("[VehicleRig] item model filed: " .. itemName)
+			rigged += 1
+		else
+			print("[VehicleRig] skipped " .. inst.Name .. " (no mapping)")
+		end
+	end
+	print(string.format("[VehicleRig] RigAll done: %d models placed", rigged))
+end
+
 return VehicleRig
