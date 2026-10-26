@@ -19,6 +19,8 @@ local FareService = {}
 
 local onQuotaReached: Signal.Signal<Player> = Signal.new()
 FareService.OnQuotaReached = onQuotaReached
+local onDelivered: Signal.Signal<Player, string, number> = Signal.new()
+FareService.OnDelivered = onDelivered -- (player, tier, tip shown)
 
 local fares: { [Player]: Types.Fare } = {}
 local cash: { [Player]: number } = {}
@@ -237,6 +239,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		line = if allowTip then nil else "LATE. NO TIP.",
 	})
 	FareService.AddCash(player, payout)
+	onDelivered:Fire(player, fare.tier, tipShown)
 
 	task.delay(Config.Fares.RespawnDelay, function()
 		if enabled then

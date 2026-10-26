@@ -24,6 +24,11 @@ local function round1(x: number): number
 	return math.round(x * 10) / 10
 end
 
+local function levelOf(player: Player): number
+	local level = player:GetAttribute("Level")
+	return if typeof(level) == "number" then level else 1
+end
+
 local function buildSnapshot(): Types.Snapshot
 	local ranks = FareService.GetRanks()
 	local players: { Types.PlayerSnap } = {}
@@ -46,6 +51,7 @@ local function buildSnapshot(): Types.Snapshot
 			rank = ranks[player] or 0,
 			item = ItemService.GetHeld(player),
 			gems = GemService.GetTotal(player),
+			level = levelOf(player),
 		})
 	end
 	return {

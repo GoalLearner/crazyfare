@@ -21,6 +21,7 @@ export type PlayerSnap = {
 	rank: number,
 	item: string, -- held item id or ""
 	gems: number, -- session total
+	level: number,
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking
@@ -45,6 +46,8 @@ export type PodiumEntry = {
 	fares: number,
 	bestTip: number,
 	gems: number?, -- awarded at match end
+	xp: number?,
+	levelUp: boolean?,
 }
 
 export type RoundStatePayload = {
@@ -67,6 +70,27 @@ export type ProfilePayload = {
 	paint: string,
 	upgrades: { [string]: number },
 	stats: { [string]: number },
+	xpToNext: number, -- XP needed to reach the next level
+	xpIntoLevel: number, -- XP earned since the current level began
+}
+
+export type QuestEntry = { id: string, text: string, goal: number, progress: number, reward: number, done: boolean }
+export type QuestPayload = {
+	daily: { QuestEntry },
+	weekly: QuestEntry?,
+	streakDays: number,
+	dailyResetsIn: number, -- seconds
+	weeklyResetsIn: number,
+	notice: string?, -- one-shot message (quest done, level up, streak)
+}
+
+export type BoardEntry = { id: number, name: string, value: number }
+export type LeaderboardPayload = {
+	weekly: { BoardEntry },
+	friends: { BoardEntry },
+	bestTip: { BoardEntry },
+	knockouts: { BoardEntry },
+	weekResetsIn: number,
 }
 
 export type PitStopCard = { id: string, name: string, effect: string, price: number, bought: boolean }

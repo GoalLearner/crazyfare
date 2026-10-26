@@ -42,6 +42,7 @@ export type VehicleStats = {
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
 export type PitStopCardDef = { Name: string, Effect: string, Price: number, Value: number }
+export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
 
 local Config = {}
 
@@ -377,6 +378,49 @@ Config.Paint = {
 	} :: { { Name: string, Color: Color3 } },
 }
 
+-- Player level: XP per match, level thresholds grow linearly. The level shows as a badge by the name.
+Config.Progression = {
+	MatchBaseXp = 50,
+	XpPerFare = 10,
+	PlacementXp = { 60, 40, 25, 15 }, -- by final placement; beyond the list pays the last entry
+	LevelBaseXp = 100, -- XP to go from level 1 to 2
+	LevelStepXp = 60, -- each level needs this much more than the last
+	MaxLevel = 99,
+}
+
+-- Quests: three daily (reset at 00:00 UTC) and one weekly (reset Monday 00:00 UTC), paying Gems on completion.
+Config.Quests = {
+	DailyCount = 3,
+	DailyPool = {
+		{ Id = "deliver", Text = "Deliver %d passengers", Goal = 8, Reward = 15 },
+		{ Id = "tips", Text = "Earn $%d in tips", Goal = 20, Reward = 15 },
+		{ Id = "knockouts", Text = "Make %d passengers bail", Goal = 3, Reward = 20 },
+		{ Id = "drift", Text = "Drift for %d seconds", Goal = 60, Reward = 10 },
+		{ Id = "tomato", Text = "Hit %d rivals with a Tomato", Goal = 4, Reward = 15 },
+		{ Id = "top2", Text = "Finish top 2 in %d matches", Goal = 2, Reward = 20 },
+		{ Id = "red", Text = "Deliver %d long fares", Goal = 3, Reward = 15 },
+	} :: { QuestDef },
+	WeeklyPool = {
+		{ Id = "deliver", Text = "Deliver %d passengers", Goal = 40, Reward = 60 },
+		{ Id = "wins", Text = "Win %d matches", Goal = 3, Reward = 80 },
+		{ Id = "knockouts", Text = "Make %d passengers bail", Goal = 15, Reward = 70 },
+	} :: { QuestDef },
+}
+
+-- Login streak: consecutive UTC days. Pays PerDay * min(days, MaxDays) Gems on the first join of each day.
+Config.Streak = {
+	PerDay = 5,
+	MaxDays = 7,
+}
+
+-- Leaderboards (OrderedDataStore; in-memory when DataStores are unavailable).
+Config.Leaderboards = {
+	RefreshSeconds = 60,
+	Top = 10,
+	WeeklyTrailTop = 10, -- players in this week's top N get the exclusive trail
+	FriendsScan = 100, -- how many weekly entries to scan for friends
+}
+
 -- Persistent profile (ProfileStore). Bump StoreName to wipe everyone in a test place.
 Config.Data = {
 	StoreName = "CrazyFare_v1",
@@ -448,6 +492,7 @@ Config.Net = {
 		PitStopBuy = 6,
 		GarageAction = 5,
 		RematchVote = 2,
+		RequestLeaderboards = 1,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.

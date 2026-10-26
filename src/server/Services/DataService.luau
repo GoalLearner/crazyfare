@@ -75,6 +75,8 @@ function DataService.Sync(player: Player)
 		paint = d.Paint,
 		upgrades = d.Upgrades,
 		stats = d.Stats,
+		xpToNext = Config.Progression.LevelBaseXp + (d.Level - 1) * Config.Progression.LevelStepXp,
+		xpIntoLevel = d.Xp,
 	}
 	syncEvent:FireClient(player, payload)
 end

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local VehicleService = require(script.Parent.VehicleService)
 
@@ -18,6 +19,9 @@ type ComboState = {
 }
 
 local ComboService = {}
+
+local onDrift: Signal.Signal<Player, number> = Signal.new()
+ComboService.OnDrift = onDrift -- (player, seconds) accepted drift time
 
 local states: { [Player]: ComboState } = {}
 local maxSteps = (Config.Combo.Max - 1) / Config.Combo.Step
@@ -86,6 +90,7 @@ function ComboService.Init()
 		end
 		if kind == "Drift" then
 			addSteps(player, math.clamp(value, 0, 1) / Config.Combo.DriftTickSeconds)
+			onDrift:Fire(player, math.clamp(value, 0, 1))
 		elseif kind == "Airtime" then
 			addSteps(player, math.clamp(value, 0, 3) / Config.Combo.AirtimeStepSeconds)
 		elseif kind == "NearMiss" then

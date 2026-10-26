@@ -329,7 +329,8 @@ local function update()
 
 	-- Boost tank + speed
 	UI.SetBar(boostBar, if State.boostTankMax > 0 then State.boostTank / State.boostTankMax else 0, if State.boosting then UI.Warn else UI.Accent)
-	gemsLabel.Text = if State.gems > 0 then string.format("%d GEMS", State.gems) else ""
+	local me = State.GetSelfSnap()
+	gemsLabel.Text = string.format("LV %d  ·  %d GEMS", if me then me.level else 1, State.gems)
 	speedLabel.Text = string.format("%d", math.round(State.speed))
 
 	-- Item slot
@@ -355,6 +356,9 @@ function HudController.Init()
 	State.RoundChanged:Connect(onRound)
 	State.FareEvent:Connect(onFare)
 	State.ItemEvent:Connect(onItem)
+	State.Notice:Connect(function(text: string)
+		showMessage(text, UI.Accent, 2.2)
+	end)
 end
 
 function HudController.Start()

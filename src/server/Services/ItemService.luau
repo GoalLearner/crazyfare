@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local MapService = require(script.Parent.MapService)
@@ -38,6 +39,9 @@ type Trap = {
 }
 
 local ItemService = {}
+
+local onTomatoHit: Signal.Signal<Player, Player> = Signal.new()
+ItemService.OnTomatoHit = onTomatoHit -- (attacker, victim) on a landed splat
 
 local held: { [Player]: string } = {}
 local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
@@ -342,6 +346,7 @@ local function hitWithTomato(projectile: Projectile, victim: Player, victimEntry
 	fire(victim, { kind = "Splat", item = "Tomato", coverage = cfg.SplatCoverage, seconds = cfg.WipeSeconds, attacker = projectile.owner.DisplayName })
 	fire(projectile.owner, { kind = "HitConfirm", item = "Tomato", attacker = victim.DisplayName })
 	broadcast({ kind = "Burst", item = "Tomato", position = at })
+	onTomatoHit:Fire(projectile.owner, victim)
 end
 
 local function knockProp(part: BasePart, direction: Vector3, hitPosition: Vector3)

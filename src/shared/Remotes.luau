@@ -14,6 +14,8 @@ local EVENT_NAMES = {
 	"VehicleAssigned", -- (model: Model)
 	"PitStopOffer", -- (Types.PitStopOfferPayload)
 	"ProfileSync", -- (Types.ProfilePayload) whenever the profile changes
+	"QuestSync", -- (Types.QuestPayload) when quests, streak or progress change
+	"LeaderboardSync", -- (Types.LeaderboardPayload) on request and on refresh
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)
@@ -23,6 +25,7 @@ local EVENT_NAMES = {
 	"PitStopBuy", -- (cardId: string)
 	"RematchVote", -- ()
 	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
+	"RequestLeaderboards", -- ()
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

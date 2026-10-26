@@ -135,6 +135,22 @@ function NetController.Init()
 			State.ProfileChanged:Fire()
 		end
 	end)
+	Remotes.Get("QuestSync").OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" then
+			local quests = payload :: Types.QuestPayload
+			State.quests = quests
+			State.QuestsChanged:Fire()
+			if quests.notice then
+				State.Notice:Fire(quests.notice)
+			end
+		end
+	end)
+	Remotes.Get("LeaderboardSync").OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" then
+			State.boards = payload :: Types.LeaderboardPayload
+			State.BoardsChanged:Fire()
+		end
+	end)
 
 	-- Fallback discovery in case VehicleAssigned arrived before we were listening.
 	for _, inst in CollectionService:GetTagged(Config.Tags.Vehicle) do

@@ -149,6 +149,36 @@ function VehicleService.SetHighlight(player: Player, color: Color3?, seconds: nu
 	end
 end
 
+-- Exclusive trail for this week's leaderboard top: two attachments at the rear corners and a Trail between them.
+local function applyTrail(entry: VehicleEntry)
+	local existing = entry.model:FindFirstChild("WeeklyTrail")
+	if existing then
+		existing:Destroy()
+	end
+	if entry.player:GetAttribute("WeeklyTrail") ~= true then
+		return
+	end
+	local size = entry.chassis.Size
+	local a0 = Instance.new("Attachment")
+	a0.Name = "TrailL"
+	a0.Position = Vector3.new(-size.X / 2, 0, size.Z / 2)
+	a0.Parent = entry.chassis
+	local a1 = Instance.new("Attachment")
+	a1.Name = "TrailR"
+	a1.Position = Vector3.new(size.X / 2, 0, size.Z / 2)
+	a1.Parent = entry.chassis
+	local trail = Instance.new("Trail")
+	trail.Name = "WeeklyTrail"
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 215, 80), Color3.fromRGB(255, 120, 30))
+	trail.Transparency = NumberSequence.new(0.2, 1)
+	trail.Lifetime = 0.6
+	trail.LightEmission = 0.8
+	trail.MinLength = 0.2
+	trail.Parent = entry.model
+end
+
 function VehicleService.Despawn(player: Player)
 	local entry = entries[player]
 	if not entry then
@@ -196,6 +226,7 @@ function VehicleService.Spawn(player: Player)
 	}
 	entries[player] = entry
 	applyRelease(entry)
+	applyTrail(entry)
 	Remotes.Get("VehicleAssigned"):FireClient(player, model)
 	onSpawned:Fire(player, entry)
 end
@@ -279,6 +310,14 @@ function VehicleService.Init()
 
 	Players.PlayerAdded:Connect(function(player: Player)
 		VehicleService.Spawn(player)
+	end)
+	Players.PlayerAdded:Connect(function(player: Player)
+		player:GetAttributeChangedSignal("WeeklyTrail"):Connect(function()
+			local entry = entries[player]
+			if entry then
+				applyTrail(entry)
+			end
+		end)
 	end)
 	-- A garage change while the car is parked (lobby, pit stop) swaps it right away; mid-round it waits for the grid.
 	DataService.OnVehicleSelected:Connect(function(player: Player)

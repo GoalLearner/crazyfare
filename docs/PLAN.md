@@ -97,9 +97,9 @@ Verification
 - [ ] Gate: nothing purchasable touches a live match except Pit Stop cards
 
 ## Phase 5 — Retention
-- [ ] Level/XP per match, badge by name
-- [ ] Daily quests (3), weekly quest (1), login streak, all paying Gems
-- [ ] Leaderboards: weekly (Monday reset), friends, Biggest Tip Ever, Most Passengers Knocked Out; weekly top-10 trail
+- [x] Level/XP per match (50 + 10/fare + placement), level badge on world tags and under cash
+- [x] Daily quests (3 of 7), weekly quest (1 of 3), login streak (5 Gems x days, cap 7), all paying Gems on completion
+- [x] Leaderboards on OrderedDataStores (memory fallback in Studio): weekly Gems (Monday reset), friends, Biggest Tip Ever, Most Passengers Knocked Out; weekly top-10 gold trail
 - [ ] Gate: a second-day session has a reason to exist
 
 ## Phase 6 — Monetization + Beach + polish

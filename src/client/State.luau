@@ -30,6 +30,8 @@ local State = {
 	item = "",
 	pitStop = nil :: Types.PitStopOfferPayload?,
 	profile = nil :: Types.ProfilePayload?,
+	quests = nil :: Types.QuestPayload?,
+	boards = nil :: Types.LeaderboardPayload?,
 	gems = 0,
 	-- self, mirrored from the snapshot
 	cash = 0,
@@ -64,6 +66,9 @@ local snapshotReceived: Signal.Signal<Types.Snapshot> = Signal.new()
 local honk: Signal.Signal<nil> = Signal.new()
 local pitStopChanged: Signal.Signal<nil> = Signal.new()
 local profileChanged: Signal.Signal<nil> = Signal.new()
+local questsChanged: Signal.Signal<nil> = Signal.new()
+local boardsChanged: Signal.Signal<nil> = Signal.new()
+local notice: Signal.Signal<string> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -73,6 +78,9 @@ State.SnapshotReceived = snapshotReceived
 State.Honk = honk
 State.PitStopChanged = pitStopChanged
 State.ProfileChanged = profileChanged
+State.QuestsChanged = questsChanged
+State.BoardsChanged = boardsChanged
+State.Notice = notice -- one-shot HUD messages from the server (quest done, level up, streak)
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

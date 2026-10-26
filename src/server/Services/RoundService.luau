@@ -19,6 +19,9 @@ local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
 local PitStopService = require(script.Parent.PitStopService)
 local GemService = require(script.Parent.GemService)
+local ProgressionService = require(script.Parent.ProgressionService)
+local QuestService = require(script.Parent.QuestService)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local RoundService = {}
 
@@ -124,6 +127,14 @@ local function endRound()
 		setPhase("RoundEnd", Config.Round.RoundEndSeconds)
 	else
 		results = GemService.AwardMatch(results :: { Types.PodiumEntry })
+		ProgressionService.AwardMatch(results :: { Types.PodiumEntry })
+		QuestService.OnMatchEnd(results :: { Types.PodiumEntry })
+		for _, entry in results :: { Types.PodiumEntry } do
+			local player = Players:GetPlayerByUserId(entry.id)
+			if player then
+				LeaderboardService.AddWeeklyGems(player, entry.gems or 0)
+			end
+		end
 		table.clear(rematchVotes)
 		setPhase("MatchEnd", Config.Round.MatchEndSeconds)
 	end
