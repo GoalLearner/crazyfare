@@ -57,19 +57,19 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		end
 		local owned = stats.GemPrice <= 0 or profile.owned[id] == true
 		local selected = profile.selected == id
-		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 92), LayoutOrder = i, BackgroundTransparency = if selected then 0.1 else 0.45, BackgroundColor3 = if selected then Color3.fromRGB(30, 50, 40) else UI.Panel }, vehicleList)
+		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 72), LayoutOrder = i, BackgroundTransparency = if selected then 0.1 else 0.45, BackgroundColor3 = if selected then Color3.fromRGB(30, 50, 40) else UI.Panel }, vehicleList)
 		UI.Corner(10, row)
-		local swatch = UI.Frame({ Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(16, 68), BackgroundColor3 = stats.Color, BackgroundTransparency = 0 }, row)
+		local swatch = UI.Frame({ Position = UDim2.fromOffset(12, 10), Size = UDim2.fromOffset(14, 52), BackgroundColor3 = stats.Color, BackgroundTransparency = 0 }, row)
 		UI.Corner(4, swatch)
-		UI.Label({ Position = UDim2.fromOffset(40, 10), Size = UDim2.fromOffset(220, 24), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if owned then UI.White else UI.Muted }, row)
-		UI.Label({ Position = UDim2.fromOffset(40, 36), Size = UDim2.fromOffset(240, 18), Text = stats.Description, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
-		local stat = UI.Frame({ Position = UDim2.fromOffset(300, 14), Size = UDim2.fromOffset(160, 70), BackgroundTransparency = 1 }, row)
+		UI.Label({ Position = UDim2.fromOffset(36, 8), Size = UDim2.fromOffset(220, 22), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if owned then UI.White else UI.Muted }, row)
+		UI.Label({ Position = UDim2.fromOffset(36, 34), Size = UDim2.fromOffset(250, 30), Text = stats.Description, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
+		local stat = UI.Frame({ Position = UDim2.fromOffset(296, 10), Size = UDim2.fromOffset(160, 56), BackgroundTransparency = 1 }, row)
 		statBar(stat, 0, "SPEED", stats.TopSpeed / 100)
-		statBar(stat, 20, "ACCEL", stats.Accel / 70)
-		statBar(stat, 40, "GRIP", stats.Handling / 9)
+		statBar(stat, 18, "ACCEL", stats.Accel / 70)
+		statBar(stat, 36, "GRIP", stats.Handling / 9)
 		local label = if selected then "SELECTED" elseif owned then "SELECT" else string.format("%d GEMS", stats.GemPrice)
 		local affordable = owned or profile.gems >= stats.GemPrice
-		local b = button(label, if owned then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 110, 190), UDim2.fromOffset(110, 34), row, affordable and not selected)
+		local b = button(label, if owned then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 110, 190), UDim2.fromOffset(104, 30), row, affordable and not selected)
 		b.AnchorPoint = Vector2.new(1, 0.5)
 		b.Position = UDim2.new(1, -12, 0.5, 0)
 		if not selected and affordable then
@@ -170,7 +170,7 @@ local function setOpen(open: boolean)
 end
 
 local function build()
-	local screen = UI.Screen("CrazyFareGarage", 12)
+	local screen = UI.Screen("CrazyFareGarage", 18) -- above the Pit Stop panel (15) so it reads while open
 	openButton = UI.New("TextButton", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -24, 0, 24 + Config.Hud.MinimapSize + 10),
