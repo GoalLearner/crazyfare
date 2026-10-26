@@ -124,6 +124,7 @@ Config.Fares = {
 	TimeoutBails = true, -- timer at 0 = passenger bails, fare lost (owner call 2026-10-26 after playing both). false = passenger stays, tip gone, base paid on delivery
 	ThanksSeconds = 2, -- delivered NPC lingers, then despawns
 	RespawnDelay = 1, -- before a replacement NPC appears
+	GuaranteeEachTier = true, -- a board of 3+ always holds at least one green, one yellow and one red
 }
 
 -- Pit Stop: between rounds, spend this round's cash on next-round-only boosts. Unspent cash carries forward.

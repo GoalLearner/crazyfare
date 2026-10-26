@@ -282,7 +282,19 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string): Npc
 	return typed
 end
 
+-- Which tiers are currently on the board (available or walking back).
+local function tiersOnBoard(): { [string]: boolean }
+	local present: { [string]: boolean } = {}
+	for _, npc in npcs do
+		if npc.state == 0 or npc.state == 2 then
+			present[npc.tier] = true
+		end
+	end
+	return present
+end
+
 -- Spawn one NPC at a random free pickup point with distance-weighted tier. nil when every point is taken.
+-- With GuaranteeEachTier, a missing tier is forced onto the curb that suits it (red far out, green near the start).
 function PassengerService.SpawnWeighted(): Npc?
 	local free: { MapService.Point } = {}
 	for _, point in MapService.GetPickups() do
@@ -293,8 +305,31 @@ function PassengerService.SpawnWeighted(): Npc?
 	if #free == 0 then
 		return nil
 	end
+	local center = MapService.GetCenter()
+	if Config.Fares.GuaranteeEachTier and PassengerService.CountOnBoard() >= 2 then
+		local present = tiersOnBoard()
+		local bands = Config.Fares.TierWeightsByDistance
+		if not present.Red then
+			-- farthest free curb
+			table.sort(free, function(a, b)
+				return VecUtil.FlatDistance(a.position, center) > VecUtil.FlatDistance(b.position, center)
+			end)
+			return PassengerService.SpawnAt(free[1], "Red")
+		elseif not present.Green then
+			table.sort(free, function(a, b)
+				return VecUtil.FlatDistance(a.position, center) < VecUtil.FlatDistance(b.position, center)
+			end)
+			return PassengerService.SpawnAt(free[1], "Green")
+		elseif not present.Yellow then
+			local mid = bands[1].MaxDistance
+			table.sort(free, function(a, b)
+				return math.abs(VecUtil.FlatDistance(a.position, center) - mid) < math.abs(VecUtil.FlatDistance(b.position, center) - mid)
+			end)
+			return PassengerService.SpawnAt(free[1], "Yellow")
+		end
+	end
 	local point = free[rng:NextInteger(1, #free)]
-	local tier = pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter()))
+	local tier = pickTier(VecUtil.FlatDistance(point.position, center))
 	return PassengerService.SpawnAt(point, tier)
 end
 
