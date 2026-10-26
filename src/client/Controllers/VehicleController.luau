@@ -5,6 +5,7 @@
 -- spinouts and boosts by reading State.
 
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -23,6 +24,8 @@ type Wheel = {
 }
 
 local VehicleController = {}
+
+local localPlayer = Players.LocalPlayer
 
 local C = Config.Chassis
 local chassis: BasePart? = nil
@@ -133,7 +136,7 @@ local function checkNearMiss(ch: BasePart, now: number)
 		end
 		recentNearMiss[part] = now
 		nearMissCooldownUntil = now + C.NearMissCooldown
-		State.boostTank = math.min(State.stats.BoostTank, State.boostTank + C.BoostFillPerNearMiss)
+		State.boostTank = math.min(State.boostTankMax, State.boostTank + C.BoostFillPerNearMiss)
 		reportCombo("NearMiss", 1)
 		return
 	end
@@ -191,6 +194,13 @@ local function step(rawDt: number)
 		accelMult *= C.BoostAccelMult
 		State.boostTank = math.max(0, State.boostTank - dt)
 	end
+	local speedTune = localPlayer:GetAttribute("Pit_SpeedTune")
+	if typeof(speedTune) == "number" then
+		speedMult *= speedTune
+	end
+	local bigTank = localPlayer:GetAttribute("Pit_BigTank")
+	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1)
+	State.boostTankMax = tankMax
 	local topSpeed = stats.TopSpeed * speedMult
 	local accel = stats.Accel * accelMult
 
@@ -321,7 +331,7 @@ local function step(rawDt: number)
 	local drifting = grounded and handbrake and speed > C.DriftMinSpeed and rearSide > C.DriftMinSide
 	if drifting then
 		driftAccumulator += dt
-		State.boostTank = math.min(stats.BoostTank, State.boostTank + C.BoostFillPerDriftSecond * dt)
+		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * dt)
 		if driftAccumulator >= Config.Combo.DriftTickSeconds then
 			reportCombo("Drift", driftAccumulator)
 			driftAccumulator = 0

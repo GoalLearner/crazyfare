@@ -390,6 +390,10 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 	if attacker then
 		lastAttacker[player] = attacker
 	end
+	local armor = player:GetAttribute("Pit_ArmoredSeats")
+	if typeof(armor) == "number" then
+		amount *= armor
+	end
 	npc.hp = math.max(0, npc.hp - amount)
 	onDamaged:Fire(player, amount, source)
 	if npc.hp <= 0 then

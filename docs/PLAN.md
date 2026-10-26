@@ -82,10 +82,10 @@ Verification
 - [ ] Gate: items feel fair and funny in a 4–6 player room
 
 ## Phase 3 — Match structure
-- [ ] 3 rounds per match with quotas $30/$45/$60 from Config
-- [ ] Pit Stop (30 s): 4–5 cards from the pool (SpeedTune, BigTank, StartItem, ArmoredSeats, TipJar, ExtraWiper), prices scale by round, last-place 30% pity discount
-- [ ] Unspent cash carries forward as quota progress
-- [ ] Match end: podium, placements, Gem payout formula (placement + fares delivered), rematch vote
+- [x] 3 rounds per match with quotas $30/$45/$60 from Config (RoundEnd 5 s between a round and its Pit Stop)
+- [x] Pit Stop (30 s): 5 cards from the pool of 6, prices scale by round (x1, x1.4), last-place 30% pity discount; boosts ride as `Pit_<Card>` player attributes for one round
+- [x] Unspent cash carries forward as quota progress (cash resets only at match start)
+- [x] Match end: podium with gems (placement 12/8/5/3/2/1 + 1 per fare), 20 s rematch vote that starts early when everyone is in; GemService holds session totals until Phase 4
 - [ ] Gate: the spend-vs-bank decision is real
 
 ## Phase 4 — Persistence + economy

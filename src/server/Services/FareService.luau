@@ -120,13 +120,19 @@ function FareService.GetResults(): { Types.PodiumEntry }
 	return results
 end
 
-function FareService.ResetAll()
+-- New match: everything to zero.
+function FareService.ResetMatch()
 	table.clear(fares)
 	for _, player in Players:GetPlayers() do
 		cash[player] = 0
 		delivered[player] = 0
 		bestTip[player] = 0
 	end
+end
+
+-- New round inside a match: active fares drop, cash and stats carry forward.
+function FareService.ResetRound()
+	table.clear(fares)
 end
 
 local function pickDestination(npc: PassengerService.Npc): MapService.Point?
@@ -209,6 +215,10 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local speedy = VecUtil.Clamp01((timeFrac - tips.TimeFloor) / (tips.TimeCeil - tips.TimeFloor))
 	local chill = VecUtil.Clamp01((hpFrac - tips.HpFloor) / (1 - tips.HpFloor))
 	local tipRaw = if allowTip then fare.base * tips.MaxFrac * (tips.TimeWeight * speedy + tips.ChillWeight * chill) else 0
+	local tipJar = player:GetAttribute("Pit_TipJar")
+	if typeof(tipJar) == "number" then
+		tipRaw *= tipJar
+	end
 	local combo = ComboService.GetMultiplier(player)
 	local payout = math.round((fare.base + tipRaw) * combo)
 	local tipShown = math.round(tipRaw * combo)

@@ -1,6 +1,6 @@
 --!strict
 -- The HUD: cash + quota, round timer, fare card, combo, boost tank, item slot, speed, center messages,
--- destination arrow, podium. Everything reads State; nothing here talks to the server.
+-- destination arrow, podium with gems and the rematch vote. Reads State; the only thing it sends is RematchVote.
 
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local VecUtil = require(Shared:WaitForChild("VecUtil"))
 local State = require(script.Parent.Parent.State)
@@ -46,6 +47,9 @@ local lastCountdownShown = -1
 local podium: Frame
 local podiumRows: Frame
 local podiumFooter: TextLabel
+local podiumTitle: TextLabel
+local rematchButton: TextButton
+local gemsLabel: TextLabel
 
 local function tierColor(tier: string): Color3
 	local def = Config.Fares.Tiers[tier]
@@ -73,6 +77,7 @@ local function build()
 	cashLabel = UI.Label({ Size = UDim2.fromOffset(220, 56), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, cashBox)
 	quotaBar = UI.Bar({ Position = UDim2.fromOffset(0, 62), Size = UDim2.fromOffset(220, 10) }, UI.Cash, cashBox)
 	quotaLabel = UI.Label({ Position = UDim2.fromOffset(0, 74), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, cashBox)
+	gemsLabel = UI.Label({ Position = UDim2.fromOffset(0, 94), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Accent, Font = UI.FontMedium, Text = "" }, cashBox)
 
 	-- Timer + phase (top-center)
 	timerLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 20), Size = UDim2.fromOffset(160, 44), Text = "4:00" }, screen)
@@ -112,10 +117,28 @@ local function build()
 	-- Podium
 	podium = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(420, 320), BackgroundTransparency = 0.1, Visible = false }, screen)
 	UI.Corner(16, podium)
-	UI.Label({ Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 40), Text = "ROUND OVER" }, podium)
+	podiumTitle = UI.Label({ Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 40), Text = "ROUND OVER" }, podium)
 	podiumRows = UI.Frame({ Position = UDim2.fromOffset(20, 66), Size = UDim2.new(1, -40, 1, -110), BackgroundTransparency = 1 }, podium)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, podiumRows)
 	podiumFooter = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -40, 0, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, podium)
+	rematchButton = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -40),
+		Size = UDim2.fromOffset(180, 38),
+		BackgroundColor3 = Color3.fromRGB(60, 140, 80),
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 18,
+		TextColor3 = UI.White,
+		Text = "REMATCH",
+		Visible = false,
+	}, podium) :: TextButton
+	UI.Corner(10, rematchButton)
+	rematchButton.Activated:Connect(function()
+		Remotes.Get("RematchVote"):FireServer()
+		rematchButton.Text = "READY"
+		rematchButton.BackgroundColor3 = Color3.fromRGB(40, 70, 48)
+	end)
 end
 
 local function fillPodium(results: { Types.PodiumEntry })
@@ -131,19 +154,33 @@ local function fillPodium(results: { Types.PodiumEntry })
 		UI.Label({ Position = UDim2.fromOffset(48, 4), Size = UDim2.fromOffset(190, 28), Text = entry.name, TextXAlignment = Enum.TextXAlignment.Left }, row)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 4), Size = UDim2.fromOffset(100, 28), Text = UI.Money(entry.cash), TextColor3 = UI.Cash, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -116, 0, 8), Size = UDim2.fromOffset(60, 20), Text = string.format("%d fares", entry.fares), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		if entry.gems then
+			UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -182, 0, 8), Size = UDim2.fromOffset(70, 20), Text = string.format("+%d gems", entry.gems), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		end
 	end
 end
 
 local function onRound(payload: Types.RoundStatePayload)
-	if payload.phase == "Podium" and payload.results then
+	local isMatchEnd = payload.phase == "MatchEnd"
+	if (payload.phase == "RoundEnd" or isMatchEnd) and payload.results then
 		fillPodium(payload.results)
+		podiumTitle.Text = if isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
+		rematchButton.Visible = isMatchEnd
+		if isMatchEnd and rematchButton.Text == "READY" and (payload.votes or 0) == 0 then
+			rematchButton.Text = "REMATCH"
+			rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+		end
 		podium.Visible = true
 		local winner = payload.results[1]
-		if winner then
+		if winner and isMatchEnd then
 			showMessage(string.upper(winner.name) .. " WINS", UI.Warn, 3)
 		end
 	else
 		podium.Visible = false
+	end
+	if payload.phase == "PreCountdown" and payload.round == 1 then
+		rematchButton.Text = "REMATCH"
+		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
 	end
 	if payload.phase == "PreCountdown" then
 		showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds)
@@ -229,10 +266,17 @@ local function update()
 	elseif phase == "PreCountdown" then
 		timerLabel.Text = UI.FormatTime(Config.Round.CapSeconds)
 		phaseLabel.Text = "ROUND " .. (if round then round.round else 1) .. "  ·  FIRST TO " .. UI.Money(quota)
-	elseif phase == "Podium" and round then
+	elseif phase == "RoundEnd" and round then
 		timerLabel.Text = ""
 		phaseLabel.Text = ""
-		podiumFooter.Text = "Next round in " .. math.max(0, math.ceil(round.endsAt - now))
+		podiumFooter.Text = "Pit stop in " .. math.max(0, math.ceil(round.endsAt - now))
+	elseif phase == "PitStop" and round then
+		timerLabel.Text = "PIT STOP"
+		phaseLabel.Text = "NEXT: ROUND " .. (round.round + 1) .. "  ·  FIRST TO " .. UI.Money(Config.Round.Quotas[math.min(round.round + 1, #Config.Round.Quotas)])
+	elseif phase == "MatchEnd" and round then
+		timerLabel.Text = ""
+		phaseLabel.Text = ""
+		podiumFooter.Text = string.format("Rematch %d/%d  ·  next match in %d", round.votes or 0, round.voters or 0, math.max(0, math.ceil(round.endsAt - now)))
 	else
 		timerLabel.Text = ""
 		phaseLabel.Text = "WAITING FOR PLAYERS"
@@ -282,7 +326,8 @@ local function update()
 	comboBar.back.Visible = combo > 1.01
 
 	-- Boost tank + speed
-	UI.SetBar(boostBar, if State.stats.BoostTank > 0 then State.boostTank / State.stats.BoostTank else 0, if State.boosting then UI.Warn else UI.Accent)
+	UI.SetBar(boostBar, if State.boostTankMax > 0 then State.boostTank / State.boostTankMax else 0, if State.boosting then UI.Warn else UI.Accent)
+	gemsLabel.Text = if State.gems > 0 then string.format("%d GEMS", State.gems) else ""
 	speedLabel.Text = string.format("%d", math.round(State.speed))
 
 	-- Item slot

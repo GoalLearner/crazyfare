@@ -37,6 +37,7 @@ local function onSnapshot(snapshot: Types.Snapshot)
 		State.combo = me.combo
 		State.rank = me.rank
 		State.item = me.item
+		State.gems = me.gems or 0
 	end
 	State.SnapshotReceived:Fire(snapshot)
 end
@@ -85,7 +86,12 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 		State.shieldUp = false
 	elseif kind == "Splat" then
 		State.splatStartedAt = now()
-		State.splatUntil = now() + (payload.seconds or Config.Items.Tomato.WipeSeconds)
+		local wipe = payload.seconds or Config.Items.Tomato.WipeSeconds
+		local extraWiper = localPlayer:GetAttribute("Pit_ExtraWiper")
+		if typeof(extraWiper) == "number" then
+			wipe *= extraWiper
+		end
+		State.splatUntil = now() + wipe
 		State.splatCoverage = payload.coverage or Config.Items.Tomato.SplatCoverage
 	end
 	State.ItemEvent:Fire(payload)
@@ -115,6 +121,12 @@ function NetController.Init()
 	Remotes.Get("ItemEvent").OnClientEvent:Connect(function(payload: any)
 		if typeof(payload) == "table" then
 			onItemEvent(payload :: Types.ItemEventPayload)
+		end
+	end)
+	Remotes.Get("PitStopOffer").OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" then
+			State.pitStop = payload :: Types.PitStopOfferPayload
+			State.PitStopChanged:Fire()
 		end
 	end)
 

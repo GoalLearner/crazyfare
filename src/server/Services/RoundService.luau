@@ -1,6 +1,8 @@
 --!strict
--- Round state machine: Waiting -> PreCountdown (read the board) -> Countdown -> Playing -> Podium -> PreCountdown...
--- Phase 1 loops single rounds; Phase 3 adds the 3-round match and Pit Stop on top of this.
+-- Match state machine:
+--   Waiting -> PreCountdown (read the board) -> Countdown -> Playing -> RoundEnd -> PitStop -> PreCountdown ...
+--   after the last round: Playing -> MatchEnd (podium, Gems, rematch vote) -> PreCountdown of a new match.
+-- Cash carries across rounds inside a match (unspent cash is quota progress) and resets with the match.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -15,6 +17,8 @@ local ComboService = require(script.Parent.ComboService)
 local PassengerService = require(script.Parent.PassengerService)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
+local PitStopService = require(script.Parent.PitStopService)
+local GemService = require(script.Parent.GemService)
 
 local RoundService = {}
 
@@ -24,10 +28,21 @@ local phaseStartsAt = 0
 local phaseEndsAt = 0
 local results: { Types.PodiumEntry }? = nil
 local waitingSince: number? = nil
+local rematchVotes: { [Player]: boolean } = {}
 local roundState: RemoteEvent
 
 local function now(): number
 	return workspace:GetServerTimeNow()
+end
+
+local function voteCount(): number
+	local n = 0
+	for player in rematchVotes do
+		if player.Parent then
+			n += 1
+		end
+	end
+	return n
 end
 
 function RoundService.GetPayload(): Types.RoundStatePayload
@@ -38,33 +53,51 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		startsAt = phaseStartsAt,
 		endsAt = phaseEndsAt,
 		results = results,
+		votes = if phase == "MatchEnd" then voteCount() else nil,
+		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
 	}
+end
+
+local function broadcast()
+	roundState:FireAllClients(RoundService.GetPayload())
 end
 
 local function setPhase(newPhase: Types.RoundPhase, duration: number)
 	phase = newPhase
 	phaseStartsAt = now()
 	phaseEndsAt = if duration > 0 then phaseStartsAt + duration else 0
-	roundState:FireAllClients(RoundService.GetPayload())
+	broadcast()
 end
 
 function RoundService.GetPhase(): Types.RoundPhase
 	return phase
 end
 
-local function beginPreCountdown()
-	roundIndex = 1 -- Phase 3: advance through RoundsPerMatch
+function RoundService.GetRound(): number
+	return roundIndex
+end
+
+-- Fresh round: board, items, cars on the grid, boosts from the Pit Stop applied.
+local function beginRoundSetup()
 	results = nil
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
-	FareService.ResetAll()
-	FareService.SetQuota(Config.Round.Quotas[roundIndex])
+	FareService.ResetRound()
+	FareService.SetQuota(Config.Round.Quotas[math.min(roundIndex, #Config.Round.Quotas)])
 	ComboService.ResetAll()
 	ItemService.ClearAll()
 	PassengerService.ClearAll()
 	VehicleService.ResetAllToGrid()
+	PitStopService.ApplyBoosts()
 	PassengerService.EnsureCount(FareService.TargetNpcCount())
 	setPhase("PreCountdown", Config.Round.PreCountdownSeconds)
+end
+
+local function beginMatch()
+	roundIndex = 1
+	table.clear(rematchVotes)
+	FareService.ResetMatch()
+	beginRoundSetup()
 end
 
 local function beginCountdown()
@@ -85,8 +118,21 @@ local function endRound()
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
 	VehicleService.SetReleased(false)
+	PitStopService.ClearBoosts()
 	results = FareService.GetResults()
-	setPhase("Podium", Config.Round.PodiumSeconds)
+	if roundIndex < Config.Round.RoundsPerMatch then
+		setPhase("RoundEnd", Config.Round.RoundEndSeconds)
+	else
+		results = GemService.AwardMatch(results :: { Types.PodiumEntry })
+		table.clear(rematchVotes)
+		setPhase("MatchEnd", Config.Round.MatchEndSeconds)
+	end
+end
+
+local function beginPitStop()
+	local closesAt = now() + Config.PitStop.Seconds
+	PitStopService.Open(roundIndex, closesAt)
+	setPhase("PitStop", Config.PitStop.Seconds)
 end
 
 local function beginWaiting()
@@ -95,6 +141,7 @@ local function beginWaiting()
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
 	VehicleService.SetReleased(false)
+	PitStopService.Close()
 	setPhase("Waiting", 0)
 end
 
@@ -124,7 +171,22 @@ function RoundService.Init()
 		end
 	end)
 
-	Players.PlayerRemoving:Connect(function()
+	Remotes.Get("RematchVote").OnServerEvent:Connect(function(player: Player)
+		if not RateLimiter.Allow(player, "RematchVote", Config.Net.RateLimits.RematchVote) then
+			return
+		end
+		if phase ~= "MatchEnd" or rematchVotes[player] then
+			return
+		end
+		rematchVotes[player] = true
+		broadcast()
+		if voteCount() >= #Players:GetPlayers() then
+			beginMatch()
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player: Player)
+		rematchVotes[player] = nil
 		task.defer(function()
 			if #Players:GetPlayers() == 0 and phase ~= "Waiting" then
 				beginWaiting()
@@ -143,7 +205,7 @@ function RoundService.Start()
 				if not waitingSince then
 					waitingSince = t
 				elseif t - (waitingSince :: number) >= Config.Round.AutoStartDelay then
-					beginPreCountdown()
+					beginMatch()
 				end
 			else
 				waitingSince = nil
@@ -160,10 +222,20 @@ function RoundService.Start()
 			if t >= phaseEndsAt then
 				endRound()
 			end
-		elseif phase == "Podium" then
+		elseif phase == "RoundEnd" then
+			if t >= phaseEndsAt then
+				beginPitStop()
+			end
+		elseif phase == "PitStop" then
+			if t >= phaseEndsAt then
+				PitStopService.Close()
+				roundIndex += 1
+				beginRoundSetup()
+			end
+		elseif phase == "MatchEnd" then
 			if t >= phaseEndsAt then
 				if playerCount >= Config.Round.MinPlayers then
-					beginPreCountdown()
+					beginMatch()
 				else
 					beginWaiting()
 				end

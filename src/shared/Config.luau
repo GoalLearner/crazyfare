@@ -32,6 +32,8 @@ export type VehicleStats = {
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
+export type PitStopCardDef = { Name: string, Effect: string, Price: number, Value: number }
+
 local Config = {}
 
 -- CollectionService tags. MapService discovers everything by tag; nothing is looked up by name.
@@ -81,8 +83,10 @@ Config.Round = {
 	CountdownSeconds = 3, -- 3-2-1
 	CapSeconds = 240, -- round time cap; highest cash wins at the cap
 	Quotas = { 30, 45, 60 }, -- round 1, 2, 3
-	RoundsPerMatch = 3, -- Phase 3 uses this; Phase 1 loops round 1
-	PodiumSeconds = 10,
+	RoundsPerMatch = 3,
+	RoundEndSeconds = 5, -- placements shown between a round and its Pit Stop
+	MatchEndSeconds = 20, -- final podium + rematch vote
+	PodiumSeconds = 10, -- unused since Phase 3; kept for the solo loop
 }
 
 Config.Fares = {
@@ -110,6 +114,28 @@ Config.Fares = {
 	TimeoutBails = true, -- timer at 0 = passenger bails, fare lost (owner call 2026-10-26 after playing both). false = passenger stays, tip gone, base paid on delivery
 	ThanksSeconds = 2, -- delivered NPC lingers, then despawns
 	RespawnDelay = 1, -- before a replacement NPC appears
+}
+
+-- Pit Stop: between rounds, spend this round's cash on next-round-only boosts. Unspent cash carries forward.
+Config.PitStop = {
+	Seconds = 30,
+	CardsOffered = 5, -- Pit Stop Plus (Phase 6) makes this 6
+	PriceScale = { 1, 1.4 }, -- multiplier after round 1, after round 2
+	PityDiscount = 0.3, -- last place pays this much less
+	Cards = {
+		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Price = 8, Value = 1.08 },
+		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Price = 6, Value = 1.5 },
+		StartItem = { Name = "Start Item", Effect = "Start the round holding an item", Price = 5, Value = 1 },
+		ArmoredSeats = { Name = "Armored Seats", Effect = "Passengers take 25% less damage", Price = 8, Value = 0.75 },
+		TipJar = { Name = "Tip Jar", Effect = "Tips +25%", Price = 9, Value = 1.25 },
+		ExtraWiper = { Name = "Extra Wiper", Effect = "Splats clear twice as fast", Price = 4, Value = 0.5 },
+	} :: { [string]: PitStopCardDef },
+}
+
+-- Gems: paid at match end (Phase 4 persists them). Never spendable mid-match.
+Config.Gems = {
+	Placement = { 12, 8, 5, 3, 2, 1 }, -- by final placement; beyond the list pays the last entry
+	PerFare = 1,
 }
 
 Config.Tips = {
@@ -292,6 +318,8 @@ Config.Net = {
 		DriveState = 12,
 		ResetVehicle = 2,
 		ClientReady = 1,
+		PitStopBuy = 6,
+		RematchVote = 2,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.

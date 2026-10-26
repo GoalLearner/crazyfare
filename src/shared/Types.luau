@@ -2,7 +2,7 @@
 -- Shared type aliases. Payload shapes here are what crosses the network; keep them flat and small.
 
 export type Tier = "Green" | "Yellow" | "Red"
-export type RoundPhase = "Waiting" | "PreCountdown" | "Countdown" | "Playing" | "Podium"
+export type RoundPhase = "Waiting" | "PreCountdown" | "Countdown" | "Playing" | "RoundEnd" | "PitStop" | "MatchEnd"
 export type RankBucket = "Leader" | "Mid" | "Last"
 
 -- One taxi in the 10 Hz snapshot.
@@ -20,6 +20,7 @@ export type PlayerSnap = {
 	combo: number,
 	rank: number,
 	item: string, -- held item id or ""
+	gems: number, -- session total
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking
@@ -43,6 +44,7 @@ export type PodiumEntry = {
 	cash: number,
 	fares: number,
 	bestTip: number,
+	gems: number?, -- awarded at match end
 }
 
 export type RoundStatePayload = {
@@ -52,7 +54,12 @@ export type RoundStatePayload = {
 	startsAt: number, -- server time the phase began
 	endsAt: number, -- server time the phase ends (0 = open-ended)
 	results: { PodiumEntry }?,
+	votes: number?, -- rematch votes so far (MatchEnd)
+	voters: number?, -- players present
 }
+
+export type PitStopCard = { id: string, name: string, effect: string, price: number, bought: boolean }
+export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number }
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "NearDestination"
 export type FareEventPayload = {

@@ -12,12 +12,15 @@ local EVENT_NAMES = {
 	"FareEvent", -- claimed / delivered / bailed / taken (Types.FareEventPayload)
 	"ItemEvent", -- granted / used / splat / spinout / boost (Types.ItemEventPayload)
 	"VehicleAssigned", -- (model: Model)
+	"PitStopOffer", -- (Types.PitStopOfferPayload)
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)
 	"DriveState", -- (drifting: boolean)
 	"ResetVehicle", -- ()
 	"ClientReady", -- () client booted; server replies with RoundState + VehicleAssigned
+	"PitStopBuy", -- (cardId: string)
+	"RematchVote", -- ()
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

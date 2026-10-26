@@ -13,6 +13,7 @@ local PassengerService = require(script.Parent.PassengerService)
 local FareService = require(script.Parent.FareService)
 local ComboService = require(script.Parent.ComboService)
 local ItemService = require(script.Parent.ItemService)
+local GemService = require(script.Parent.GemService)
 
 local ReplicationService = {}
 
@@ -44,6 +45,7 @@ local function buildSnapshot(): Types.Snapshot
 			combo = round1(ComboService.GetMultiplier(player)),
 			rank = ranks[player] or 0,
 			item = ItemService.GetHeld(player),
+			gems = GemService.GetTotal(player),
 		})
 	end
 	return {

@@ -310,7 +310,7 @@ function VehicleService.Start()
 
 			local pos = entry.chassis.Position
 			local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
-			local legalSpeed = stats.TopSpeed * Config.Items.LemonNitro.SpeedMult * Config.Chassis.BoostSpeedMult * Config.Chassis.SpeedHardCapMult
+			local legalSpeed = stats.TopSpeed * Config.Items.LemonNitro.SpeedMult * Config.Chassis.BoostSpeedMult * Config.Chassis.SpeedHardCapMult * Config.PitStop.Cards.SpeedTune.Value
 			local moved = VecUtil.FlatDistance(pos, entry.lastPosition)
 			if moved > legalSpeed * dt + sanity.Slack and now >= entry.crashImmuneUntil then
 				entry.strikes += 1

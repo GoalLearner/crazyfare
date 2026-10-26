@@ -28,6 +28,8 @@ local State = {
 	round = nil :: Types.RoundStatePayload?,
 	fare = nil :: FareInfo?,
 	item = "",
+	pitStop = nil :: Types.PitStopOfferPayload?,
+	gems = 0,
 	-- self, mirrored from the snapshot
 	cash = 0,
 	hp = 0,
@@ -41,6 +43,7 @@ local State = {
 	boosting = false,
 	grounded = true,
 	boostTank = 0,
+	boostTankMax = defaultStats.BoostTank,
 	-- timed effects (server time)
 	nitroUntil = 0,
 	spinUntil = 0,
@@ -58,6 +61,7 @@ local itemEvent: Signal.Signal<Types.ItemEventPayload> = Signal.new()
 local roundChanged: Signal.Signal<Types.RoundStatePayload> = Signal.new()
 local snapshotReceived: Signal.Signal<Types.Snapshot> = Signal.new()
 local honk: Signal.Signal<nil> = Signal.new()
+local pitStopChanged: Signal.Signal<nil> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -65,6 +69,7 @@ State.ItemEvent = itemEvent
 State.RoundChanged = roundChanged
 State.SnapshotReceived = snapshotReceived
 State.Honk = honk
+State.PitStopChanged = pitStopChanged
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model
