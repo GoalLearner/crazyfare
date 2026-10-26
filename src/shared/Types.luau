@@ -99,7 +99,7 @@ export type LeaderboardPayload = {
 }
 
 export type PitStopCard = { id: string, name: string, effect: string, price: number, bought: boolean }
-export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number }
+export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number, buysLeft: number }
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "NearDestination"
 export type FareEventPayload = {

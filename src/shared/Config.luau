@@ -136,15 +136,16 @@ Config.Fares = {
 Config.PitStop = {
 	Seconds = 30,
 	CardsOffered = 5, -- Pit Stop Plus (Phase 6) makes this 6
+	MaxBuys = 2, -- cards one player can buy per Pit Stop; the rich still have to choose
 	PriceScale = { 1, 1.4 }, -- multiplier after round 1, after round 2
 	PityDiscount = 0.3, -- last place pays this much less
 	Cards = {
-		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Price = 8, Value = 1.08 },
-		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Price = 6, Value = 1.5 },
-		StartItem = { Name = "Start Item", Effect = "Start the round holding an item", Price = 5, Value = 1 },
-		ArmoredSeats = { Name = "Armored Seats", Effect = "Passengers take 25% less damage", Price = 8, Value = 0.75 },
-		TipJar = { Name = "Tip Jar", Effect = "Tips +25%", Price = 9, Value = 1.25 },
-		ExtraWiper = { Name = "Extra Wiper", Effect = "Splats clear twice as fast", Price = 4, Value = 0.5 },
+		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Price = 11, Value = 1.08 },
+		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Price = 9, Value = 1.5 },
+		StartItem = { Name = "Start Item", Effect = "Start the round holding an item", Price = 7, Value = 1 },
+		ArmoredSeats = { Name = "Armored Seats", Effect = "Passengers take 25% less damage", Price = 11, Value = 0.75 },
+		TipJar = { Name = "Tip Jar", Effect = "Tips +25%", Price = 13, Value = 1.25 },
+		ExtraWiper = { Name = "Extra Wiper", Effect = "Splats clear twice as fast", Price = 6, Value = 0.5 },
 	} :: { [string]: PitStopCardDef },
 }
 

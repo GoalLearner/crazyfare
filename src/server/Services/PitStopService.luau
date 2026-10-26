@@ -32,6 +32,16 @@ local function cardIds(): { string }
 	return ids
 end
 
+local function boughtCount(cards: { Types.PitStopCard }): number
+	local n = 0
+	for _, card in cards do
+		if card.bought then
+			n += 1
+		end
+	end
+	return n
+end
+
 local function sendOffer(player: Player)
 	local cards = offers[player]
 	if not cards then
@@ -41,6 +51,7 @@ local function sendOffer(player: Player)
 		cards = cards,
 		cash = FareService.GetCash(player),
 		endsAt = endsAt,
+		buysLeft = Config.PitStop.MaxBuys - boughtCount(cards),
 	}
 	offerEvent:FireClient(player, payload)
 end
@@ -90,6 +101,9 @@ local function buy(player: Player, cardId: string)
 	end
 	local cards = offers[player]
 	if not cards then
+		return
+	end
+	if boughtCount(cards) >= Config.PitStop.MaxBuys then
 		return
 	end
 	for _, card in cards do

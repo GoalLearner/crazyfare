@@ -91,7 +91,7 @@ local function renderCards(offer: Types.PitStopOfferPayload)
 		end
 	end
 	for i, card in offer.cards do
-		local affordable = offer.cash >= card.price
+		local affordable = offer.cash >= card.price and offer.buysLeft > 0
 		local frame = UI.Frame({ Size = UDim2.fromOffset(CARD_WIDTH, CARD_HEIGHT), LayoutOrder = i, BackgroundTransparency = if card.bought then 0.45 else 0.15, BackgroundColor3 = Color3.fromRGB(28, 30, 40) }, cardRow)
 		UI.Corner(12, frame)
 		UI.Stroke(if card.bought then UI.Cash else Color3.fromRGB(70, 72, 84), 2, frame)
@@ -123,7 +123,7 @@ local function refresh()
 	local offer = State.pitStop
 	local phase = State.GetPhase()
 	if offer and phase == "PitStop" then
-		cashLabel.Text = UI.Money(offer.cash)
+		cashLabel.Text = string.format("%s  ·  %d pick%s left", UI.Money(offer.cash), offer.buysLeft, if offer.buysLeft == 1 then "" else "s")
 		renderCards(offer)
 		panel.Visible = not collapsed
 		reopenButton.Visible = collapsed
