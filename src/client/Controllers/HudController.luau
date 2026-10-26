@@ -171,6 +171,8 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Bailed" then
 		local reason = if payload.reason == "timeout" then "TIME'S UP" else "PASSENGER BAILED"
 		showMessage(reason, UI.Danger, Config.Hud.MessageSeconds, "-" .. UI.Money(payload.base or 0) .. " fare")
+	elseif payload.kind == "Expired" then
+		showMessage("TIME'S UP", UI.Warn, Config.Hud.MessageSeconds, "no tip now, still deliver them")
 	elseif payload.kind == "HunterBonus" then
 		showMessage("+" .. UI.Money(payload.payout or 0), UI.Danger, Config.Hud.PayoutPunchSeconds, "HUNTER BONUS  ·  " .. (payload.line or ""))
 	elseif payload.kind == "Taken" then

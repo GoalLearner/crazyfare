@@ -302,6 +302,7 @@ function EffectsController.Init()
 		end
 	end)
 	InputController.OnItem:Connect(function()
+		print(string.format("[Effects] Q pressed, holding %q", State.item))
 		if State.item ~= "" then
 			Remotes.Get("UseItem"):FireServer()
 		end

@@ -90,6 +90,7 @@ export type ComboEventPayload = {
 
 export type Fare = {
 	npcId: number,
+	expired: boolean, -- timer ran out: passenger still rides, tip is gone
 	tier: string,
 	base: number,
 	pickupIndex: number,

@@ -198,6 +198,7 @@ local function placeTrap(owner: Player, kind: string, part: Part, position: Vect
 	part:SetAttribute("TrapKind", kind)
 	CollectionService:AddTag(part, Config.Tags.Trap)
 	part.Parent = folder
+	print(string.format("[ItemService] %s placed at %.0f, %.0f, %.0f", kind, position.X, position.Y, position.Z))
 	table.insert(traps, {
 		part = part,
 		owner = owner,
@@ -216,8 +217,9 @@ local function dropBanana(owner: Player, entry: VehicleService.VehicleEntry)
 	local part = Instance.new("Part")
 	part.Name = "Banana"
 	part.Shape = Enum.PartType.Cylinder
-	part.Size = Vector3.new(2.6, 1, 1)
+	part.Size = Vector3.new(3.4, 1.4, 1.4)
 	part.Color = Config.Items.Pool.Banana.Color
+	part.Material = Enum.Material.Neon
 	part.Material = Enum.Material.SmoothPlastic
 	part.CFrame = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
 	placeTrap(owner, "Banana", part, position, cfg.TriggerRadius, cfg.OwnerImmunity, cfg.Lifetime)
@@ -271,6 +273,7 @@ function ItemService.Use(player: Player)
 	end
 	held[player] = nil
 	fire(player, { kind = "Used", item = item })
+	print(string.format("[ItemService] %s used %s", player.Name, item))
 
 	if Config.Items.SelfCostItems[item] then
 		PassengerService.ApplySelfCost(player)

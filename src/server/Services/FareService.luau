@@ -170,6 +170,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 	local tierDef = Config.Fares.Tiers[npc.tier]
 	local fare: Types.Fare = {
 		npcId = npc.id,
+		expired = false,
 		tier = npc.tier,
 		base = tierDef.Base,
 		pickupIndex = npc.pickupIndex,
@@ -302,12 +303,14 @@ local function tick()
 		local pos = entry.chassis.Position
 		local speed = entry.chassis.AssemblyLinearVelocity.Magnitude
 		if VecUtil.FlatDistance(pos, fare.destination) <= Config.Fares.DeliverRadius and speed <= Config.Fares.StopSpeed then
-			finishDelivery(player, fare, npc, now, true)
-		elseif now >= fare.deadline then
+			finishDelivery(player, fare, npc, now, not fare.expired)
+		elseif now >= fare.deadline and not fare.expired then
 			if Config.Fares.TimeoutBails then
 				PassengerService.Bail(player, "timeout")
 			else
-				finishDelivery(player, fare, npc, now, false)
+				-- Tip is gone; the passenger still has to be delivered for the base fare.
+				fare.expired = true
+				fire(player, { kind = "Expired", tier = fare.tier, base = fare.base })
 			end
 		end
 	end
