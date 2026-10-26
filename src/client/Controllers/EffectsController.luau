@@ -168,7 +168,7 @@ local function updateArrow()
 	local toDest = Vector3.new(fare.destination.X - ch.Position.X, 0, fare.destination.Z - ch.Position.Z)
 	local dist = toDest.Magnitude
 	local dir = if dist > 0.5 then toDest.Unit else Vector3.new(0, 0, -1)
-	local root = CFrame.lookAt(base, base + dir)
+	local root = CFrame.lookAt(base, base + dir) * CFrame.Angles(-math.rad(a.Pitch), 0, 0)
 	for _, part in arrowParts do
 		local offset = part:GetAttribute("Offset")
 		if typeof(offset) == "CFrame" then
