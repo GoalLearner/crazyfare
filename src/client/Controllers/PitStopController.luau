@@ -18,6 +18,8 @@ local panel: Frame
 local cashLabel: TextLabel
 local timerLabel: TextLabel
 local cardRow: Frame
+local reopenButton: TextButton
+local collapsed = false
 local buyRemote: RemoteEvent
 
 local CARD_WIDTH = 118
@@ -35,6 +37,41 @@ local function build()
 	}, screen)
 	UI.Corner(16, panel)
 	UI.Label({ Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 36), Text = "PIT STOP" }, panel)
+	local close = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 14),
+		Size = UDim2.fromOffset(34, 34),
+		BackgroundColor3 = Color3.fromRGB(80, 50, 50),
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 16,
+		TextColor3 = UI.White,
+		Text = "X",
+	}, panel) :: TextButton
+	UI.Corner(8, close)
+	close.Activated:Connect(function()
+		collapsed = true
+		panel.Visible = false
+		reopenButton.Visible = true
+	end)
+	reopenButton = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 96),
+		Size = UDim2.fromOffset(160, 32),
+		BackgroundColor3 = Color3.fromRGB(60, 140, 80),
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 15,
+		TextColor3 = UI.White,
+		Text = "OPEN PIT STOP",
+		Visible = false,
+	}, screen) :: TextButton
+	UI.Corner(8, reopenButton)
+	reopenButton.Activated:Connect(function()
+		collapsed = false
+		reopenButton.Visible = false
+		panel.Visible = true
+	end)
 	cashLabel = UI.Label({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, panel)
 	timerLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, panel)
 	UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -40, 0, 18), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "Boosts last one round. Unspent cash counts toward the quota." }, panel)
@@ -86,11 +123,14 @@ local function refresh()
 	local offer = State.pitStop
 	local phase = State.GetPhase()
 	if offer and phase == "PitStop" then
-		panel.Visible = true
 		cashLabel.Text = UI.Money(offer.cash)
 		renderCards(offer)
+		panel.Visible = not collapsed
+		reopenButton.Visible = collapsed
 	else
 		panel.Visible = false
+		reopenButton.Visible = false
+		collapsed = false
 	end
 end
 
