@@ -65,6 +65,31 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
+-- A mesh template from ReplicatedStorage.ItemModels (imported art), or nil to fall back to parts.
+local function itemTemplate(name: string): Model?
+	local models = ReplicatedStorage:FindFirstChild("ItemModels")
+	local template = if models then models:FindFirstChild(name) else nil
+	return if template and template:IsA("Model") and template.PrimaryPart then template else nil
+end
+
+-- Clone a template, make it inert (anchored, no collisions), scale its longest side to `size`, pivot it to `cf`.
+local function placeTemplate(template: Model, cf: CFrame, size: number): Model
+	local clone = template:Clone()
+	local _, bounds = clone:GetBoundingBox()
+	local longest = math.max(bounds.X, bounds.Y, bounds.Z, 0.01)
+	clone:ScaleTo(clone:GetScale() * size / longest)
+	for _, part in clone:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+		end
+	end
+	clone:PivotTo(cf)
+	return clone
+end
+
 local function roll(bucket: Types.RankBucket): string
 	local weights = Config.Items.RankWeights[bucket] or Config.Items.RankWeights.Mid
 	local total = 0
@@ -180,6 +205,22 @@ local function launchTomato(owner: Player, entry: VehicleService.VehicleEntry)
 
 	local part = makeProjectilePart("Tomato", Config.Items.Pool.Tomato.Color)
 	part.CFrame = CFrame.lookAt(origin, origin + direction)
+	local template = itemTemplate("Tomato")
+	if template then
+		part.Transparency = 1
+		local visual = placeTemplate(template, part.CFrame, 2.2)
+		for _, piece in visual:GetDescendants() do
+			if piece:IsA("BasePart") then
+				piece.Anchored = false
+				piece.Massless = true
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = part
+				weld.Part1 = piece
+				weld.Parent = piece
+			end
+		end
+		visual.Parent = part
+	end
 	part:SetAttribute("OwnerUserId", owner.UserId)
 	part.Parent = folder
 
@@ -262,7 +303,15 @@ local function dropBanana(owner: Player, entry: VehicleService.VehicleEntry)
 	local ground = behindCar(entry, cfg.DropBack)
 	local position = ground + Vector3.new(0, 0.5, 0)
 	local root = CFrame.new(ground) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-	local part = buildBananaShape(root)
+	local template = itemTemplate("Banana")
+	local part: Part
+	if template then
+		local visual = placeTemplate(template, root * CFrame.new(0, 0.9, 0), 3.6)
+		part = visual.PrimaryPart :: Part
+		visual.Parent = folder
+	else
+		part = buildBananaShape(root)
+	end
 	placeTrap(owner, "Banana", part, position, cfg.TriggerRadius, cfg.OwnerImmunity, cfg.Lifetime)
 end
 
@@ -467,7 +516,12 @@ local function stepTraps()
 			end
 		end
 		if triggered then
-			trap.part:Destroy()
+			local parent = trap.part.Parent
+			if parent and parent:IsA("Model") and parent.Parent == folder then
+				parent:Destroy()
+			else
+				trap.part:Destroy()
+			end
 			table.remove(traps, i)
 		end
 	end
@@ -505,7 +559,12 @@ function ItemService.ClearAll()
 	end
 	table.clear(projectiles)
 	for _, trap in traps do
-		trap.part:Destroy()
+		local parent = trap.part.Parent
+		if parent and parent:IsA("Model") and parent.Parent == folder then
+			parent:Destroy()
+		else
+			trap.part:Destroy()
+		end
 	end
 	table.clear(traps)
 	table.clear(held)

@@ -7,3 +7,5 @@ sourcemap.json
 *.rbxlx
 *.rbxl.lock
 roblox.yml
+assets/
+!assets/README.md

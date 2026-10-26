@@ -263,9 +263,49 @@ local function buildSign(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: num
 	glow.Material = Enum.Material.Neon
 end
 
+-- Imported building meshes (ReplicatedStorage.MapModels.Buildings.*) replace the boxes when present.
+local function buildingTemplates(): { Model }
+	local list: { Model } = {}
+	local folder = ReplicatedStorage:FindFirstChild("MapModels")
+	local buildings = if folder then folder:FindFirstChild("Buildings") else nil
+	if buildings then
+		for _, child in buildings:GetChildren() do
+			if child:IsA("Model") then
+				table.insert(list, child)
+			end
+		end
+	end
+	return list
+end
+
+local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, templates: { Model }): boolean
+	local template = templates[ctx.rng:NextInteger(1, #templates)]
+	local clone = template:Clone()
+	local _, bounds = clone:GetBoundingBox()
+	local scale = math.min(lot.w / math.max(bounds.X, 0.01), lot.d / math.max(bounds.Z, 0.01))
+	clone:ScaleTo(clone:GetScale() * scale)
+	local _, scaled = clone:GetBoundingBox()
+	for _, part in clone:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = true
+			CollectionService:AddTag(part, Tags.Building)
+		end
+	end
+	clone:PivotTo(CFrame.new(lot.x, 0.5 + scaled.Y / 2, lot.z))
+	clone.Parent = parent
+	return true
+end
+
 local function buildBuildingLot(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: number, li: number)
 	local B = ctx.B
 	local rng = ctx.rng
+	if ctx.theme == "city" then
+		local templates = buildingTemplates()
+		if #templates > 0 and placeBuildingMesh(ctx, parent, lot, templates) then
+			return
+		end
+	end
 	local h = rng:NextNumber(B.BuildingMinHeight, B.BuildingMaxHeight)
 	local palette = if ctx.theme == "beach" then BEACH_PALETTE else CITY_PALETTE
 	local color = palette[rng:NextInteger(1, #palette)]

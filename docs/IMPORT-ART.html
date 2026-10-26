@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Art Import</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --text:#e8e8ee; --muted:#9a9fae; --cash:#78f082; --warn:#fad23c; --accent:#50e6ff; --danger:#f04646; --line:#262a33; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:40px 16px 80px; }
+  h1 { font-size:32px; margin:0 0 6px } h2 { font-size:21px; margin:36px 0 12px; color:var(--accent) }
+  p.lead { color:var(--muted); margin:0 0 24px }
+  ol, ul { padding-left:22px } li { margin:8px 0 }
+  code, pre { font-family:"Cascadia Code", Consolas, Menlo, monospace; font-size:14px }
+  code { background:#1f232c; padding:2px 6px; border-radius:5px }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow:auto }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:14px 0 }
+  table { width:100%; border-collapse:collapse; margin:10px 0 }
+  th, td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.04em }
+  .k { color:var(--warn); white-space:nowrap } .muted { color:var(--muted) } kbd { background:#262a33; border:1px solid #3a3f4b; border-radius:6px; padding:1px 7px; font-size:14px }
+</style>
+</head>
+<body>
+<main>
+  <h1>Putting the Kenney art in</h1>
+  <p class="lead">Six CC0 kits are downloaded to <code>C:\dev\crazyfare\assets\kenney</code>. Each model is one import in Studio, then one command. Start with the taxi; everything else is the same moves.</p>
+
+  <h2>1. Import one model (the taxi)</h2>
+  <div class="card">
+    <ol>
+      <li>Open the latest build in Studio (ask me to "open" it). Don't start a test; stay in edit mode.</li>
+      <li>Top menu <strong>File → Import 3D</strong>.</li>
+      <li>Pick <code>C:\dev\crazyfare\assets\kenney\car-kit\Models\FBX format\taxi.fbx</code>.</li>
+      <li>In the import window, leave the defaults. Make sure <strong>Upload to Roblox</strong> is on (that's what turns the file into a mesh your game can use). Press <strong>Import</strong>. It appears in the Workspace as a model named <code>taxi</code>.</li>
+      <li>Click that model once in the Explorer so it's selected.</li>
+      <li>At the bottom of Studio, in the <strong>Command Bar</strong>, paste this and press Enter:
+<pre>require(game.ServerScriptService.Server.Studio.VehicleRig).Rig(game.Selection:Get()[1], "YellowCab")</pre>
+        The Output says <code>[VehicleRig] YellowCab rigged</code> and the model moves to <code>ReplicatedStorage → VehicleTemplates</code>. The game now spawns the mesh taxi instead of the parts one.</li>
+      <li>If the car drives backwards, the mesh faces the wrong way: select the model, press <kbd>Ctrl</kbd>+<kbd>R</kbd> twice to rotate 180°, and run the command again.</li>
+      <li><strong>File → Save to Roblox</strong> so the imported meshes stay in the place.</li>
+    </ol>
+  </div>
+
+  <h2>2. Which file is which</h2>
+  <table>
+    <tr><th>Game thing</th><th>FBX file (in assets\kenney\…)</th><th>Second argument</th></tr>
+    <tr><td>Yellow Cab</td><td class="k">car-kit\…\taxi.fbx</td><td><code>"YellowCab"</code></td></tr>
+    <tr><td>Night Cab</td><td class="k">car-kit\…\sedan.fbx</td><td><code>"NightCab"</code> (paint it dark in Properties if you like)</td></tr>
+    <tr><td>Ice Cream Truck</td><td class="k">car-kit\…\delivery.fbx</td><td><code>"IceCreamTruck"</code></td></tr>
+    <tr><td>Go-Kart</td><td class="k">car-kit\…\kart-oozi.fbx</td><td><code>"GoKart"</code></td></tr>
+    <tr><td>Shopping Cart, Horse</td><td colspan="2" class="muted">not in the kits; they stay parts-built until we find or make them</td></tr>
+  </table>
+
+  <h2>3. Items</h2>
+  <div class="card">
+    <p>Same import, different landing spot. Import <code>food-kit\Models\FBX format\banana.fbx</code> and <code>tomato.fbx</code>. In the Explorer, drag each into a folder named <strong>ItemModels</strong> inside <strong>ReplicatedStorage</strong> (create it with right-click → Insert Object → Folder), and rename the models to exactly <code>Banana</code> and <code>Tomato</code>. The game scales and places them itself. <code>lemon.fbx</code> is ready for when Lemon Nitro gets a world object.</p>
+  </div>
+
+  <h2>4. Buildings (optional, bigger change)</h2>
+  <div class="card">
+    <p>Import any of <code>city-kit-commercial\Models\FBX format\building-a.fbx … building-k.fbx</code> and drop them into <strong>ReplicatedStorage → MapModels → Buildings</strong> (two folders to create). When that folder has anything in it, the City generator uses those meshes for every building lot instead of boxes, scaled to fit the lot. Try three or four first and look at a round before importing all eleven.</p>
+    <p class="muted">Streetlights, traffic lights and signs from <code>city-kit-roads</code> are next on my side once the buildings are in; the generator already places parts versions in the right spots.</p>
+  </div>
+
+  <h2>5. If something looks wrong</h2>
+  <ul>
+    <li><strong>Car floats or sinks:</strong> tell me how many studs off; it's one number in <code>VehicleRig.luau</code>.</li>
+    <li><strong>Car is huge or tiny:</strong> the rig scales to 11 studs long. Pass a third argument to change it, e.g. <code>…, "GoKart", 8)</code>.</li>
+    <li><strong>Grey, untextured model:</strong> the importer didn't find <code>Textures\colormap.png</code> next to the FBX. Re-import and tick the texture option in the import window.</li>
+    <li><strong>Back to parts:</strong> delete the model from <code>ReplicatedStorage → VehicleTemplates</code> (or ItemModels / MapModels). The parts version returns on the next build.</li>
+  </ul>
+</main>
+</body>
+</html>
