@@ -308,7 +308,7 @@ Config.Hud = {
 	MessageSeconds = 1.6,
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
-	Arrow = { Height = 6, Length = 8, Width = 2.4, Thickness = 1.4, Pitch = 28, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face
+	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face
 }
 
 -- Each map is a data entry. The blockout spec is shared by DevBlockout (builds it) and the minimap (draws it).

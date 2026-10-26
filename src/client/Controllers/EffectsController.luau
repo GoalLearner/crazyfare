@@ -127,6 +127,7 @@ local function buildArrow(color: Color3)
 		part.Size = size
 		part.Color = color
 		part.Material = Enum.Material.Neon
+		part.Transparency = a.Transparency
 		part.Anchored = true
 		part.CanCollide = false
 		part.CanQuery = false
@@ -141,8 +142,8 @@ local function buildArrow(color: Color3)
 	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(-a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, -math.rad(40), 0))
 	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, math.rad(40), 0))
 	local gui = UI.New("BillboardGui", {
-		Size = UDim2.fromOffset(200, 70),
-		StudsOffset = Vector3.new(0, 3, 0),
+		Size = UDim2.fromOffset(150, 52),
+		StudsOffset = Vector3.new(0, 2, 0),
 		AlwaysOnTop = true,
 		MaxDistance = 500,
 	}, shaft)
