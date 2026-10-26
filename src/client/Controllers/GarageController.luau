@@ -40,7 +40,7 @@ end
 
 local function statBar(parent: Instance, y: number, label: string, fraction: number)
 	UI.Label({ Position = UDim2.fromOffset(0, y), Size = UDim2.fromOffset(56, 14), Text = label, TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left }, parent)
-	local bar = UI.Bar({ Position = UDim2.fromOffset(60, y + 3), Size = UDim2.fromOffset(90, 8) }, UI.Accent, parent)
+	local bar = UI.Bar({ Position = UDim2.fromOffset(56, y + 3), Size = UDim2.fromOffset(80, 8) }, UI.Accent, parent)
 	UI.SetBar(bar, fraction)
 end
 
@@ -61,15 +61,15 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		UI.Corner(10, row)
 		local swatch = UI.Frame({ Position = UDim2.fromOffset(12, 10), Size = UDim2.fromOffset(14, 52), BackgroundColor3 = stats.Color, BackgroundTransparency = 0 }, row)
 		UI.Corner(4, swatch)
-		UI.Label({ Position = UDim2.fromOffset(36, 8), Size = UDim2.fromOffset(220, 22), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if owned then UI.White else UI.Muted }, row)
-		UI.Label({ Position = UDim2.fromOffset(36, 34), Size = UDim2.fromOffset(250, 30), Text = stats.Description, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
-		local stat = UI.Frame({ Position = UDim2.fromOffset(296, 10), Size = UDim2.fromOffset(160, 56), BackgroundTransparency = 1 }, row)
+		UI.Label({ Position = UDim2.fromOffset(36, 8), Size = UDim2.fromOffset(200, 22), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if owned then UI.White else UI.Muted }, row)
+		UI.Label({ Position = UDim2.fromOffset(36, 34), Size = UDim2.fromOffset(200, 30), Text = stats.Description, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
+		local stat = UI.Frame({ Position = UDim2.fromOffset(244, 10), Size = UDim2.fromOffset(140, 56), BackgroundTransparency = 1 }, row)
 		statBar(stat, 0, "SPEED", stats.TopSpeed / 100)
 		statBar(stat, 18, "ACCEL", stats.Accel / 70)
 		statBar(stat, 36, "GRIP", stats.Handling / 9)
 		local label = if selected then "SELECTED" elseif owned then "SELECT" else string.format("%d GEMS", stats.GemPrice)
 		local affordable = owned or profile.gems >= stats.GemPrice
-		local b = button(label, if owned then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 110, 190), UDim2.fromOffset(104, 30), row, affordable and not selected)
+		local b = button(label, if owned then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 110, 190), UDim2.fromOffset(88, 30), row, affordable and not selected)
 		b.AnchorPoint = Vector2.new(1, 0.5)
 		b.Position = UDim2.new(1, -12, 0.5, 0)
 		if not selected and affordable then
