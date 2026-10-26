@@ -308,6 +308,7 @@ Config.Hud = {
 	MessageSeconds = 1.6,
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
+	Arrow = { Height = 10, Length = 7, Width = 1.6, Thickness = 0.5 }, -- 3D destination arrow over the local cab
 }
 
 -- Each map is a data entry. The blockout spec is shared by DevBlockout (builds it) and the minimap (draws it).

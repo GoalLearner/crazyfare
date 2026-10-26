@@ -260,8 +260,8 @@ local function update()
 			local dir = VecUtil.FlatUnit(toDest, camLook)
 			local angle = math.atan2(camLook:Cross(dir).Y, camLook:Dot(dir))
 			arrow.Rotation = -math.deg(angle)
-			arrow.Visible = true
-			arrowDistance.Visible = true
+			arrow.Visible = false -- the 3D arrow over the cab (EffectsController) replaced this
+			arrowDistance.Visible = false
 			arrowDistance.Text = string.format("%d", math.round(dist))
 			arrow.TextColor3 = if dist <= Config.Fares.DeliverRadius then UI.Cash else UI.Accent
 		end

@@ -103,6 +103,83 @@ local function setBeacon(fare: State.FareInfo?)
 	beacon = part
 end
 
+-- Big glowing arrow over the local cab that points at the destination (local-only parts, nobody else sees it).
+local arrowFolder: Folder? = nil
+local arrowParts: { BasePart } = {}
+local arrowLabel: TextLabel? = nil
+
+local function destroyArrow()
+	if arrowFolder then
+		arrowFolder:Destroy()
+		arrowFolder = nil
+	end
+	arrowParts = {}
+	arrowLabel = nil
+end
+
+local function buildArrow(color: Color3)
+	destroyArrow()
+	local a = Config.Hud.Arrow
+	local folder = Instance.new("Folder")
+	folder.Name = "DestinationArrow"
+	local function piece(size: Vector3, offset: CFrame): BasePart
+		local part = Instance.new("Part")
+		part.Size = size
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part:SetAttribute("Offset", offset)
+		part.Parent = folder
+		table.insert(arrowParts, part)
+		return part
+	end
+	-- Shaft plus a chevron head; the arrow points along its local -Z.
+	local shaft = piece(Vector3.new(a.Width, a.Thickness, a.Length), CFrame.new(0, 0, a.Length * 0.25))
+	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(-a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, -math.rad(40), 0))
+	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, math.rad(40), 0))
+	local gui = UI.New("BillboardGui", {
+		Size = UDim2.fromOffset(140, 44),
+		StudsOffset = Vector3.new(0, 2.5, 0),
+		AlwaysOnTop = true,
+		MaxDistance = 500,
+	}, shaft)
+	arrowLabel = UI.Label({ Size = UDim2.fromScale(1, 1), Text = "", TextColor3 = color }, gui)
+	folder.Parent = workspace
+	arrowFolder = folder
+end
+
+local function updateArrow()
+	local fare = State.fare
+	local ch = State.chassis
+	if not fare or not ch or not ch:IsDescendantOf(workspace) then
+		if arrowFolder then
+			destroyArrow()
+		end
+		return
+	end
+	if not arrowFolder then
+		buildArrow((Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Color)
+	end
+	local a = Config.Hud.Arrow
+	local base = ch.Position + Vector3.new(0, a.Height + math.sin(os.clock() * 3) * 0.4, 0)
+	local toDest = Vector3.new(fare.destination.X - ch.Position.X, 0, fare.destination.Z - ch.Position.Z)
+	local dist = toDest.Magnitude
+	local dir = if dist > 0.5 then toDest.Unit else Vector3.new(0, 0, -1)
+	local root = CFrame.lookAt(base, base + dir)
+	for _, part in arrowParts do
+		local offset = part:GetAttribute("Offset")
+		if typeof(offset) == "CFrame" then
+			part.CFrame = root * offset
+		end
+	end
+	if arrowLabel then
+		arrowLabel.Text = if dist <= Config.Fares.DeliverRadius then "STOP" else string.format("%d", math.round(dist))
+	end
+end
+
 local function burst(position: Vector3, color: Color3)
 	local part = Instance.new("Part")
 	part.Shape = Enum.PartType.Ball
@@ -222,6 +299,7 @@ end
 function EffectsController.Start()
 	RunService.Heartbeat:Connect(function(dt: number)
 		updateSplat()
+		updateArrow()
 		spinBoxes(dt)
 		if boostEmitter then
 			boostEmitter.Enabled = State.boosting
