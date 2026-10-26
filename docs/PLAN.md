@@ -10,7 +10,7 @@ Defaults chosen so Phase 1 could ship without a round-trip. Each is one Config k
 2. **No player characters.** `Players.CharacterAutoLoads = false`; the taxi is the player. Avoids humanoid mass, jump-out-of-seat and camera fights. A seated avatar can come back for cosmetics in Phase 4.
 3. **Controls:** W/S throttle and brake/reverse, A/D steer, **Space = drift** (the Horse's hop will replace drift on Space), **Left Shift = boost tank**, **Q = item**, **H = honk**, **R = reset car**. Basic gamepad mapped; mobile is Phase 6.
 4. **Boost tank** (the `BoostTank` vehicle stat): fills from drift time and near-misses, spent by holding Shift. LemonNitro is an instant 3 s burst independent of the tank.
-5. **Fare timer expiry pays base with no tip** (owner call 2026-10-26 after the first playtest; the harsher bail is one flag away: `Config.Fares.TimeoutBails`).
+5. **Fare timer expiry = the passenger bails** (owner call 2026-10-26 after playing both versions; `Config.Fares.TimeoutBails = false` keeps them aboard with no tip).
 6. **Self-cost for attacking while loaded applies to Tomato only.** Banana/OilSlick are traps (`Config.Items.SelfCostItems`).
 7. **Item boxes:** cannot pick up while holding an item; box respawns 10 s after pickup.
 8. **Combo:** +0.1 per step, cap ×1.5; idle 3 s then lose a step every 0.5 s. Clients report drift/airtime/near-miss events; the server rate-limits and speed-checks them.

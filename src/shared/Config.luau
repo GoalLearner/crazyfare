@@ -107,7 +107,7 @@ Config.Fares = {
 	} :: { TierWeightBand },
 	TimeBase = 8, -- fare seconds = TimeBase + distance / TimeSpeed
 	TimeSpeed = 30,
-	TimeoutBails = false, -- true: timer at 0 = passenger bails (no attacker). false: pays base, no tip (owner call 2026-10-26)
+	TimeoutBails = true, -- timer at 0 = passenger bails, fare lost (owner call 2026-10-26 after playing both). false = passenger stays, tip gone, base paid on delivery
 	ThanksSeconds = 2, -- delivered NPC lingers, then despawns
 	RespawnDelay = 1, -- before a replacement NPC appears
 }

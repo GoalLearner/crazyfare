@@ -150,4 +150,4 @@ Stylized low-poly city with a bold palette: lit window strips, crosswalks, stree
 - Vehicle art: stay parts-built through Phase 4, or commission meshes? (Parts until the loop is proven fun.)
 - Robux price points for premium vehicles / Pit Stop Plus / VIP (Phase 6).
 - Exact Pit Stop card prices and the pity discount curve (Phase 3 playtest).
-- Resolved 2026-10-26: timer expiry pays base with no tip (`Config.Fares.TimeoutBails = false`).
+- Resolved 2026-10-26: timer expiry = bail (`Config.Fares.TimeoutBails = true`), decided after playing both.
