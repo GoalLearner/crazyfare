@@ -20,6 +20,7 @@ local pickups: { Point } = {}
 local dropoffs: { Point } = {}
 local startPads: { Point } = {}
 local itemBoxes: { BasePart } = {}
+local props: { { part: BasePart, cframe: CFrame } } = {}
 local center = Vector3.zero
 
 local function collectPoints(tagName: string): { Point }
@@ -62,6 +63,12 @@ function MapService.Init()
 			table.insert(itemBoxes, inst)
 		end
 	end
+	props = {}
+	for _, inst in CollectionService:GetTagged(Config.Tags.Prop) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			table.insert(props, { part = inst, cframe = inst.CFrame })
+		end
+	end
 	if #startPads > 0 then
 		local sum = Vector3.zero
 		for _, pad in startPads do
@@ -97,6 +104,17 @@ end
 
 function MapService.GetCenter(): Vector3
 	return center
+end
+
+-- Put every tagged prop back where the map placed it (round reset).
+function MapService.ResetProps()
+	for _, entry in props do
+		if entry.part.Parent then
+			entry.part.AssemblyLinearVelocity = Vector3.zero
+			entry.part.AssemblyAngularVelocity = Vector3.zero
+			entry.part.CFrame = entry.cframe
+		end
+	end
 end
 
 function MapService.GetPickup(index: number): Point?

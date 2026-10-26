@@ -1,6 +1,7 @@
 --!strict
 -- Item boxes, the one-slot inventory, rank-weighted rolls, and every item's server-side effect:
--- Tomato (homing projectile), Banana (trap), LemonNitro (boost). Clients only render what they are told.
+-- Tomato (homing projectile), Banana + OilSlick (traps), LemonNitro (boost), Shield + Seatbelt (defense).
+-- Projectiles also knock tagged props. Clients only render what they are told.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -31,6 +32,7 @@ type Trap = {
 	owner: Player,
 	kind: string,
 	position: Vector3,
+	triggerRadius: number,
 	armedForOwnerAt: number,
 	diesAt: number,
 }
@@ -38,6 +40,7 @@ type Trap = {
 local ItemService = {}
 
 local held: { [Player]: string } = {}
+local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
 local boxes: { Box } = {}
 local projectiles: { Projectile } = {}
 local traps: { Trap } = {}
@@ -79,6 +82,10 @@ function ItemService.GetHeld(player: Player): string
 	return held[player] or ""
 end
 
+function ItemService.HasShield(player: Player): boolean
+	return (shieldHits[player] or 0) > 0
+end
+
 function ItemService.Give(player: Player, item: string)
 	if not Config.Items.Pool[item] then
 		return
@@ -93,6 +100,26 @@ end
 
 local function setBoxActive(box: Box, active: boolean)
 	box.part:SetAttribute("Active", active)
+end
+
+-- Returns true when a shield absorbed the hit (and tells the victim).
+local function consumeShield(victim: Player, position: Vector3): boolean
+	local left = shieldHits[victim] or 0
+	if left <= 0 then
+		return false
+	end
+	left -= 1
+	if left > 0 then
+		shieldHits[victim] = left
+	else
+		shieldHits[victim] = nil
+	end
+	if left <= 0 then
+		VehicleService.SetHighlight(victim, nil, 0)
+	end
+	fire(victim, { kind = "ShieldBreak", item = "Shield" })
+	broadcast({ kind = "Burst", item = "Shield", position = position })
+	return true
 end
 
 -- Nearest loaded rival inside LockRange, or nil.
@@ -111,6 +138,21 @@ local function pickTarget(owner: Player, from: Vector3): Player?
 	return best
 end
 
+local function makeProjectilePart(name: string, color: Color3): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Shape = Enum.PartType.Ball
+	part.Size = Vector3.new(1.8, 1.8, 1.8)
+	part.Color = color
+	part.Material = Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	CollectionService:AddTag(part, Config.Tags.Projectile)
+	return part
+end
+
 local function launchTomato(owner: Player, entry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.Tomato
 	local muzzle = entry.chassis:FindFirstChild("Muzzle")
@@ -125,19 +167,9 @@ local function launchTomato(owner: Player, entry: VehicleService.VehicleEntry)
 		end
 	end
 
-	local part = Instance.new("Part")
-	part.Name = "Tomato"
-	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.new(1.8, 1.8, 1.8)
-	part.Color = Config.Items.Pool.Tomato.Color
-	part.Material = Enum.Material.SmoothPlastic
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
+	local part = makeProjectilePart("Tomato", Config.Items.Pool.Tomato.Color)
 	part.CFrame = CFrame.lookAt(origin, origin + direction)
 	part:SetAttribute("OwnerUserId", owner.UserId)
-	CollectionService:AddTag(part, Config.Tags.Projectile)
 	part.Parent = folder
 
 	table.insert(projectiles, {
@@ -150,42 +182,79 @@ local function launchTomato(owner: Player, entry: VehicleService.VehicleEntry)
 	})
 end
 
+-- Ground position a few studs behind the rear bumper.
+local function behindCar(entry: VehicleService.VehicleEntry, dropBack: number): Vector3
+	local behind = (entry.chassis.CFrame * CFrame.new(0, 0, 5.5 + dropBack)).Position
+	local groundY = MapService.GroundY(behind, entry.chassis.Position.Y - 2)
+	return Vector3.new(behind.X, groundY, behind.Z)
+end
+
+local function placeTrap(owner: Player, kind: string, part: Part, position: Vector3, triggerRadius: number, ownerImmunity: number, lifetime: number)
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part:SetAttribute("OwnerUserId", owner.UserId)
+	part:SetAttribute("TrapKind", kind)
+	CollectionService:AddTag(part, Config.Tags.Trap)
+	part.Parent = folder
+	table.insert(traps, {
+		part = part,
+		owner = owner,
+		kind = kind,
+		position = position,
+		triggerRadius = triggerRadius,
+		armedForOwnerAt = now() + ownerImmunity,
+		diesAt = now() + lifetime,
+	})
+end
+
 local function dropBanana(owner: Player, entry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.Banana
-	local behind = (entry.chassis.CFrame * CFrame.new(0, 0, 5.5 + cfg.DropBack)).Position
-	local groundY = MapService.GroundY(behind, entry.chassis.Position.Y - 2)
-	local position = Vector3.new(behind.X, groundY + 0.5, behind.Z)
-
+	local ground = behindCar(entry, cfg.DropBack)
+	local position = ground + Vector3.new(0, 0.5, 0)
 	local part = Instance.new("Part")
 	part.Name = "Banana"
 	part.Shape = Enum.PartType.Cylinder
 	part.Size = Vector3.new(2.6, 1, 1)
 	part.Color = Config.Items.Pool.Banana.Color
 	part.Material = Enum.Material.SmoothPlastic
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
 	part.CFrame = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-	part:SetAttribute("OwnerUserId", owner.UserId)
-	part:SetAttribute("TrapKind", "Banana")
-	CollectionService:AddTag(part, Config.Tags.Trap)
-	part.Parent = folder
+	placeTrap(owner, "Banana", part, position, cfg.TriggerRadius, cfg.OwnerImmunity, cfg.Lifetime)
+end
 
-	table.insert(traps, {
-		part = part,
-		owner = owner,
-		kind = "Banana",
-		position = position,
-		armedForOwnerAt = now() + cfg.OwnerImmunity,
-		diesAt = now() + cfg.Lifetime,
-	})
+local function dropOil(owner: Player, entry: VehicleService.VehicleEntry)
+	local cfg = Config.Items.OilSlick
+	local ground = behindCar(entry, cfg.DropBack)
+	local position = ground + Vector3.new(0, 0.15, 0)
+	local part = Instance.new("Part")
+	part.Name = "OilSlick"
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(0.2, cfg.TriggerRadius * 2, cfg.TriggerRadius * 2)
+	part.Color = Config.Items.Pool.OilSlick.Color
+	part.Material = Enum.Material.Glass
+	part.Transparency = cfg.Transparency
+	part.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2)
+	placeTrap(owner, "OilSlick", part, position, cfg.TriggerRadius, cfg.OwnerImmunity, cfg.Lifetime)
 end
 
 local function applyBoost(player: Player, entry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.LemonNitro
 	entry.boostUntil = now() + cfg.Seconds
 	fire(player, { kind = "Boost", item = "LemonNitro", seconds = cfg.Seconds })
+end
+
+local function raiseShield(player: Player)
+	shieldHits[player] = Config.Items.Shield.Blocks
+	VehicleService.SetHighlight(player, Config.Items.Pool.Shield.Color, 0)
+	fire(player, { kind = "ShieldUp", item = "Shield" })
+end
+
+local function buckleSeatbelt(player: Player)
+	local cfg = Config.Items.Seatbelt
+	PassengerService.SetImmune(player, cfg.Seconds)
+	VehicleService.SetHighlight(player, Config.Items.Pool.Seatbelt.Color, cfg.Seconds)
+	fire(player, { kind = "Seatbelt", item = "Seatbelt", seconds = cfg.Seconds })
 end
 
 function ItemService.Use(player: Player)
@@ -211,26 +280,55 @@ function ItemService.Use(player: Player)
 		launchTomato(player, entry)
 	elseif item == "Banana" then
 		dropBanana(player, entry)
+	elseif item == "OilSlick" then
+		dropOil(player, entry)
 	elseif item == "LemonNitro" then
 		applyBoost(player, entry)
+	elseif item == "Shield" then
+		raiseShield(player)
+	elseif item == "Seatbelt" then
+		buckleSeatbelt(player)
 	end
 end
 
 local function hitWithTomato(projectile: Projectile, victim: Player, victimEntry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.Tomato
-	PassengerService.ApplyDamage(victim, cfg.Damage, "Tomato")
+	local at = victimEntry.chassis.Position
+	if consumeShield(victim, at) then
+		fire(projectile.owner, { kind = "HitConfirm", item = "Shield", attacker = victim.DisplayName })
+		return
+	end
+	PassengerService.ApplyDamage(victim, cfg.Damage, "Tomato", projectile.owner)
 	fire(victim, { kind = "Splat", item = "Tomato", coverage = cfg.SplatCoverage, seconds = cfg.WipeSeconds, attacker = projectile.owner.DisplayName })
 	fire(projectile.owner, { kind = "HitConfirm", item = "Tomato", attacker = victim.DisplayName })
-	broadcast({ kind = "Burst", item = "Tomato", position = victimEntry.chassis.Position })
+	broadcast({ kind = "Burst", item = "Tomato", position = at })
+end
+
+local function knockProp(part: BasePart, direction: Vector3, hitPosition: Vector3)
+	local cfg = Config.Items.Prop
+	if part.Anchored then
+		return
+	end
+	local velocity = direction * cfg.KnockSpeed + Vector3.new(0, cfg.KnockSpeed * cfg.KnockLift, 0)
+	part:ApplyImpulse(velocity * part.AssemblyMass)
+	part:ApplyAngularImpulse(Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-1, 1), rng:NextNumber(-1, 1)) * part.AssemblyMass * 8)
+	broadcast({ kind = "Burst", item = "Tomato", position = hitPosition })
 end
 
 local function triggerTrap(trap: Trap, victim: Player, victimEntry: VehicleService.VehicleEntry)
+	if consumeShield(victim, trap.position) then
+		return
+	end
 	if trap.kind == "Banana" then
 		local cfg = Config.Items.Banana
 		victimEntry.spinUntil = now() + cfg.SpinSeconds
 		fire(victim, { kind = "Spinout", item = "Banana", seconds = cfg.SpinSeconds })
-		PassengerService.ApplyDamage(victim, cfg.Damage, "Banana")
+		PassengerService.ApplyDamage(victim, cfg.Damage, "Banana", trap.owner)
 		broadcast({ kind = "Burst", item = "Banana", position = trap.position })
+	elseif trap.kind == "OilSlick" then
+		local cfg = Config.Items.OilSlick
+		fire(victim, { kind = "Oil", item = "OilSlick", seconds = cfg.Seconds })
+		PassengerService.ApplyDamage(victim, cfg.Damage, "OilSlick", trap.owner)
 	end
 end
 
@@ -270,7 +368,11 @@ local function stepProjectiles(dt: number)
 			local hit = workspace:Raycast(p.position, step, params)
 			if hit then
 				dead = true
-				broadcast({ kind = "Burst", item = "Tomato", position = hit.Position })
+				if CollectionService:HasTag(hit.Instance, Config.Tags.Prop) then
+					knockProp(hit.Instance, p.direction, hit.Position)
+				else
+					broadcast({ kind = "Burst", item = "Tomato", position = hit.Position })
+				end
 			else
 				p.position += step
 				p.part.CFrame = CFrame.lookAt(p.position, p.position + p.direction)
@@ -299,7 +401,6 @@ local function stepTraps()
 		if t >= trap.diesAt then
 			triggered = true
 		else
-			local cfg = Config.Items.Banana
 			for player, entry in VehicleService.GetAll() do
 				if entry.chassis.Anchored then
 					continue
@@ -308,7 +409,7 @@ local function stepTraps()
 					continue
 				end
 				local pos = entry.chassis.Position
-				if VecUtil.FlatDistance(pos, trap.position) <= cfg.TriggerRadius and math.abs(pos.Y - trap.position.Y) < 5 then
+				if VecUtil.FlatDistance(pos, trap.position) <= trap.triggerRadius and math.abs(pos.Y - trap.position.Y) < 5 then
 					triggerTrap(trap, player, entry)
 					triggered = true
 					break
@@ -358,10 +459,15 @@ function ItemService.ClearAll()
 	end
 	table.clear(traps)
 	table.clear(held)
+	for player in shieldHits do
+		VehicleService.SetHighlight(player, nil, 0)
+	end
+	table.clear(shieldHits)
 	for _, box in boxes do
 		box.activeAt = 0
 		setBoxActive(box, true)
 	end
+	MapService.ResetProps()
 	for _, player in Players:GetPlayers() do
 		fire(player, { kind = "Granted", item = "" })
 	end
@@ -385,6 +491,7 @@ function ItemService.Init()
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		held[player] = nil
+		shieldHits[player] = nil
 	end)
 end
 

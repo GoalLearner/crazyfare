@@ -173,9 +173,10 @@ local function step(rawDt: number)
 
 	-- Input and timed effects
 	local spinning = now < State.spinUntil
+	local oiled = now < State.oilUntil
 	local nitro = now < State.nitroUntil
 	local throttle = if spinning then 0 else InputController.GetThrottle()
-	local steerInput = if spinning then 0 else InputController.GetSteer()
+	local steerInput = if spinning or oiled then 0 else InputController.GetSteer()
 	local handbrake = InputController.IsDrifting() and not spinning
 	local wantBoost = InputController.IsBoosting() and State.boostTank > 0 and not spinning
 

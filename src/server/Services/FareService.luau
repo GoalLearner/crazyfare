@@ -234,7 +234,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	end)
 end
 
-local function handleBail(victim: Player, npc: PassengerService.Npc, reason: string)
+local function handleBail(victim: Player, npc: PassengerService.Npc, reason: string, attacker: Player?)
 	local fare = fares[victim]
 	fares[victim] = nil
 	ComboService.Reset(victim)
@@ -244,6 +244,14 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 		tier = npc.tier,
 		base = if fare then fare.base else 0,
 	})
+	-- Hunter Bonus: the rival who made them bail gets a share of the lost fare.
+	if attacker and fare and attacker ~= victim and attacker.Parent then
+		local bonus = math.round(fare.base * Config.Items.HunterBonusFrac)
+		if bonus > 0 then
+			fire(attacker, { kind = "HunterBonus", payout = bonus, line = victim.DisplayName })
+			FareService.AddCash(attacker, bonus)
+		end
+	end
 end
 
 local function tick()

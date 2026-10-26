@@ -22,7 +22,45 @@
       "$properties": { "StreamingEnabled": false }
     },
     "Lighting": {
-      "$properties": { "ClockTime": 13, "Brightness": 2 }
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 14.5,
+        "Brightness": 2.4,
+        "GlobalShadows": true,
+        "ShadowSoftness": 0.3,
+        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentSpecularScale": 0.5,
+        "ExposureCompensation": 0.1,
+        "Ambient": [0.3, 0.3, 0.34],
+        "OutdoorAmbient": [0.45, 0.47, 0.53]
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.32,
+          "Offset": 0.3,
+          "Color": [0.78, 0.82, 0.88],
+          "Decay": [0.55, 0.6, 0.7],
+          "Glare": 0.25,
+          "Haze": 1.8
+        }
+      },
+      "Sky": {
+        "$className": "Sky",
+        "$properties": { "SunAngularSize": 14 }
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": { "Intensity": 0.35, "Size": 24, "Threshold": 1.1 }
+      },
+      "SunRays": {
+        "$className": "SunRaysEffect",
+        "$properties": { "Intensity": 0.08, "Spread": 0.6 }
+      },
+      "ColorCorrection": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": { "Saturation": 0.12, "Contrast": 0.06 }
+      }
     }
   }
 }

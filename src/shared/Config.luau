@@ -107,7 +107,7 @@ Config.Fares = {
 	} :: { TierWeightBand },
 	TimeBase = 8, -- fare seconds = TimeBase + distance / TimeSpeed
 	TimeSpeed = 30,
-	TimeoutBails = true, -- timer at 0 = passenger bails (no attacker). false = pays base, no tip
+	TimeoutBails = false, -- true: timer at 0 = passenger bails (no attacker). false: pays base, no tip (owner call 2026-10-26)
 	ThanksSeconds = 2, -- delivered NPC lingers, then despawns
 	RespawnDelay = 1, -- before a replacement NPC appears
 }
@@ -165,12 +165,15 @@ Config.Items = {
 		Tomato = { Kind = "attack", DisplayName = "Tomato", Color = Color3.fromRGB(230, 60, 50) },
 		Banana = { Kind = "trap", DisplayName = "Banana", Color = Color3.fromRGB(250, 220, 70) },
 		LemonNitro = { Kind = "boost", DisplayName = "Lemon Nitro", Color = Color3.fromRGB(240, 250, 90) },
+		OilSlick = { Kind = "trap", DisplayName = "Oil Slick", Color = Color3.fromRGB(40, 36, 48) },
+		Shield = { Kind = "defense", DisplayName = "Shield", Color = Color3.fromRGB(90, 200, 255) },
+		Seatbelt = { Kind = "defense", DisplayName = "Seatbelt", Color = Color3.fromRGB(120, 240, 150) },
 	} :: { [string]: ItemDef },
 	-- Roll weights by quota rank bucket. Every pool item must appear in every bucket.
 	RankWeights = {
-		Leader = { Tomato = 15, Banana = 35, LemonNitro = 50 },
-		Mid = { Tomato = 34, Banana = 33, LemonNitro = 33 },
-		Last = { Tomato = 60, Banana = 20, LemonNitro = 20 },
+		Leader = { Tomato = 8, Banana = 20, OilSlick = 17, LemonNitro = 25, Shield = 18, Seatbelt = 12 },
+		Mid = { Tomato = 17, Banana = 17, OilSlick = 16, LemonNitro = 17, Shield = 17, Seatbelt = 16 },
+		Last = { Tomato = 40, Banana = 15, OilSlick = 10, LemonNitro = 15, Shield = 10, Seatbelt = 10 },
 	} :: { [string]: { [string]: number } },
 	SelfCostItems = { Tomato = true } :: { [string]: boolean },
 	Tomato = {
@@ -197,6 +200,26 @@ Config.Items = {
 		Seconds = 3,
 		SpeedMult = 1.35,
 		AccelMult = 1.6,
+	},
+	OilSlick = {
+		Damage = 10,
+		Seconds = 2, -- no steering
+		TriggerRadius = 5,
+		Lifetime = 45,
+		OwnerImmunity = 1.5,
+		DropBack = 8,
+		Transparency = 0.35, -- low visibility on the road
+	},
+	Shield = {
+		Blocks = 1, -- hits absorbed before it breaks
+	},
+	Seatbelt = {
+		Seconds = 8, -- passenger immune to all damage
+	},
+	HunterBonusFrac = 0.4, -- attacker gets this share of a fare they made bail
+	Prop = {
+		KnockSpeed = 70, -- studs/s given to a tagged prop hit by a projectile
+		KnockLift = 0.35, -- fraction of that speed added upward
 	},
 }
 
@@ -271,6 +294,11 @@ Config.Net = {
 		ClientReady = 1,
 		Debug = 10,
 	} :: { [string]: number },
+	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.
+	SpeedSanity = {
+		Slack = 4, -- studs of forgiveness per frame
+		Strikes = 4, -- consecutive bad frames before a correction
+	},
 }
 
 Config.Hud = {
@@ -301,6 +329,12 @@ Config.Map = {
 			DropoffPoints = 12,
 			NearStartPickups = 4, -- of the pickups, at least this many inside the first tier-weight band
 			ItemBoxes = 6,
+			SkylineInner = 380, -- background skyline ring (not reachable) between these radii
+			SkylineOuter = 500,
+			SkylineMinHeight = 50,
+			SkylineMaxHeight = 150,
+			WindowFloorHeight = 6, -- one window band per this many studs of building
+			PropsPerCell = 2,
 		},
 		Gimmicks = {} :: { [string]: number },
 	},

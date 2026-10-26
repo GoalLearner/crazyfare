@@ -141,9 +141,13 @@ Mobile touch controls are Phase 6 polish.
 - Data via ProfileStore (Phase 4). MarketplaceService `ProcessReceipt` with idempotency (Phase 6).
 - Studio-only `DevBlockout` (city from Parts, CollectionService-tagged) and `DebugPanel`.
 
-## 13. Open questions (not blocking Phase 1)
+## 13. Target look (set 2026-10-26)
+
+Stylized low-poly city with a bold palette: lit window strips, crosswalks, streetlights and traffic lights, storefront signs with invented names, a few landmark buildings you can see from anywhere. The blockout generator grows into this (decoration passes first, real meshes for landmarks and the cab last). Layout gets the same treatment in Phase 6: landmarks, loops instead of dead ends, shortcuts that reward map knowledge.
+
+## 14. Open questions (not blocking Phase 1)
 
 - Vehicle art: stay parts-built through Phase 4, or commission meshes? (Parts until the loop is proven fun.)
 - Robux price points for premium vehicles / Pit Stop Plus / VIP (Phase 6).
 - Exact Pit Stop card prices and the pity discount curve (Phase 3 playtest).
-- Whether a bail on timer expiry is too punishing versus "pay base, no tip" (Phase 1 playtest; it is one Config flag: `Config.Fares.TimeoutBails`).
+- Resolved 2026-10-26: timer expiry pays base with no tip (`Config.Fares.TimeoutBails = false`).

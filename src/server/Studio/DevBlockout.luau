@@ -23,10 +23,20 @@ local PALETTE = {
 	Color3.fromRGB(205, 190, 165),
 	Color3.fromRGB(110, 110, 120),
 	Color3.fromRGB(170, 150, 170),
+	Color3.fromRGB(215, 160, 120),
+	Color3.fromRGB(140, 175, 165),
+}
+local MATERIALS = { Enum.Material.Concrete, Enum.Material.Brick, Enum.Material.SmoothPlastic, Enum.Material.Metal }
+local SKYLINE_PALETTE = {
+	Color3.fromRGB(70, 78, 96),
+	Color3.fromRGB(84, 90, 108),
+	Color3.fromRGB(62, 70, 88),
+	Color3.fromRGB(96, 100, 118),
 }
 local COLOR_GROUND = Color3.fromRGB(88, 140, 70)
-local COLOR_ROAD = Color3.fromRGB(58, 58, 62)
+local COLOR_ROAD = Color3.fromRGB(52, 52, 56)
 local COLOR_LINE = Color3.fromRGB(240, 200, 60)
+local COLOR_CROSSWALK = Color3.fromRGB(230, 230, 225)
 local COLOR_SIDEWALK = Color3.fromRGB(190, 190, 185)
 local COLOR_PLAZA = Color3.fromRGB(215, 205, 190)
 local COLOR_WALL = Color3.fromRGB(80, 80, 85)
@@ -37,6 +47,10 @@ local COLOR_RAMP = Color3.fromRGB(230, 120, 40)
 local COLOR_TRUNK = Color3.fromRGB(110, 75, 45)
 local COLOR_CROWN = Color3.fromRGB(60, 150, 70)
 local COLOR_PAD = Color3.fromRGB(245, 245, 245)
+local COLOR_WINDOW = Color3.fromRGB(170, 215, 240)
+local COLOR_HYDRANT = Color3.fromRGB(220, 50, 50)
+local COLOR_CONE = Color3.fromRGB(255, 130, 30)
+local COLOR_BIN = Color3.fromRGB(70, 110, 80)
 
 local PARK_CELLS: { [string]: boolean } = { ["-120,120"] = true, ["240,-240"] = true, ["-240,0"] = true }
 
@@ -61,13 +75,21 @@ local function makePart(name: string, size: Vector3, cframe: CFrame, color: Colo
 	return part
 end
 
+-- Decoration that neither cars nor raycasts should notice.
+local function decor(part: Part): Part
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	return part
+end
+
 local function cellKey(cx: number, cz: number): string
 	return string.format("%d,%d", cx, cz)
 end
 
 local function buildGround(map: Folder)
 	local size = B.Half * 2
-	local ground = makePart("Ground", Vector3.new(size + 40, 2, size + 40), CFrame.new(0, -1, 0), COLOR_GROUND, map, Tags.Ground)
+	local ground = makePart("Ground", Vector3.new(size + 500, 2, size + 500), CFrame.new(0, -1, 0), COLOR_GROUND, map, Tags.Ground)
 	ground.Material = Enum.Material.Grass
 end
 
@@ -77,14 +99,28 @@ local function buildRoads(map: Folder)
 	roads.Name = "Roads"
 	roads.Parent = map
 	for i, r in B.RoadCoords do
-		makePart("RoadNS_" .. i, Vector3.new(B.RoadWidth, 0.2, size), CFrame.new(r, 0.1, 0), COLOR_ROAD, roads, Tags.Road)
-		makePart("RoadEW_" .. i, Vector3.new(size, 0.2, B.RoadWidth), CFrame.new(0, 0.11, r), COLOR_ROAD, roads, Tags.Road)
-		local lineNS = makePart("LineNS_" .. i, Vector3.new(0.6, 0.05, size), CFrame.new(r, 0.24, 0), COLOR_LINE, roads)
-		lineNS.CanCollide = false
-		lineNS.CanQuery = false
-		local lineEW = makePart("LineEW_" .. i, Vector3.new(size, 0.05, 0.6), CFrame.new(0, 0.245, r), COLOR_LINE, roads)
-		lineEW.CanCollide = false
-		lineEW.CanQuery = false
+		local ns = makePart("RoadNS_" .. i, Vector3.new(B.RoadWidth, 0.2, size), CFrame.new(r, 0.1, 0), COLOR_ROAD, roads, Tags.Road)
+		ns.Material = Enum.Material.Asphalt
+		local ew = makePart("RoadEW_" .. i, Vector3.new(size, 0.2, B.RoadWidth), CFrame.new(0, 0.11, r), COLOR_ROAD, roads, Tags.Road)
+		ew.Material = Enum.Material.Asphalt
+		decor(makePart("LineNS_" .. i, Vector3.new(0.6, 0.05, size), CFrame.new(r, 0.24, 0), COLOR_LINE, roads))
+		decor(makePart("LineEW_" .. i, Vector3.new(size, 0.05, 0.6), CFrame.new(0, 0.245, r), COLOR_LINE, roads))
+	end
+	-- Crosswalk stripes on every side of every intersection.
+	local half = B.RoadWidth / 2
+	for _, rx in B.RoadCoords do
+		for _, rz in B.RoadCoords do
+			for _, side in { -1, 1 } do
+				for stripe = -3, 3 do
+					local x = rx + stripe * 3
+					local z = rz + side * (half + 2.5)
+					decor(makePart("Crosswalk", Vector3.new(1.6, 0.05, 4), CFrame.new(x, 0.25, z), COLOR_CROSSWALK, roads))
+					local x2 = rx + side * (half + 2.5)
+					local z2 = rz + stripe * 3
+					decor(makePart("Crosswalk", Vector3.new(4, 0.05, 1.6), CFrame.new(x2, 0.255, z2), COLOR_CROSSWALK, roads))
+				end
+			end
+		end
 	end
 end
 
@@ -95,9 +131,7 @@ local function buildStartPads(parent: Folder, cx: number, cz: number)
 			padIndex += 1
 			local x = cx + (if col == 0 then -10 else 10)
 			local z = cz + 20 - row * 16
-			local pad = makePart("StartPad" .. padIndex, Vector3.new(7, 0.2, 12), CFrame.new(x, 0.6, z), COLOR_PAD, parent, Tags.StartPad)
-			pad.CanCollide = false
-			pad.CanQuery = false
+			local pad = decor(makePart("StartPad" .. padIndex, Vector3.new(7, 0.2, 12), CFrame.new(x, 0.6, z), COLOR_PAD, parent, Tags.StartPad))
 			pad:SetAttribute("Index", padIndex)
 		end
 	end
@@ -107,9 +141,24 @@ local function buildTrees(parent: Folder, rng: Random, cx: number, cz: number)
 	for _ = 1, 5 do
 		local tx = cx + rng:NextNumber(-30, 30)
 		local tz = cz + rng:NextNumber(-30, 30)
-		makePart("Trunk", Vector3.new(1.2, 6, 1.2), CFrame.new(tx, 3.5, tz), COLOR_TRUNK, parent, Tags.Prop)
-		local crown = makePart("Crown", Vector3.new(7, 7, 7), CFrame.new(tx, 9, tz), COLOR_CROWN, parent, Tags.Prop)
+		local trunk = makePart("Trunk", Vector3.new(1.2, 6, 1.2), CFrame.new(tx, 3.5, tz), COLOR_TRUNK, parent)
+		trunk.Material = Enum.Material.Wood
+		local crown = makePart("Crown", Vector3.new(7, 7, 7), CFrame.new(tx, 9, tz), COLOR_CROWN, parent)
 		crown.Shape = Enum.PartType.Ball
+		crown.Material = Enum.Material.Grass
+	end
+end
+
+-- Horizontal window bands every floor; glass so they read as windows by day and catch light at night.
+local function buildWindows(parent: Folder, lot: Lot, height: number)
+	local floorHeight = B.WindowFloorHeight
+	local floors = math.floor((height - 4) / floorHeight)
+	for f = 1, floors do
+		local y = 0.5 + 3 + (f - 1) * floorHeight
+		local band = decor(makePart("Windows", Vector3.new(lot.w + 0.3, 1.6, lot.d + 0.3), CFrame.new(lot.x, y, lot.z), COLOR_WINDOW, parent))
+		band.Material = Enum.Material.Glass
+		band.Transparency = 0.15
+		band.Reflectance = 0.2
 	end
 end
 
@@ -143,7 +192,44 @@ local function buildBuildings(parent: Folder, rng: Random, cx: number, cz: numbe
 			parent,
 			Tags.Building
 		)
-		building.Material = Enum.Material.Concrete
+		building.Material = MATERIALS[rng:NextInteger(1, #MATERIALS)]
+		buildWindows(parent, lot, h)
+		-- A roof cap in a darker tone gives the box a top edge.
+		local cap = decor(makePart("Roof", Vector3.new(lot.w + 1, 0.8, lot.d + 1), CFrame.new(lot.x, 0.5 + h + 0.4, lot.z), Color3.fromRGB(60, 60, 68), parent))
+		cap.Material = Enum.Material.Concrete
+	end
+end
+
+-- Small street objects on the sidewalk corners: pushed by cars, launched by tomatoes. Unanchored, server-owned.
+local function buildProps(parent: Folder, rng: Random, cx: number, cz: number)
+	local corner = B.CellSize / 2 - B.Sidewalk / 2
+	local corners = {
+		Vector3.new(cx + corner, 0, cz + corner),
+		Vector3.new(cx - corner, 0, cz + corner),
+		Vector3.new(cx + corner, 0, cz - corner),
+		Vector3.new(cx - corner, 0, cz - corner),
+	}
+	for i = #corners, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		corners[i], corners[j] = corners[j], corners[i]
+	end
+	for i = 1, math.min(B.PropsPerCell, #corners) do
+		local at = corners[i]
+		local kind = rng:NextInteger(1, 3)
+		local prop: Part
+		if kind == 1 then
+			prop = makePart("Hydrant", Vector3.new(1.2, 2.4, 1.2), CFrame.new(at.X, 0.5 + 1.2, at.Z), COLOR_HYDRANT, parent, Tags.Prop)
+			prop.Shape = Enum.PartType.Cylinder
+			prop.CFrame = prop.CFrame * CFrame.Angles(0, 0, math.pi / 2)
+		elseif kind == 2 then
+			prop = makePart("Cone", Vector3.new(1.6, 2.2, 1.6), CFrame.new(at.X, 0.5 + 1.1, at.Z), COLOR_CONE, parent, Tags.Prop)
+		else
+			prop = makePart("Bin", Vector3.new(2, 3, 2), CFrame.new(at.X, 0.5 + 1.5, at.Z), COLOR_BIN, parent, Tags.Prop)
+			prop.Shape = Enum.PartType.Cylinder
+			prop.CFrame = prop.CFrame * CFrame.Angles(0, 0, math.pi / 2)
+		end
+		prop.Anchored = false
+		prop.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.5, 0.2, 1, 1)
 	end
 end
 
@@ -156,7 +242,7 @@ local function buildCells(map: Folder, rng: Random): { Spot }
 		for _, cz in B.CellCenters do
 			local isPlaza = cx == 0 and cz == 0
 			local key = cellKey(cx, cz)
-			makePart(
+			local slab = makePart(
 				"Cell_" .. key,
 				Vector3.new(B.CellSize, 0.5, B.CellSize),
 				CFrame.new(cx, 0.25, cz),
@@ -164,6 +250,7 @@ local function buildCells(map: Folder, rng: Random): { Spot }
 				cells,
 				Tags.Sidewalk
 			)
+			slab.Material = Enum.Material.Concrete
 			if isPlaza then
 				buildStartPads(cells, cx, cz)
 			elseif PARK_CELLS[key] then
@@ -172,6 +259,7 @@ local function buildCells(map: Folder, rng: Random): { Spot }
 				buildBuildings(cells, rng, cx, cz)
 			end
 			if not isPlaza then
+				buildProps(cells, rng, cx, cz)
 				local e = B.CellSize / 2 - 3
 				table.insert(spots, { position = Vector3.new(cx + e, 0.5, cz), look = Vector3.new(1, 0, 0) })
 				table.insert(spots, { position = Vector3.new(cx - e, 0.5, cz), look = Vector3.new(-1, 0, 0) })
@@ -249,10 +337,8 @@ local function buildPoints(map: Folder, rng: Random, spots: { Spot })
 	local function marker(prefix: string, spot: Spot, index: number, color: Color3, tagName: string)
 		local pos = spot.position + Vector3.new(0, 0.15, 0)
 		local cf = CFrame.lookAt(pos, pos + spot.look) * CFrame.Angles(0, 0, math.pi / 2)
-		local part = makePart(prefix .. index, Vector3.new(0.3, 7, 7), cf, color, points, tagName)
+		local part = decor(makePart(prefix .. index, Vector3.new(0.3, 7, 7), cf, color, points, tagName))
 		part.Shape = Enum.PartType.Cylinder
-		part.CanCollide = false
-		part.CanQuery = false
 		part.Material = Enum.Material.Neon
 		part.Transparency = 0.2
 		part:SetAttribute("Index", index)
@@ -279,36 +365,83 @@ local function buildItemBoxes(map: Folder)
 	}
 	for i = 1, math.min(B.ItemBoxes, #boxSpots) do
 		local pos = boxSpots[i]
-		local box = makePart("ItemBox" .. i, Vector3.new(4, 4, 4), CFrame.new(pos), COLOR_BOX, items, Tags.ItemBox)
+		local box = decor(makePart("ItemBox" .. i, Vector3.new(4, 4, 4), CFrame.new(pos), COLOR_BOX, items, Tags.ItemBox))
 		box.Material = Enum.Material.Neon
-		box.CanCollide = false
-		box.CanQuery = false
 		box:SetAttribute("Index", i)
 		box:SetAttribute("Active", true)
 	end
 end
 
--- A tilted slab: a car travelling along the ramp's local -Z climbs from the road to `height` and launches.
+-- A hump: one tilted slab up, a mirrored slab down, so it works from both directions and has no wall to wedge against.
 local function buildRamps(map: Folder)
-	local function ramp(name: string, x: number, z: number, yaw: number)
-		local length, height, width = 24, 6, 12
-		local angle = math.asin(height / length)
+	local length, height, width = 24, 6, 12
+	local angle = math.asin(height / length)
+	local run = length * math.cos(angle) -- horizontal extent of one slab
+
+	local function slab(name: string, x: number, z: number, yaw: number)
 		local cf = CFrame.new(x, 0.2 + height / 2, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(angle, 0, 0)
 		makePart(name, Vector3.new(width, 0.6, length), cf, COLOR_RAMP, map, Tags.Ramp)
 	end
-	ramp("RampNorth", -180, -120, 0)
-	ramp("RampSouth", 180, 120, math.pi)
-	ramp("RampWest", 120, 180, math.pi / 2)
-	ramp("RampEast", -120, -180, -math.pi / 2)
+
+	local function hump(name: string, x: number, z: number, yaw: number)
+		-- The up slab climbs toward its local -Z; the down slab sits one run further along and faces back.
+		local look = CFrame.Angles(0, yaw, 0).LookVector
+		slab(name .. "Up", x, z, yaw)
+		slab(name .. "Down", x + look.X * run, z + look.Z * run, yaw + math.pi)
+	end
+
+	hump("RampNorth", -180, -120, 0)
+	hump("RampSouth", 180, 120, math.pi)
+	hump("RampWest", 120, 180, math.pi / 2)
+	hump("RampEast", -120, -180, -math.pi / 2)
 end
 
+-- Invisible barrier at the playable edge; the grass and skyline carry on behind it.
 local function buildWalls(map: Folder)
 	local size = B.Half * 2
 	local h = B.WallHeight
-	makePart("WallN", Vector3.new(size + 8, h, 4), CFrame.new(0, h / 2, -B.Half - 2), COLOR_WALL, map, Tags.Wall)
-	makePart("WallS", Vector3.new(size + 8, h, 4), CFrame.new(0, h / 2, B.Half + 2), COLOR_WALL, map, Tags.Wall)
-	makePart("WallE", Vector3.new(4, h, size + 8), CFrame.new(B.Half + 2, h / 2, 0), COLOR_WALL, map, Tags.Wall)
-	makePart("WallW", Vector3.new(4, h, size + 8), CFrame.new(-B.Half - 2, h / 2, 0), COLOR_WALL, map, Tags.Wall)
+	local walls = {
+		makePart("WallN", Vector3.new(size + 8, h, 4), CFrame.new(0, h / 2, -B.Half - 2), COLOR_WALL, map, Tags.Wall),
+		makePart("WallS", Vector3.new(size + 8, h, 4), CFrame.new(0, h / 2, B.Half + 2), COLOR_WALL, map, Tags.Wall),
+		makePart("WallE", Vector3.new(4, h, size + 8), CFrame.new(B.Half + 2, h / 2, 0), COLOR_WALL, map, Tags.Wall),
+		makePart("WallW", Vector3.new(4, h, size + 8), CFrame.new(-B.Half - 2, h / 2, 0), COLOR_WALL, map, Tags.Wall),
+	}
+	for _, wall in walls do
+		wall.Transparency = 1
+	end
+	-- A low curb so the edge still reads as an edge.
+	for _, wall in walls do
+		local curb = makePart("Curb", Vector3.new(math.max(wall.Size.X, 4), 1, math.max(wall.Size.Z, 4)), CFrame.new(wall.Position.X, 0.5, wall.Position.Z), COLOR_SIDEWALK, map)
+		curb.Material = Enum.Material.Concrete
+		curb.CanQuery = false
+	end
+end
+
+-- Background skyline beyond the barrier: unreachable, untagged, pure horizon.
+local function buildSkyline(map: Folder, rng: Random)
+	local skyline = Instance.new("Folder")
+	skyline.Name = "Skyline"
+	skyline.Parent = map
+	local inner, outer = B.SkylineInner, B.SkylineOuter
+	for _, radius in { inner, (inner + outer) / 2, outer } do
+		local step = 52
+		for t = -radius, radius, step do
+			local jitter = rng:NextNumber(-10, 10)
+			for _, pos in {
+				Vector3.new(t + jitter, 0, -radius),
+				Vector3.new(t + jitter, 0, radius),
+				Vector3.new(-radius, 0, t + jitter),
+				Vector3.new(radius, 0, t + jitter),
+			} do
+				local w = rng:NextNumber(28, 46)
+				local h = rng:NextNumber(B.SkylineMinHeight, B.SkylineMaxHeight)
+				local color = SKYLINE_PALETTE[rng:NextInteger(1, #SKYLINE_PALETTE)]
+				local tower = makePart("Skyline", Vector3.new(w, h, w), CFrame.new(pos.X, h / 2, pos.Z), color, skyline)
+				tower.Material = Enum.Material.Concrete
+				tower.CanQuery = false
+			end
+		end
+	end
 end
 
 local function buildVehicleTemplate()
@@ -345,6 +478,7 @@ function DevBlockout.Generate(): Folder
 	buildItemBoxes(map)
 	buildRamps(map)
 	buildWalls(map)
+	buildSkyline(map, rng)
 	buildVehicleTemplate()
 
 	map.Parent = workspace

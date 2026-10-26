@@ -33,14 +33,16 @@ export type Npc = {
 
 local PassengerService = {}
 
-local onBailed: Signal.Signal<Player, Npc, string> = Signal.new()
+local onBailed: Signal.Signal<Player, Npc, string, Player?> = Signal.new()
 local onDamaged: Signal.Signal<Player, number, string> = Signal.new()
-PassengerService.OnBailed = onBailed -- (victim, npc, reason "hp" | "timeout")
+PassengerService.OnBailed = onBailed -- (victim, npc, reason "hp" | "timeout", attacker when a rival caused it)
 PassengerService.OnDamaged = onDamaged -- (player, amount, source)
 
 local npcs: { [number]: Npc } = {}
 local loadedByPlayer: { [Player]: Npc } = {}
 local lastDamageAt: { [Player]: number } = {}
+local immuneUntil: { [Player]: number } = {} -- Seatbelt
+local lastAttacker: { [Player]: Player } = {} -- who last damaged this player's passenger
 local npcAtPickup: { [number]: number } = {} -- pickupIndex -> npcId (standing or walking there)
 local nextId = 1
 local rng = Random.new()
@@ -195,6 +197,8 @@ local function unload(player: Player): Npc?
 	end
 	loadedByPlayer[player] = nil
 	npc.boardedBy = nil
+	immuneUntil[player] = nil
+	lastAttacker[player] = nil
 	VehicleService.SetSilhouette(player, false)
 	return npc
 end
@@ -357,10 +361,24 @@ function PassengerService.Board(npc: Npc, player: Player)
 	VehicleService.SetSilhouette(player, true)
 end
 
--- Damage from any outside source. Respects the per-player cooldown. Returns the amount applied.
-function PassengerService.ApplyDamage(player: Player, amount: number, source: string): number
+-- Seatbelt: passenger ignores all damage until this server time.
+function PassengerService.SetImmune(player: Player, seconds: number)
+	immuneUntil[player] = workspace:GetServerTimeNow() + seconds
+end
+
+function PassengerService.IsImmune(player: Player): boolean
+	local until_ = immuneUntil[player]
+	return until_ ~= nil and workspace:GetServerTimeNow() < until_
+end
+
+-- Damage from any outside source. Respects the per-player cooldown and Seatbelt immunity.
+-- `attacker` is the rival who caused it (nil for crashes); a bail it causes pays them the Hunter Bonus.
+function PassengerService.ApplyDamage(player: Player, amount: number, source: string, attacker: Player?): number
 	local npc = loadedByPlayer[player]
 	if not npc or amount <= 0 then
+		return 0
+	end
+	if PassengerService.IsImmune(player) then
 		return 0
 	end
 	local now = workspace:GetServerTimeNow()
@@ -369,6 +387,9 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 		return 0
 	end
 	lastDamageAt[player] = now
+	if attacker then
+		lastAttacker[player] = attacker
+	end
 	npc.hp = math.max(0, npc.hp - amount)
 	onDamaged:Fire(player, amount, source)
 	if npc.hp <= 0 then
@@ -380,9 +401,10 @@ end
 -- The cost of firing an attack item while loaded. Ignores the cooldown and does not start one.
 function PassengerService.ApplySelfCost(player: Player)
 	local npc = loadedByPlayer[player]
-	if not npc then
+	if not npc or PassengerService.IsImmune(player) then
 		return
 	end
+	lastAttacker[player] = nil
 	npc.hp = math.max(0, npc.hp - Config.Passenger.SelfHitCost)
 	onDamaged:Fire(player, Config.Passenger.SelfHitCost, "self")
 	if npc.hp <= 0 then
@@ -406,7 +428,9 @@ function PassengerService.Bail(player: Player, reason: string)
 		occupied[index] = true
 	end
 	local point = MapService.NearestPickup(exitPos, occupied)
-	onBailed:Fire(player, npc, reason)
+	local attacker = if reason == "hp" then lastAttacker[player] else nil
+	lastAttacker[player] = nil
+	onBailed:Fire(player, npc, reason, attacker)
 	if point then
 		walkTo(npc, point)
 	else
@@ -480,6 +504,8 @@ function PassengerService.ClearAll()
 	end
 	table.clear(loadedByPlayer)
 	table.clear(lastDamageAt)
+	table.clear(immuneUntil)
+	table.clear(lastAttacker)
 end
 
 function PassengerService.Snapshot(): { Types.NpcSnap }

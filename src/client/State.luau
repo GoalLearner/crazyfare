@@ -45,6 +45,8 @@ local State = {
 	nitroUntil = 0,
 	spinUntil = 0,
 	spinDirection = 1,
+	oilUntil = 0,
+	shieldUp = false,
 	splatUntil = 0,
 	splatStartedAt = 0,
 	splatCoverage = 0,
@@ -98,6 +100,8 @@ function State.ResetRound()
 	State.boostTank = 0
 	State.nitroUntil = 0
 	State.spinUntil = 0
+	State.oilUntil = 0
+	State.shieldUp = false
 	State.splatUntil = 0
 	State.splatCoverage = 0
 	State.combo = 1

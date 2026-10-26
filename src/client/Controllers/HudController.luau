@@ -171,6 +171,8 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Bailed" then
 		local reason = if payload.reason == "timeout" then "TIME'S UP" else "PASSENGER BAILED"
 		showMessage(reason, UI.Danger, Config.Hud.MessageSeconds, "-" .. UI.Money(payload.base or 0) .. " fare")
+	elseif payload.kind == "HunterBonus" then
+		showMessage("+" .. UI.Money(payload.payout or 0), UI.Danger, Config.Hud.PayoutPunchSeconds, "HUNTER BONUS  ·  " .. (payload.line or ""))
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Claimed" then
@@ -181,7 +183,15 @@ end
 
 local function onItem(payload: Types.ItemEventPayload)
 	if payload.kind == "HitConfirm" then
-		showMessage("SPLAT!", UI.Danger, 0.8, payload.attacker)
+		showMessage(if payload.item == "Shield" then "BLOCKED" else "SPLAT!", UI.Danger, 0.8, payload.attacker)
+	elseif payload.kind == "ShieldUp" then
+		showMessage("SHIELD UP", UI.Accent, 0.9)
+	elseif payload.kind == "ShieldBreak" then
+		showMessage("SHIELD BROKE", UI.Accent, 0.9)
+	elseif payload.kind == "Seatbelt" then
+		showMessage("SEATBELT ON", UI.Cash, 0.9, string.format("%d s immune", math.round(payload.seconds or 0)))
+	elseif payload.kind == "Oil" then
+		showMessage("OIL!", UI.Warn, 1.2, "no steering")
 	elseif payload.kind == "Granted" and payload.item and payload.item ~= "" then
 		local def = Config.Items.Pool[payload.item]
 		if def then

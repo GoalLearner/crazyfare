@@ -77,6 +77,12 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 	elseif kind == "Spinout" then
 		State.spinUntil = now() + (payload.seconds or Config.Items.Banana.SpinSeconds)
 		State.spinDirection = if math.random() < 0.5 then -1 else 1
+	elseif kind == "Oil" then
+		State.oilUntil = now() + (payload.seconds or Config.Items.OilSlick.Seconds)
+	elseif kind == "ShieldUp" then
+		State.shieldUp = true
+	elseif kind == "ShieldBreak" then
+		State.shieldUp = false
 	elseif kind == "Splat" then
 		State.splatStartedAt = now()
 		State.splatUntil = now() + (payload.seconds or Config.Items.Tomato.WipeSeconds)

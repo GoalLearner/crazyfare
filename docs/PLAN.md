@@ -10,7 +10,7 @@ Defaults chosen so Phase 1 could ship without a round-trip. Each is one Config k
 2. **No player characters.** `Players.CharacterAutoLoads = false`; the taxi is the player. Avoids humanoid mass, jump-out-of-seat and camera fights. A seated avatar can come back for cosmetics in Phase 4.
 3. **Controls:** W/S throttle and brake/reverse, A/D steer, **Space = drift** (the Horse's hop will replace drift on Space), **Left Shift = boost tank**, **Q = item**, **H = honk**, **R = reset car**. Basic gamepad mapped; mobile is Phase 6.
 4. **Boost tank** (the `BoostTank` vehicle stat): fills from drift time and near-misses, spent by holding Shift. LemonNitro is an instant 3 s burst independent of the tank.
-5. **Fare timer expiry = bail** (same as 0 HP, no attacker). Flag `Config.Fares.TimeoutBails`.
+5. **Fare timer expiry pays base with no tip** (owner call 2026-10-26 after the first playtest; the harsher bail is one flag away: `Config.Fares.TimeoutBails`).
 6. **Self-cost for attacking while loaded applies to Tomato only.** Banana/OilSlick are traps (`Config.Items.SelfCostItems`).
 7. **Item boxes:** cannot pick up while holding an item; box respawns 10 s after pickup.
 8. **Combo:** +0.1 per step, cap ×1.5; idle 3 s then lose a step every 0.5 s. Clients report drift/airtime/near-miss events; the server rate-limits and speed-checks them.
@@ -66,18 +66,19 @@ HUD + replication
 - [x] `DebugPanel` + `DebugService` (Studio only): give item, set HP, add cash, force round end, spawn NPC
 
 Verification
-- [ ] 2-player Studio run (Test > Clients and Servers): drive, pick up, deliver, get Tomato'd, see the bail
+- [x] 2-player Studio run (2026-10-26): booted clean, drove, claimed, delivered; owner: "looks good"
 - [ ] 4-player session: is it fun? Tune the five car-feel knobs first, then fares/tips
 - [ ] Fix whatever that run exposes
 
 ## Phase 2 — Full items + hunting
-- [ ] OilSlick (lose steering 2 s, −10 HP, low-vis decal)
-- [ ] Shield (blocks one hit, breaks) — `ItemService` defense flag consulted before every damage/effect
-- [ ] Seatbelt (passenger immune 8 s, glowing door VFX)
-- [ ] Hunter Bonus: attacker gets 40% of the lost fare on a bail they caused
-- [ ] Hittable tagged Traffic/Prop parts knocked by projectiles
-- [ ] Rank-weighted roll table for all 6 items
-- [ ] Anti-cheat v1: server speed/teleport sanity with correction, remote argument hardening
+- [x] OilSlick (lose steering 2 s, −10 HP, low-vis decal)
+- [x] Shield (blocks one hit, breaks): consumed before Tomato and trap effects, glow on the car
+- [x] Seatbelt (passenger immune 8 s, glow on the car)
+- [x] Hunter Bonus: attacker gets 40% of the lost fare on a bail they caused
+- [x] Hittable props (hydrants, cones, bins on sidewalk corners): cars push them, tomatoes launch them, reset each round
+- [x] Rank-weighted roll table for all 6 items
+- [x] Anti-cheat v1: per-frame distance sanity with a server correction after repeated strikes (`Config.Net.SpeedSanity`)
+- [x] Playtest batch (2026-10-26): ramps are humps, lighting + atmosphere + materials pass, window bands, crosswalks, invisible edge barrier with a skyline ring
 - [ ] Gate: items feel fair and funny in a 4–6 player room
 
 ## Phase 3 — Match structure
@@ -105,6 +106,8 @@ Verification
 - [ ] Gem packs (dev products) + one-time Starter Pack in the first 2 sessions; `ProcessReceipt` idempotency
 - [ ] VIP gamepass (2× Gems, badge, horn), Pit Stop Plus (6 cards), premium vehicles (Robux or large Gem price), private servers, Premium Payouts
 - [ ] Beach map (sand slows, boardwalk shortcut) via Config map entry + unlock by cumulative Gems
+- [ ] City decoration pass in the generator: streetlights, traffic lights, storefront signs, landmark buildings; then real meshes (cab first)
+- [ ] Layout pass: landmarks, loops, shortcuts (see DESIGN §13)
 - [ ] Sound, camera shake, passenger voice lines, music
 - [ ] Mobile touch controls
 - [ ] Gate: store never sells HP, damage, speed or quota

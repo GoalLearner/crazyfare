@@ -26,6 +26,8 @@ export type VehicleEntry = {
 	boostUntil: number, -- server time; speed sanity allowance
 	spinUntil: number, -- server time; crash detection ignores spinouts
 	crashImmuneUntil: number,
+	lastPosition: Vector3, -- last position that passed speed sanity
+	strikes: number, -- consecutive frames that failed it
 }
 
 local VehicleService = {}
@@ -117,6 +119,35 @@ function VehicleService.SetSilhouette(player: Player, visible: boolean)
 	end
 end
 
+-- Glow on a car for a defense item. color nil removes it; seconds 0 keeps it until removed.
+function VehicleService.SetHighlight(player: Player, color: Color3?, seconds: number)
+	local entry = entries[player]
+	if not entry then
+		return
+	end
+	local existing = entry.model:FindFirstChild("DefenseGlow")
+	if existing then
+		existing:Destroy()
+	end
+	if not color then
+		return
+	end
+	local glow = Instance.new("Highlight")
+	glow.Name = "DefenseGlow"
+	glow.FillColor = color
+	glow.FillTransparency = 0.6
+	glow.OutlineColor = color
+	glow.OutlineTransparency = 0
+	glow.Parent = entry.model
+	if seconds > 0 then
+		task.delay(seconds, function()
+			if glow.Parent then
+				glow:Destroy()
+			end
+		end)
+	end
+end
+
 function VehicleService.Despawn(player: Player)
 	local entry = entries[player]
 	if not entry then
@@ -158,6 +189,8 @@ function VehicleService.Spawn(player: Player)
 		boostUntil = 0,
 		spinUntil = 0,
 		crashImmuneUntil = 0,
+		lastPosition = chassis.Position,
+		strikes = 0,
 	}
 	entries[player] = entry
 	applyRelease(entry)
@@ -200,6 +233,8 @@ function VehicleService.Teleport(entry: VehicleEntry, cframe: CFrame)
 	entry.chassis.AssemblyAngularVelocity = Vector3.zero
 	entry.model:PivotTo(cframe)
 	entry.lastVelocity = Vector3.zero
+	entry.lastPosition = entry.chassis.Position
+	entry.strikes = 0
 	entry.crashImmuneUntil = workspace:GetServerTimeNow() + Config.Passenger.DamageCooldown
 end
 
@@ -253,11 +288,16 @@ function VehicleService.Start()
 	end
 
 	-- Crash watch: horizontal velocity delta between server frames. Jumps and landings are free; walls are not.
-	RunService.Heartbeat:Connect(function()
+	-- Speed sanity: a car that covers more ground per frame than its fastest legal speed allows, several frames
+	-- in a row, is put back where it was last seen behaving.
+	local sanity = Config.Net.SpeedSanity
+	RunService.Heartbeat:Connect(function(dt: number)
 		local now = workspace:GetServerTimeNow()
 		for player, entry in entries do
 			if entry.chassis.Anchored then
 				entry.lastVelocity = Vector3.zero
+				entry.lastPosition = entry.chassis.Position
+				entry.strikes = 0
 				continue
 			end
 			local v = entry.chassis.AssemblyLinearVelocity
@@ -266,6 +306,24 @@ function VehicleService.Start()
 			local boostEnding = now >= entry.boostUntil and now - entry.boostUntil < Config.Passenger.BoostEndGrace
 			if delta >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
 				onCrash:Fire(player, delta)
+			end
+
+			local pos = entry.chassis.Position
+			local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
+			local legalSpeed = stats.TopSpeed * Config.Items.LemonNitro.SpeedMult * Config.Chassis.BoostSpeedMult * Config.Chassis.SpeedHardCapMult
+			local moved = VecUtil.FlatDistance(pos, entry.lastPosition)
+			if moved > legalSpeed * dt + sanity.Slack and now >= entry.crashImmuneUntil then
+				entry.strikes += 1
+				if entry.strikes >= sanity.Strikes then
+					warn(string.format("[VehicleService] speed sanity: %s moved %.1f studs in one frame, correcting", player.Name, moved))
+					entry.strikes = 0
+					local look = VecUtil.FlatUnit(entry.chassis.CFrame.LookVector)
+					VehicleService.Teleport(entry, CFrame.lookAt(entry.lastPosition, entry.lastPosition + look))
+					continue
+				end
+			else
+				entry.strikes = 0
+				entry.lastPosition = pos
 			end
 		end
 	end)
