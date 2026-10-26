@@ -231,6 +231,8 @@ local function onItem(payload: Types.ItemEventPayload)
 		showMessage("SEATBELT ON", UI.Cash, 0.9, string.format("%d s immune", math.round(payload.seconds or 0)))
 	elseif payload.kind == "Oil" then
 		showMessage("OIL!", UI.Warn, 1.2, "no steering")
+	elseif payload.kind == "Immune" then
+		showMessage("NO EFFECT", UI.Accent, 0.8, "this ride shrugs it off")
 	elseif payload.kind == "Granted" and payload.item and payload.item ~= "" then
 		local def = Config.Items.Pool[payload.item]
 		if def then

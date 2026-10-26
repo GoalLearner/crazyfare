@@ -29,6 +29,7 @@ local State = {
 	fare = nil :: FareInfo?,
 	item = "",
 	pitStop = nil :: Types.PitStopOfferPayload?,
+	profile = nil :: Types.ProfilePayload?,
 	gems = 0,
 	-- self, mirrored from the snapshot
 	cash = 0,
@@ -62,6 +63,7 @@ local roundChanged: Signal.Signal<Types.RoundStatePayload> = Signal.new()
 local snapshotReceived: Signal.Signal<Types.Snapshot> = Signal.new()
 local honk: Signal.Signal<nil> = Signal.new()
 local pitStopChanged: Signal.Signal<nil> = Signal.new()
+local profileChanged: Signal.Signal<nil> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -70,6 +72,7 @@ State.RoundChanged = roundChanged
 State.SnapshotReceived = snapshotReceived
 State.Honk = honk
 State.PitStopChanged = pitStopChanged
+State.ProfileChanged = profileChanged
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

@@ -58,6 +58,17 @@ export type RoundStatePayload = {
 	voters: number?, -- players present
 }
 
+export type ProfilePayload = {
+	gems: number,
+	level: number,
+	xp: number,
+	owned: { [string]: boolean },
+	selected: string,
+	paint: string,
+	upgrades: { [string]: number },
+	stats: { [string]: number },
+}
+
 export type PitStopCard = { id: string, name: string, effect: string, price: number, bought: boolean }
 export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number }
 

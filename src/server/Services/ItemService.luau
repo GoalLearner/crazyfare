@@ -356,6 +356,11 @@ local function knockProp(part: BasePart, direction: Vector3, hitPosition: Vector
 end
 
 local function triggerTrap(trap: Trap, victim: Player, victimEntry: VehicleService.VehicleEntry)
+	local stats = Config.Vehicles.Stats[victimEntry.vehicleId]
+	if stats and stats.ImmuneTo and stats.ImmuneTo[trap.kind] then
+		fire(victim, { kind = "Immune", item = trap.kind })
+		return
+	end
 	if consumeShield(victim, trap.position) then
 		return
 	end

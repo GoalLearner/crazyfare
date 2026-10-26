@@ -17,6 +17,7 @@ type Service = { Init: () -> (), Start: () -> () }
 local Services = script.Parent.Services
 local ordered: { Service } = {
 	require(Services.MapService),
+	require(Services.DataService),
 	require(Services.VehicleService),
 	require(Services.ComboService),
 	require(Services.PassengerService),
@@ -24,6 +25,7 @@ local ordered: { Service } = {
 	require(Services.FareService),
 	require(Services.ItemService),
 	require(Services.PitStopService),
+	require(Services.GarageService),
 	require(Services.ReplicationService),
 	require(Services.DebugService),
 	require(Services.RoundService),

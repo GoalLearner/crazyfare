@@ -10,6 +10,7 @@ local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local PassengerService = require(script.Parent.PassengerService)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
+local DataService = require(script.Parent.DataService)
 
 local DebugService = {}
 
@@ -41,6 +42,11 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	end,
 	SpawnNpc = function()
 		PassengerService.SpawnWeighted()
+	end,
+	AddGems = function(player, arg)
+		if typeof(arg) == "number" then
+			DataService.AddGems(player, math.round(arg))
+		end
 	end,
 	Bail = function(player)
 		PassengerService.Bail(player, "hp")

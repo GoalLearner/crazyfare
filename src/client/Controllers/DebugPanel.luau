@@ -22,6 +22,7 @@ local BUTTONS: { Button } = {
 	{ label = "HP full", command = "SetHp", arg = 999 },
 	{ label = "Bail", command = "Bail", arg = nil },
 	{ label = "+$10", command = "AddCash", arg = 10 },
+	{ label = "+100 gems", command = "AddGems", arg = 100 },
 	{ label = "Spawn NPC", command = "SpawnNpc", arg = nil },
 	{ label = "End round", command = "ForceEnd", arg = nil },
 }

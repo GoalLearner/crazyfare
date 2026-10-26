@@ -129,6 +129,12 @@ function NetController.Init()
 			State.PitStopChanged:Fire()
 		end
 	end)
+	Remotes.Get("ProfileSync").OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" then
+			State.profile = payload :: Types.ProfilePayload
+			State.ProfileChanged:Fire()
+		end
+	end)
 
 	-- Fallback discovery in case VehicleAssigned arrived before we were listening.
 	for _, inst in CollectionService:GetTagged(Config.Tags.Vehicle) do

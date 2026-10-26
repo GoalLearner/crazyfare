@@ -13,6 +13,7 @@ local EVENT_NAMES = {
 	"ItemEvent", -- granted / used / splat / spinout / boost (Types.ItemEventPayload)
 	"VehicleAssigned", -- (model: Model)
 	"PitStopOffer", -- (Types.PitStopOfferPayload)
+	"ProfileSync", -- (Types.ProfilePayload) whenever the profile changes
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)
@@ -21,6 +22,7 @@ local EVENT_NAMES = {
 	"ClientReady", -- () client booted; server replies with RoundState + VehicleAssigned
 	"PitStopBuy", -- (cardId: string)
 	"RematchVote", -- ()
+	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

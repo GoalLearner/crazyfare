@@ -35,6 +35,7 @@ local ordered: { Controller } = {
 	require(Controllers.WorldTagController),
 	require(Controllers.EffectsController),
 	require(Controllers.PitStopController),
+	require(Controllers.GarageController),
 }
 if RunService:IsStudio() then
 	table.insert(ordered, require(Controllers.DebugPanel))

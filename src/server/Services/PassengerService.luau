@@ -354,6 +354,9 @@ function PassengerService.Board(npc: Npc, player: Player)
 	end
 	npc.state = 1
 	npc.boardedBy = player
+	local entry = VehicleService.GetEntry(player)
+	local stats = if entry then Config.Vehicles.Stats[entry.vehicleId] else nil
+	npc.maxHp = Config.Fares.Tiers[npc.tier].Hp + (if stats and stats.PassengerHpBonus then stats.PassengerHpBonus else 0)
 	npc.hp = npc.maxHp
 	loadedByPlayer[player] = npc
 	lastDamageAt[player] = nil
@@ -393,6 +396,11 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 	local armor = player:GetAttribute("Pit_ArmoredSeats")
 	if typeof(armor) == "number" then
 		amount *= armor
+	end
+	local entry = VehicleService.GetEntry(player)
+	local stats = if entry then Config.Vehicles.Stats[entry.vehicleId] else nil
+	if stats and stats.PassengerDamageMult then
+		amount *= stats.PassengerDamageMult
 	end
 	npc.hp = math.max(0, npc.hp - amount)
 	onDamaged:Fire(player, amount, source)

@@ -89,11 +89,11 @@ Verification
 - [ ] Gate: the spend-vs-bank decision is real
 
 ## Phase 4 — Persistence + economy
-- [ ] ProfileStore profile: gems, level/xp, ownedVehicles, selectedVehicle, cosmetics, upgrades, quests, streak, stats
-- [ ] Garage UI: locked vehicles greyed with prices
-- [ ] Vehicles + gimmicks: Horse (hop), ShoppingCart (Banana-immune, wobbly), NightCab (−20% passenger damage), IceCreamTruck (+20 HP on board), GoKart (drift grip); `WheelType = legs` animation path
-- [ ] Global permanent upgrades (speed/handling/boost)
-- [ ] Cosmetics (paint, horn, trail)
+- [x] ProfileStore profile (DataService): gems, level/xp, ownedVehicles, selectedVehicle, paint, upgrades, quests, streak, stats; mock store in Studio
+- [x] Garage UI: vehicles with stat bars, locked ones priced in Gems, upgrades with pips, paint swatches; opens whenever a round is not running
+- [x] Vehicles + gimmicks: Horse (hop on Space, trotting legs), ShoppingCart (Banana-immune, wobbly), NightCab (−20% passenger damage), IceCreamTruck (+20 HP on board), GoKart (drift grip); parts-built in VehicleBuilder
+- [x] Global permanent upgrades (Speed +3%, Handling +4%, Boost +8% per level, 5 levels) as Up_<Name> player attributes
+- [x] Paint (6 colours, 50 Gems); horn and trail wait for Phase 6 audio/VFX
 - [ ] Gate: nothing purchasable touches a live match except Pit Stop cards
 
 ## Phase 5 — Retention

@@ -14,6 +14,7 @@ local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local VehicleBuilder = require(ReplicatedStorage.Shared.VehicleBuilder)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local MapService = require(script.Parent.MapService)
+local DataService = require(script.Parent.DataService)
 
 export type VehicleEntry = {
 	player: Player,
@@ -161,8 +162,9 @@ function VehicleService.Spawn(player: Player)
 	if entries[player] then
 		VehicleService.Despawn(player)
 	end
-	local vehicleId = Config.Vehicles.Default
+	local vehicleId = DataService.GetSelectedVehicle(player)
 	local model = buildModel(vehicleId)
+	VehicleBuilder.ApplyPaint(model, DataService.GetPaint(player))
 	local chassis = model.PrimaryPart
 	if not chassis then
 		warn("[VehicleService] vehicle model has no PrimaryPart: " .. vehicleId)
@@ -214,8 +216,12 @@ end
 
 function VehicleService.ResetAllToGrid()
 	released = false
-	for _, entry in entries do
-		VehicleService.PlaceOnGrid(entry)
+	for player, entry in entries do
+		if DataService.GetSelectedVehicle(player) ~= entry.vehicleId then
+			VehicleService.Spawn(player) -- garage choice takes effect between rounds
+		else
+			VehicleService.PlaceOnGrid(entry)
+		end
 	end
 end
 
@@ -274,6 +280,18 @@ function VehicleService.Init()
 	Players.PlayerAdded:Connect(function(player: Player)
 		VehicleService.Spawn(player)
 	end)
+	-- A garage change while the car is parked (lobby, pit stop) swaps it right away; mid-round it waits for the grid.
+	DataService.OnVehicleSelected:Connect(function(player: Player)
+		local entry = entries[player]
+		if not entry then
+			return
+		end
+		if released and not entry.chassis.Anchored then
+			VehicleBuilder.ApplyPaint(entry.model, DataService.GetPaint(player))
+		else
+			VehicleService.Spawn(player)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		VehicleService.Despawn(player)
 		RateLimiter.Clear(player)
@@ -310,7 +328,7 @@ function VehicleService.Start()
 
 			local pos = entry.chassis.Position
 			local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
-			local legalSpeed = stats.TopSpeed * Config.Items.LemonNitro.SpeedMult * Config.Chassis.BoostSpeedMult * Config.Chassis.SpeedHardCapMult * Config.PitStop.Cards.SpeedTune.Value
+			local legalSpeed = stats.TopSpeed * Config.Items.LemonNitro.SpeedMult * Config.Chassis.BoostSpeedMult * Config.Chassis.SpeedHardCapMult * Config.PitStop.Cards.SpeedTune.Value * (1 + Config.Upgrades.Speed.Per * Config.Upgrades.Speed.Max)
 			local moved = VecUtil.FlatDistance(pos, entry.lastPosition)
 			if moved > legalSpeed * dt + sanity.Slack and now >= entry.crashImmuneUntil then
 				entry.strikes += 1

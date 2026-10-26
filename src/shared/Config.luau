@@ -19,6 +19,7 @@ export type ItemDef = {
 
 export type VehicleStats = {
 	DisplayName: string,
+	Description: string, -- the gimmick in plain words, shown in the garage
 	WheelType: string, -- "wheels" | "legs" (animation only)
 	TopSpeed: number, -- studs/s
 	Accel: number, -- studs/s^2 at standstill
@@ -28,6 +29,14 @@ export type VehicleStats = {
 	SteerMax: number, -- degrees at standstill
 	Gimmick: string,
 	Color: Color3,
+	GemPrice: number, -- 0 = everyone owns it
+	-- Gimmick flags; systems branch on these, never on the vehicle id.
+	Hop: boolean?, -- Space hops instead of drifting
+	HopPower: number?, -- studs/s of upward velocity per hop
+	ImmuneTo: { [string]: boolean }?, -- trap kinds that do nothing to this vehicle
+	PassengerDamageMult: number?, -- scales every hit the passenger takes
+	PassengerHpBonus: number?, -- extra HP on boarding
+	Wobble: number?, -- random steering noise (0..1)
 }
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
@@ -251,9 +260,12 @@ Config.Items = {
 
 Config.Vehicles = {
 	Default = "YellowCab",
+	-- Sidegrades: roughly equal budgets, one gimmick each. Order here is the garage order.
+	Order = { "YellowCab", "GoKart", "ShoppingCart", "Horse", "NightCab", "IceCreamTruck" },
 	Stats = {
 		YellowCab = {
 			DisplayName = "Yellow Cab",
+			Description = "The classic. No tricks.",
 			WheelType = "wheels",
 			TopSpeed = 90,
 			Accel = 45,
@@ -263,8 +275,123 @@ Config.Vehicles = {
 			SteerMax = 32,
 			Gimmick = "none",
 			Color = Color3.fromRGB(250, 200, 40),
+			GemPrice = 0,
+		},
+		GoKart = {
+			DisplayName = "Go-Kart",
+			Description = "Grips like glue in a drift.",
+			WheelType = "wheels",
+			TopSpeed = 88,
+			Accel = 50,
+			Handling = 6.5,
+			DriftGrip = 0.45,
+			BoostTank = 3.5,
+			SteerMax = 34,
+			Gimmick = "driftgrip",
+			Color = Color3.fromRGB(230, 60, 60),
+			GemPrice = 300,
+		},
+		ShoppingCart = {
+			DisplayName = "Shopping Cart",
+			Description = "Bananas can't touch it. Wobbles.",
+			WheelType = "wheels",
+			TopSpeed = 84,
+			Accel = 48,
+			Handling = 5,
+			DriftGrip = 0.3,
+			BoostTank = 4,
+			SteerMax = 34,
+			Gimmick = "bananaimmune",
+			Color = Color3.fromRGB(170, 175, 185),
+			GemPrice = 150,
+			ImmuneTo = { Banana = true },
+			Wobble = 0.18,
+		},
+		Horse = {
+			DisplayName = "Horse",
+			Description = "Space hops. Quick off the line, slow on the straight.",
+			WheelType = "legs",
+			TopSpeed = 76,
+			Accel = 62,
+			Handling = 8,
+			DriftGrip = 0.25,
+			BoostTank = 4,
+			SteerMax = 36,
+			Gimmick = "hop",
+			Color = Color3.fromRGB(120, 80, 50),
+			GemPrice = 350,
+			Hop = true,
+			HopPower = 42,
+		},
+		NightCab = {
+			DisplayName = "Night Cab",
+			Description = "Passengers take 20% less damage.",
+			WheelType = "wheels",
+			TopSpeed = 90,
+			Accel = 45,
+			Handling = 6,
+			DriftGrip = 0.25,
+			BoostTank = 4,
+			SteerMax = 32,
+			Gimmick = "armor",
+			Color = Color3.fromRGB(30, 32, 44),
+			GemPrice = 400,
+			PassengerDamageMult = 0.8,
+		},
+		IceCreamTruck = {
+			DisplayName = "Ice Cream Truck",
+			Description = "Passengers board with +20 HP.",
+			WheelType = "wheels",
+			TopSpeed = 86,
+			Accel = 42,
+			Handling = 5.5,
+			DriftGrip = 0.3,
+			BoostTank = 5,
+			SteerMax = 30,
+			Gimmick = "hpbonus",
+			Color = Color3.fromRGB(240, 235, 225),
+			GemPrice = 400,
+			PassengerHpBonus = 20,
 		},
 	} :: { [string]: VehicleStats },
+}
+
+-- Permanent upgrades (Gems), global across vehicles in v1. Applied as player attributes Up_<Name> = 1 + Per * level.
+Config.Upgrades = {
+	Order = { "Speed", "Handling", "Boost" },
+	Speed = { Per = 0.03, Max = 5, Costs = { 60, 90, 130, 180, 240 } },
+	Handling = { Per = 0.04, Max = 5, Costs = { 60, 90, 130, 180, 240 } },
+	Boost = { Per = 0.08, Max = 5, Costs = { 50, 80, 120, 170, 230 } },
+} :: { Order: { string }, [string]: any }
+
+-- Cosmetics v1: paint. One price, pick any colour; "" = the vehicle's own colour.
+Config.Paint = {
+	Price = 50,
+	Colors = {
+		{ Name = "Cherry", Color = Color3.fromRGB(220, 50, 60) },
+		{ Name = "Mint", Color = Color3.fromRGB(110, 230, 170) },
+		{ Name = "Sky", Color = Color3.fromRGB(90, 170, 250) },
+		{ Name = "Grape", Color = Color3.fromRGB(150, 80, 220) },
+		{ Name = "Snow", Color = Color3.fromRGB(245, 245, 245) },
+		{ Name = "Midnight", Color = Color3.fromRGB(25, 25, 35) },
+	} :: { { Name: string, Color: Color3 } },
+}
+
+-- Persistent profile (ProfileStore). Bump StoreName to wipe everyone in a test place.
+Config.Data = {
+	StoreName = "CrazyFare_v1",
+	Template = {
+		Gems = 0,
+		Level = 1,
+		Xp = 0,
+		OwnedVehicles = { YellowCab = true } :: { [string]: boolean },
+		SelectedVehicle = "YellowCab",
+		Paint = "",
+		Upgrades = { Speed = 0, Handling = 0, Boost = 0 } :: { [string]: number },
+		Quests = {} :: { [string]: any },
+		Streak = { Days = 0, LastDay = 0 },
+		Stats = { Matches = 0, Wins = 0, Fares = 0, BestTip = 0, Knockouts = 0 } :: { [string]: number },
+	},
 }
 
 -- One raycast chassis drives every vehicle; these shape how the stats above feel.
@@ -319,6 +446,7 @@ Config.Net = {
 		ResetVehicle = 2,
 		ClientReady = 1,
 		PitStopBuy = 6,
+		GarageAction = 5,
 		RematchVote = 2,
 		Debug = 10,
 	} :: { [string]: number },

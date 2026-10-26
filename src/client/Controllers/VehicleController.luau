@@ -19,6 +19,7 @@ type Wheel = {
 	attachment: Attachment,
 	weld: Weld?,
 	isFront: boolean,
+	isLeft: boolean,
 	contactDistance: number,
 	spin: number,
 }
@@ -41,6 +42,8 @@ local lastDriveStateAt = 0
 local nearMissCooldownUntil = 0
 local nearMissCheckAt = 0
 local recentNearMiss: { [BasePart]: number } = {}
+local hopHeld = false
+local lastHopAt = 0
 
 local comboEvent: RemoteEvent
 local driveState: RemoteEvent
@@ -96,6 +99,7 @@ local function attach(model: Model?)
 				attachment = att,
 				weld = if weld and weld:IsA("Weld") then weld else nil,
 				isFront = name == "WheelFL" or name == "WheelFR",
+				isLeft = name == "WheelFL" or name == "WheelRL",
 				contactDistance = C.SuspensionRest + C.WheelRadius,
 				spin = 0,
 			})
@@ -150,6 +154,13 @@ local function updateWheelVisual(w: Wheel, steer: number, forwardSpeed: number, 
 	w.spin = (w.spin + forwardSpeed / C.WheelRadius * dt) % (math.pi * 2)
 	local drop = math.clamp(w.contactDistance - C.WheelRadius, 0, C.SuspensionRest + 0.3)
 	local localPos = w.attachment.Position - Vector3.new(0, drop, 0)
+	if State.stats.WheelType == "legs" then
+		-- Legs swing instead of spin; diagonal pairs move together like a trot.
+		local phase = if w.isFront == w.isLeft then 0 else math.pi
+		local swing = math.sin(w.spin + phase) * 0.55 * math.clamp(math.abs(forwardSpeed) / 20, 0, 1)
+		weld.C0 = CFrame.new(localPos + Vector3.new(0, 0.3, 0)) * CFrame.Angles(swing, 0, 0)
+		return
+	end
 	weld.C0 = CFrame.new(localPos) * CFrame.Angles(0, if w.isFront then -steer else 0, 0) * CFrame.Angles(w.spin, 0, 0)
 end
 
@@ -180,7 +191,11 @@ local function step(rawDt: number)
 	local nitro = now < State.nitroUntil
 	local throttle = if spinning then 0 else InputController.GetThrottle()
 	local steerInput = if spinning or oiled then 0 else InputController.GetSteer()
-	local handbrake = InputController.IsDrifting() and not spinning
+	local driftHeld = InputController.IsDrifting() and not spinning
+	local handbrake = driftHeld and not stats.Hop
+	if stats.Wobble then
+		steerInput = math.clamp(steerInput + (math.sin(now * 7.3) * 0.5 + math.sin(now * 13.1) * 0.5) * stats.Wobble, -1, 1)
+	end
 	local wantBoost = InputController.IsBoosting() and State.boostTank > 0 and not spinning
 
 	local speedMult = 1
@@ -198,8 +213,15 @@ local function step(rawDt: number)
 	if typeof(speedTune) == "number" then
 		speedMult *= speedTune
 	end
+	local upSpeed = localPlayer:GetAttribute("Up_Speed")
+	if typeof(upSpeed) == "number" then
+		speedMult *= upSpeed
+	end
+	local upBoost = localPlayer:GetAttribute("Up_Boost")
+	local upHandling = localPlayer:GetAttribute("Up_Handling")
+	local handlingMult = if typeof(upHandling) == "number" then upHandling else 1
 	local bigTank = localPlayer:GetAttribute("Pit_BigTank")
-	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1)
+	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1) * (if typeof(upBoost) == "number" then upBoost else 1)
 	State.boostTankMax = tankMax
 	local topSpeed = stats.TopSpeed * speedMult
 	local accel = stats.Accel * accelMult
@@ -246,7 +268,7 @@ local function step(rawDt: number)
 			local sideVel = pointVel:Dot(rightFlat)
 			local fwdVel = pointVel:Dot(fwdFlat)
 
-			local gripRate = stats.Handling
+			local gripRate = stats.Handling * handlingMult
 			if handbrake and not w.isFront then
 				gripRate *= stats.DriftGrip
 			end
@@ -309,6 +331,13 @@ local function step(rawDt: number)
 	else
 		flipTimer = 0
 	end
+
+	-- Horse: Space hops instead of drifting (edge-triggered, grounded only)
+	if stats.Hop and driftHeld and not hopHeld and grounded and now - lastHopAt > 0.45 then
+		lastHopAt = now
+		ch.AssemblyLinearVelocity = Vector3.new(vel.X, stats.HopPower or 40, vel.Z)
+	end
+	hopHeld = driftHeld
 
 	-- Spinout: yaw spin driven directly
 	if spinning then
