@@ -91,14 +91,14 @@ local function renderUpgrades(profile: Types.ProfilePayload)
 		local level = profile.upgrades[name] or 0
 		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 46), LayoutOrder = i, BackgroundTransparency = 0.45 }, upgradeList)
 		UI.Corner(8, row)
-		UI.Label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.fromOffset(110, 20), Text = string.upper(name), TextXAlignment = Enum.TextXAlignment.Left }, row)
-		UI.Label({ Position = UDim2.fromOffset(12, 26), Size = UDim2.fromOffset(160, 14), Text = string.format("+%d%% per level", math.round(def.Per * 100)), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, row)
+		UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.fromOffset(140, 20), Text = string.upper(name), TextXAlignment = Enum.TextXAlignment.Left }, row)
 		for pip = 1, def.Max do
-			UI.Frame({ Position = UDim2.fromOffset(120 + (pip - 1) * 14, 10), Size = UDim2.fromOffset(10, 10), BackgroundColor3 = if pip <= level then UI.Accent else Color3.fromRGB(50, 50, 58), BackgroundTransparency = 0 }, row)
+			UI.Frame({ Position = UDim2.fromOffset(12 + (pip - 1) * 14, 30), Size = UDim2.fromOffset(10, 10), BackgroundColor3 = if pip <= level then UI.Accent else Color3.fromRGB(50, 50, 58), BackgroundTransparency = 0 }, row)
 		end
+		UI.Label({ Position = UDim2.fromOffset(12 + def.Max * 14 + 6, 27), Size = UDim2.fromOffset(80, 16), Text = string.format("+%d%% / level", math.round(def.Per * 100)), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, row)
 		local maxed = level >= def.Max
 		local cost = if maxed then 0 else def.Costs[level + 1]
-		local b = button(if maxed then "MAX" else string.format("%d GEMS", cost), Color3.fromRGB(70, 110, 190), UDim2.fromOffset(96, 30), row, not maxed and profile.gems >= cost)
+		local b = button(if maxed then "MAX" else string.format("%d GEMS", cost), Color3.fromRGB(70, 110, 190), UDim2.fromOffset(84, 30), row, not maxed and profile.gems >= cost)
 		b.AnchorPoint = Vector2.new(1, 0.5)
 		b.Position = UDim2.new(1, -10, 0.5, 0)
 		if not maxed and profile.gems >= cost then
