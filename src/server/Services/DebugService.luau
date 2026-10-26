@@ -11,6 +11,7 @@ local PassengerService = require(script.Parent.PassengerService)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
 local DataService = require(script.Parent.DataService)
+local VehicleService = require(script.Parent.VehicleService)
 
 local DebugService = {}
 
@@ -50,6 +51,22 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	end,
 	Bail = function(player)
 		PassengerService.Bail(player, "hp")
+	end,
+	-- Cycles the garage so every imported vehicle mesh can be checked in one test: grants the next car if needed, swaps now.
+	NextVehicle = function(player)
+		local ids: { string } = {}
+		for id in Config.Vehicles.Stats do
+			table.insert(ids, id)
+		end
+		table.sort(ids)
+		local index = table.find(ids, DataService.GetSelectedVehicle(player)) or 0
+		local nextId = ids[index % #ids + 1]
+		if not DataService.Owns(player, nextId) then
+			DataService.AddGems(player, Config.Vehicles.Stats[nextId].GemPrice)
+			DataService.BuyVehicle(player, nextId)
+		end
+		DataService.SelectVehicle(player, nextId)
+		VehicleService.Spawn(player)
 	end,
 }
 

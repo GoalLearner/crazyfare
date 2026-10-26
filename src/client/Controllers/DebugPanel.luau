@@ -25,6 +25,7 @@ local BUTTONS: { Button } = {
 	{ label = "+100 gems", command = "AddGems", arg = 100 },
 	{ label = "Spawn NPC", command = "SpawnNpc", arg = nil },
 	{ label = "End round", command = "ForceEnd", arg = nil },
+	{ label = "Next car", command = "NextVehicle", arg = nil },
 }
 
 function DebugPanel.Init()
