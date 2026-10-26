@@ -31,46 +31,56 @@
   <div class="card">
     <ol>
       <li>Open the latest build in Studio (ask me to "open" it). Don't start a test; stay in edit mode.</li>
-      <li>Top menu <strong>File → Import 3D</strong>.</li>
+      <li>Top menu <strong>File â Import 3D</strong>.</li>
       <li>Pick <code>C:\dev\crazyfare\assets\kenney\car-kit\Models\FBX format\taxi.fbx</code>.</li>
       <li>In the import window, leave the defaults. Make sure <strong>Upload to Roblox</strong> is on (that's what turns the file into a mesh your game can use). Press <strong>Import</strong>. It appears in the Workspace as a model named <code>taxi</code>.</li>
       <li>Click that model once in the Explorer so it's selected.</li>
       <li>At the bottom of Studio, in the <strong>Command Bar</strong>, paste this and press Enter:
 <pre>require(game.ServerScriptService.Server.Studio.VehicleRig).Rig(game.Selection:Get()[1], "YellowCab")</pre>
-        The Output says <code>[VehicleRig] YellowCab rigged</code> and the model moves to <code>ReplicatedStorage → VehicleTemplates</code>. The game now spawns the mesh taxi instead of the parts one.</li>
-      <li>If the car drives backwards, the mesh faces the wrong way: select the model, press <kbd>Ctrl</kbd>+<kbd>R</kbd> twice to rotate 180°, and run the command again.</li>
-      <li><strong>File → Save to Roblox</strong> so the imported meshes stay in the place.</li>
+        The Output says <code>[VehicleRig] YellowCab rigged</code> and the model moves to <code>ReplicatedStorage â VehicleTemplates</code>. The game now spawns the mesh taxi instead of the parts one.</li>
+      <li>If the car drives backwards, the mesh faces the wrong way: select the model, press <kbd>Ctrl</kbd>+<kbd>R</kbd> twice to rotate 180Â°, and run the command again.</li>
+      <li><strong>File â Save to Roblox</strong> so the imported meshes stay in the place.</li>
     </ol>
   </div>
 
   <h2>2. Which file is which</h2>
   <table>
-    <tr><th>Game thing</th><th>FBX file (in assets\kenney\…)</th><th>Second argument</th></tr>
-    <tr><td>Yellow Cab</td><td class="k">car-kit\…\taxi.fbx</td><td><code>"YellowCab"</code></td></tr>
-    <tr><td>Night Cab</td><td class="k">car-kit\…\sedan.fbx</td><td><code>"NightCab"</code> (paint it dark in Properties if you like)</td></tr>
-    <tr><td>Ice Cream Truck</td><td class="k">car-kit\…\delivery.fbx</td><td><code>"IceCreamTruck"</code></td></tr>
-    <tr><td>Go-Kart</td><td class="k">car-kit\…\kart-oozi.fbx</td><td><code>"GoKart"</code></td></tr>
+    <tr><th>Game thing</th><th>FBX file (in assets\kenney\â¦)</th><th>Second argument</th></tr>
+    <tr><td>Yellow Cab</td><td class="k">car-kit\â¦\taxi.fbx</td><td><code>"YellowCab"</code></td></tr>
+    <tr><td>Night Cab</td><td class="k">car-kit\â¦\sedan.fbx</td><td><code>"NightCab"</code> (paint it dark in Properties if you like)</td></tr>
+    <tr><td>Ice Cream Truck</td><td class="k">car-kit\â¦\delivery.fbx</td><td><code>"IceCreamTruck"</code></td></tr>
+    <tr><td>Go-Kart</td><td class="k">car-kit\â¦\kart-oozi.fbx</td><td><code>"GoKart"</code></td></tr>
     <tr><td>Shopping Cart, Horse</td><td colspan="2" class="muted">not in the kits; they stay parts-built until we find or make them</td></tr>
   </table>
 
   <h2>3. Items</h2>
   <div class="card">
-    <p>Same import, different landing spot. Import <code>food-kit\Models\FBX format\banana.fbx</code> and <code>tomato.fbx</code>. In the Explorer, drag each into a folder named <strong>ItemModels</strong> inside <strong>ReplicatedStorage</strong> (create it with right-click → Insert Object → Folder), and rename the models to exactly <code>Banana</code> and <code>Tomato</code>. The game scales and places them itself. <code>lemon.fbx</code> is ready for when Lemon Nitro gets a world object.</p>
+    <p>Same import, different landing spot. Import <code>food-kit\Models\FBX format\banana.fbx</code> and <code>tomato.fbx</code>. In the Explorer, drag each into a folder named <strong>ItemModels</strong> inside <strong>ReplicatedStorage</strong> (create it with right-click â Insert Object â Folder), and rename the models to exactly <code>Banana</code> and <code>Tomato</code>. The game scales and places them itself. <code>lemon.fbx</code> is ready for when Lemon Nitro gets a world object.</p>
   </div>
 
   <h2>4. Buildings (optional, bigger change)</h2>
   <div class="card">
-    <p>Import any of <code>city-kit-commercial\Models\FBX format\building-a.fbx … building-k.fbx</code> and drop them into <strong>ReplicatedStorage → MapModels → Buildings</strong> (two folders to create). When that folder has anything in it, the City generator uses those meshes for every building lot instead of boxes, scaled to fit the lot. Try three or four first and look at a round before importing all eleven.</p>
+    <p>Import any of <code>city-kit-commercial\Models\FBX format\building-a.fbx â¦ building-k.fbx</code> and drop them into <strong>ReplicatedStorage â MapModels â Buildings</strong> (two folders to create). When that folder has anything in it, the City generator uses those meshes for every building lot instead of boxes, scaled to fit the lot. Try three or four first and look at a round before importing all eleven.</p>
     <p class="muted">Streetlights, traffic lights and signs from <code>city-kit-roads</code> are next on my side once the buildings are in; the generator already places parts versions in the right spots.</p>
   </div>
 
   <h2>5. If something looks wrong</h2>
   <ul>
     <li><strong>Car floats or sinks:</strong> tell me how many studs off; it's one number in <code>VehicleRig.luau</code>.</li>
-    <li><strong>Car is huge or tiny:</strong> the rig scales to 11 studs long. Pass a third argument to change it, e.g. <code>…, "GoKart", 8)</code>.</li>
+    <li><strong>Car is huge or tiny:</strong> the rig scales to 11 studs long. Pass a third argument to change it, e.g. <code>â¦, "GoKart", 8)</code>.</li>
     <li><strong>Grey, untextured model:</strong> the importer didn't find <code>Textures\colormap.png</code> next to the FBX. Re-import and tick the texture option in the import window.</li>
-    <li><strong>Back to parts:</strong> delete the model from <code>ReplicatedStorage → VehicleTemplates</code> (or ItemModels / MapModels). The parts version returns on the next build.</li>
+    <li><strong>Back to parts:</strong> delete the model from <code>ReplicatedStorage â VehicleTemplates</code> (or ItemModels / MapModels). The parts version returns on the next build.</li>
   </ul>
+  <h2>6. Sounds</h2>
+  <div class="card">
+    <p>Nine CC0 audio packs are in <code>assetskenney-audio</code> (706 files). I picked one file per game slot and copied them to <code>assetspicks</code>, named after the slot, so the upload is mechanical:</p>
+    <ol>
+      <li>Creator Dashboard → <strong>Development Items → Audio → Upload Asset</strong>. Upload everything in <code>C:devazyfaressetspicks</code> (13 files, all under 10 seconds except Engine).</li>
+      <li>Each upload shows an id. Paste it into the matching line of <code>Config.Sounds.Ids</code>: Pickup, Deliver, Bail, Splat, Spinout, Boost, Countdown, Go, RoundEnd, Engine. <code>Crash</code>, <code>Buy</code> and <code>LevelUp</code> are extras I will wire once their ids exist.</li>
+      <li>Ask me to rebuild. Sounds with an id play; the rest stay silent.</li>
+    </ol>
+    <p class="muted">Not in these packs: a car horn, a drift screech and a music loop. Those three come from the Creator Store audio library inside Studio (search "car horn", "tire screech", "upbeat loop", filter to Roblox-licensed), which you can use without uploading: paste the asset id the same way.</p>
+  </div>
 </main>
 </body>
 </html>
