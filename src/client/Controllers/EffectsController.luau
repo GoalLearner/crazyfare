@@ -187,8 +187,7 @@ local function updateArrow()
 		elseif math.abs(angle) >= Config.Hud.Arrow.SideDegrees then
 			word = if angle < 0 then "RIGHT" else "LEFT"
 		end
-		arrowLabel.Text = if word == "" then string.format("%d", math.round(dist)) else string.format("%s
-%d", word, math.round(dist))
+		arrowLabel.Text = if word == "" then string.format("%d", math.round(dist)) else word .. "\n" .. string.format("%d", math.round(dist))
 	end
 end
 
