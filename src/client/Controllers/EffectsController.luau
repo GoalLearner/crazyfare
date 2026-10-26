@@ -141,8 +141,8 @@ local function buildArrow(color: Color3)
 	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(-a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, -math.rad(40), 0))
 	piece(Vector3.new(a.Width, a.Thickness, a.Length * 0.55), CFrame.new(a.Width * 1.1, 0, -a.Length * 0.35) * CFrame.Angles(0, math.rad(40), 0))
 	local gui = UI.New("BillboardGui", {
-		Size = UDim2.fromOffset(140, 44),
-		StudsOffset = Vector3.new(0, 2.5, 0),
+		Size = UDim2.fromOffset(200, 70),
+		StudsOffset = Vector3.new(0, 3, 0),
 		AlwaysOnTop = true,
 		MaxDistance = 500,
 	}, shaft)
@@ -176,7 +176,19 @@ local function updateArrow()
 		end
 	end
 	if arrowLabel then
-		arrowLabel.Text = if dist <= Config.Fares.DeliverRadius then "STOP" else string.format("%d", math.round(dist))
+		local look = Vector3.new(ch.CFrame.LookVector.X, 0, ch.CFrame.LookVector.Z)
+		look = if look.Magnitude > 0.01 then look.Unit else dir
+		local angle = math.deg(math.atan2(look:Cross(dir).Y, look:Dot(dir)))
+		local word = ""
+		if dist <= Config.Fares.DeliverRadius then
+			word = "STOP"
+		elseif math.abs(angle) >= Config.Hud.Arrow.TurnAroundDegrees then
+			word = "TURN AROUND"
+		elseif math.abs(angle) >= Config.Hud.Arrow.SideDegrees then
+			word = if angle < 0 then "RIGHT" else "LEFT"
+		end
+		arrowLabel.Text = if word == "" then string.format("%d", math.round(dist)) else string.format("%s
+%d", word, math.round(dist))
 	end
 end
 
