@@ -13,6 +13,7 @@ local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local PitStopService = {}
 
@@ -62,7 +63,8 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 		local isLast = playerCount > 1 and ranks[player] == playerCount
 		local discount = if isLast then 1 - Config.PitStop.PityDiscount else 1
 		local cards: { Types.PitStopCard } = {}
-		for i = 1, math.min(Config.PitStop.CardsOffered, #ids) do
+		local offered = if MonetizationService.HasPitStopPlus(player) then Config.Monetization.PitStopPlusCards else Config.PitStop.CardsOffered
+		for i = 1, math.min(offered, #ids) do
 			local id = ids[i]
 			local def = Config.PitStop.Cards[id]
 			table.insert(cards, {

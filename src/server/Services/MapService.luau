@@ -6,6 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
+local DevBlockout = require(script.Parent.Parent.Studio.DevBlockout)
+local Lighting = game:GetService("Lighting")
 
 export type Point = {
 	index: number,
@@ -22,6 +24,7 @@ local startPads: { Point } = {}
 local itemBoxes: { BasePart } = {}
 local props: { { part: BasePart, cframe: CFrame } } = {}
 local center = Vector3.zero
+local currentMap = Config.Map.Current
 
 local function collectPoints(tagName: string): { Point }
 	local list: { Point } = {}
@@ -53,7 +56,7 @@ function MapService.GetRuntimeFolder(name: string): Folder
 	return folder
 end
 
-function MapService.Init()
+local function discover()
 	pickups = collectPoints(Config.Tags.PickupPoint)
 	dropoffs = collectPoints(Config.Tags.DropoffPoint)
 	startPads = collectPoints(Config.Tags.StartPad)
@@ -79,6 +82,34 @@ function MapService.Init()
 	if #pickups == 0 or #dropoffs == 0 or #startPads == 0 then
 		warn(string.format("[MapService] map incomplete: %d pickups, %d dropoffs, %d start pads", #pickups, #dropoffs, #startPads))
 	end
+end
+
+function MapService.GetCurrentMap(): string
+	return currentMap
+end
+
+-- Replace the world with another map from Config.Map and rediscover its points. Callers respawn cars and clear NPCs.
+function MapService.LoadMap(name: string)
+	local mapCfg = (Config.Map :: any)[name]
+	if typeof(mapCfg) ~= "table" or not mapCfg.Blockout then
+		name = Config.Map.Current
+		mapCfg = Config.Map.City
+	end
+	DevBlockout.Generate(name)
+	currentMap = name
+	if typeof(mapCfg.ClockTime) == "number" then
+		Lighting.ClockTime = mapCfg.ClockTime
+	end
+	discover()
+end
+
+function MapService.Init()
+	local existing = workspace:FindFirstChild("Map")
+	if existing then
+		local baked = existing:GetAttribute("MapName")
+		currentMap = if typeof(baked) == "string" then baked else Config.Map.Current
+	end
+	discover()
 	MapService.GetRuntimeFolder("Vehicles")
 	MapService.GetRuntimeFolder("NPCs")
 	MapService.GetRuntimeFolder("Items")

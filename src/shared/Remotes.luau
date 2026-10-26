@@ -26,6 +26,7 @@ local EVENT_NAMES = {
 	"RematchVote", -- ()
 	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
 	"RequestLeaderboards", -- ()
+	"ShopAction", -- (action: "Refresh" | "DismissStarter")
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

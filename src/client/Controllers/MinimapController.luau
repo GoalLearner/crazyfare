@@ -16,6 +16,8 @@ type RivalMarker = { frame: Frame, label: TextLabel, hp: Frame }
 local MinimapController = {}
 
 local B = Config.Map.City.Blockout
+local roadStrips: { Frame } = {}
+local currentMap = ""
 local SIZE = Config.Hud.MinimapSize
 local map: Frame
 local selfArrow: TextLabel
@@ -48,19 +50,33 @@ local function build()
 	UI.Corner(10, map)
 	UI.Stroke(Color3.fromRGB(70, 70, 80), 2, map)
 
-	local scale = SIZE / (2 * B.Half)
-	local roadPx = math.max(2, math.round(B.RoadWidth * scale))
-	for _, r in B.RoadCoords do
-		local c = (r + B.Half) * scale
-		UI.Frame({ Position = UDim2.fromOffset(math.round(c - roadPx / 2), 0), Size = UDim2.fromOffset(roadPx, SIZE), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0 }, map)
-		UI.Frame({ Position = UDim2.fromOffset(0, math.round(c - roadPx / 2)), Size = UDim2.fromOffset(SIZE, roadPx), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0 }, map)
-	end
 
 	destMarker = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(14, 14), BackgroundTransparency = 1, Visible = false, ZIndex = 4 }, map)
 	UI.Corner(7, destMarker)
 	UI.Stroke(UI.Accent, 3, destMarker)
 
 	selfArrow = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(18, 18), Text = "▲", TextColor3 = UI.White, ZIndex = 6 }, map)
+end
+
+local function drawRoads(mapName: string)
+	local mapCfg = (Config.Map :: any)[mapName]
+	if typeof(mapCfg) ~= "table" or not mapCfg.Blockout then
+		mapCfg = Config.Map.City
+	end
+	B = mapCfg.Blockout
+	currentMap = mapName
+	for _, strip in roadStrips do
+		strip:Destroy()
+	end
+	roadStrips = {}
+	map.BackgroundColor3 = if mapCfg.Theme == "beach" then Color3.fromRGB(60, 54, 34) else Color3.fromRGB(26, 34, 26)
+	local scale = SIZE / (2 * B.Half)
+	local roadPx = math.max(2, math.round(B.RoadWidth * scale))
+	for _, r in B.RoadCoords do
+		local c = (r + B.Half) * scale
+		table.insert(roadStrips, UI.Frame({ Position = UDim2.fromOffset(math.round(c - roadPx / 2), 0), Size = UDim2.fromOffset(roadPx, SIZE), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0, ZIndex = 1 }, map))
+		table.insert(roadStrips, UI.Frame({ Position = UDim2.fromOffset(0, math.round(c - roadPx / 2)), Size = UDim2.fromOffset(SIZE, roadPx), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0, ZIndex = 1 }, map))
+	end
 end
 
 local function ensureNpcDot(id: number): Frame
@@ -146,7 +162,13 @@ end
 
 function MinimapController.Init()
 	build()
+	drawRoads(Config.Map.Current)
 	State.SnapshotReceived:Connect(onSnapshot)
+	State.RoundChanged:Connect(function(payload: Types.RoundStatePayload)
+		if payload.map and payload.map ~= currentMap then
+			drawRoads(payload.map)
+		end
+	end)
 end
 
 function MinimapController.Start() end

@@ -523,14 +523,19 @@ function ItemService.ClearAll()
 	end
 end
 
-function ItemService.Init()
-	folder = MapService.GetRuntimeFolder("Items")
-	itemEvent = Remotes.Get("ItemEvent")
+-- Re-read item boxes from the current map (after MapService.LoadMap).
+function ItemService.RefreshBoxes()
 	boxes = {}
 	for _, part in MapService.GetItemBoxes() do
 		table.insert(boxes, { part = part, activeAt = 0 })
 		setBoxActive(boxes[#boxes], true)
 	end
+end
+
+function ItemService.Init()
+	folder = MapService.GetRuntimeFolder("Items")
+	itemEvent = Remotes.Get("ItemEvent")
+	ItemService.RefreshBoxes()
 
 	Remotes.Get("UseItem").OnServerEvent:Connect(function(player: Player)
 		if not RateLimiter.Allow(player, "UseItem", Config.Net.RateLimits.UseItem) then

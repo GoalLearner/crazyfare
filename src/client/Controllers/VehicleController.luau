@@ -242,6 +242,10 @@ local function step(rawDt: number)
 	local groundedCount = 0
 	local rearSide = 0
 	local comPlane = ch.Position
+	local round = State.round
+	local mapCfg = (Config.Map :: any)[if round and round.map then round.map else Config.Map.Current]
+	local gimmicks: { [string]: number } = if typeof(mapCfg) == "table" and mapCfg.Gimmicks then mapCfg.Gimmicks else {}
+	local surfaceMult = 1
 
 	for _, w in wheels do
 		local origin = w.attachment.WorldPosition
@@ -252,6 +256,11 @@ local function step(rawDt: number)
 
 		if result then
 			groundedCount += 1
+			if CollectionService:HasTag(result.Instance, Config.Tags.Sand) then
+				surfaceMult = math.min(surfaceMult, gimmicks.SandSlowMult or 1)
+			elseif CollectionService:HasTag(result.Instance, Config.Tags.Boardwalk) then
+				surfaceMult = math.max(surfaceMult, gimmicks.BoardwalkSpeedMult or 1)
+			end
 			local normal = result.Normal
 			local compression = rayLen - result.Distance
 			local pointVel = ch:GetVelocityAtPosition(origin)
@@ -282,7 +291,7 @@ local function step(rawDt: number)
 
 			local driveAccel = 0
 			if throttle > 0 then
-				driveAccel = throttle * accel * (1 - math.clamp(fwdVel / topSpeed, 0, 1))
+				driveAccel = throttle * accel * surfaceMult * (1 - math.clamp(fwdVel / (topSpeed * surfaceMult), 0, 1))
 			elseif throttle < 0 then
 				if fwdVel > 2 then
 					driveAccel = C.BrakeAccel * throttle

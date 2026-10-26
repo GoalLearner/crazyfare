@@ -245,6 +245,12 @@ function VehicleService.PlaceOnGrid(entry: VehicleEntry)
 	VehicleService.SetSilhouette(entry.player, false)
 end
 
+function VehicleService.RespawnAll()
+	for player in entries do
+		VehicleService.Spawn(player)
+	end
+end
+
 function VehicleService.ResetAllToGrid()
 	released = false
 	for player, entry in entries do

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
 local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local GemService = {}
 
@@ -26,10 +27,17 @@ function GemService.AwardMatch(results: { Types.PodiumEntry }): { Types.PodiumEn
 	for i, entry in results do
 		local byPlace = if contested then placement[math.min(i, #placement)] or 0 else 0
 		local gems = byPlace + entry.fares * Config.Gems.PerFare
-		entry.gems = gems
 		local player = Players:GetPlayerByUserId(entry.id)
+		if player and MonetizationService.IsVip(player) then
+			gems *= Config.Monetization.VipGemMult
+		end
+		entry.gems = gems
 		if player then
 			GemService.Add(player, gems)
+			local d = DataService.Get(player)
+			if d then
+				d.TotalGemsEarned += gems
+			end
 			DataService.AddStat(player, "Matches", 1)
 			DataService.AddStat(player, "Fares", entry.fares)
 			DataService.SetStatMax(player, "BestTip", entry.bestTip)

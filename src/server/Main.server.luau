@@ -3,11 +3,9 @@
 -- then Init() every service, then Start() every service. RoundService starts last.
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
 Players.CharacterAutoLoads = false
 
-if RunService:IsStudio() and not workspace:FindFirstChild("Map") then
+if not workspace:FindFirstChild("Map") then
 	local DevBlockout = require(script.Parent.Studio.DevBlockout)
 	DevBlockout.Generate()
 end
@@ -18,6 +16,7 @@ local Services = script.Parent.Services
 local ordered: { Service } = {
 	require(Services.MapService),
 	require(Services.DataService),
+	require(Services.MonetizationService),
 	require(Services.VehicleService),
 	require(Services.ComboService),
 	require(Services.PassengerService),

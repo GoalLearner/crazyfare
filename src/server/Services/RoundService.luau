@@ -23,6 +23,8 @@ local ProgressionService = require(script.Parent.ProgressionService)
 local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 
+local MapService = require(script.Parent.MapService)
+
 local RoundService = {}
 
 local phase: Types.RoundPhase = "Waiting"
@@ -32,6 +34,7 @@ local phaseEndsAt = 0
 local results: { Types.PodiumEntry }? = nil
 local waitingSince: number? = nil
 local rematchVotes: { [Player]: boolean } = {}
+local matchCount = 0
 local roundState: RemoteEvent
 
 local function now(): number
@@ -56,6 +59,7 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		startsAt = phaseStartsAt,
 		endsAt = phaseEndsAt,
 		results = results,
+		map = MapService.GetCurrentMap(),
 		votes = if phase == "MatchEnd" then voteCount() else nil,
 		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
 	}
@@ -100,6 +104,17 @@ local function beginMatch()
 	roundIndex = 1
 	table.clear(rematchVotes)
 	FareService.ResetMatch()
+	-- Map rotation: one match per entry.
+	local rotation = Config.Map.Rotation
+	local nextMap = rotation[(matchCount % #rotation) + 1]
+	matchCount += 1
+	if nextMap and nextMap ~= MapService.GetCurrentMap() then
+		PassengerService.ClearAll()
+		ItemService.ClearAll()
+		MapService.LoadMap(nextMap)
+		ItemService.RefreshBoxes()
+		VehicleService.RespawnAll()
+	end
 	beginRoundSetup()
 end
 

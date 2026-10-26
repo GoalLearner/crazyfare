@@ -52,6 +52,7 @@ local function buildSnapshot(): Types.Snapshot
 			item = ItemService.GetHeld(player),
 			gems = GemService.GetTotal(player),
 			level = levelOf(player),
+			vip = player:GetAttribute("VIP") == true,
 		})
 	end
 	return {

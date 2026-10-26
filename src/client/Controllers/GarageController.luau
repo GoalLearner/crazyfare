@@ -4,6 +4,8 @@
 -- a ProfileSync, which redraws the panel.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -75,6 +77,15 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		if not selected and affordable then
 			b.Activated:Connect(function()
 				action:FireServer(if owned then "Select" else "Buy", id)
+			end)
+		end
+		local productId = Config.Monetization.VehicleProducts[id]
+		if not owned and productId and productId > 0 then
+			local rb = button("R$", Color3.fromRGB(60, 140, 80), UDim2.fromOffset(44, 30), row, true)
+			rb.AnchorPoint = Vector2.new(1, 0.5)
+			rb.Position = UDim2.new(1, -104, 0.5, 0)
+			rb.Activated:Connect(function()
+				MarketplaceService:PromptProductPurchase(Players.LocalPlayer, productId)
 			end)
 		end
 	end

@@ -24,6 +24,10 @@ export type ProfileData = {
 	Quests: { [string]: any },
 	Streak: { Days: number, LastDay: number },
 	Stats: { [string]: number },
+	Purchases: { [string]: boolean },
+	Sessions: number,
+	StarterPackBought: boolean,
+	TotalGemsEarned: number,
 }
 
 local DataService = {}
@@ -34,6 +38,8 @@ DataService.OnLoaded = onLoaded
 DataService.OnVehicleSelected = onVehicleSelected -- selection or paint changed; the car may need a respawn
 
 local store = ProfileStore.New(Config.Data.StoreName, Config.Data.Template)
+type Extras = { vip: boolean, pitStopPlus: boolean, showStarterPack: boolean }
+local extrasProvider: ((Player) -> Extras)? = nil
 local profiles: { [Player]: any } = {}
 local syncEvent: RemoteEvent
 
@@ -61,11 +67,17 @@ local function applyUpgradeAttributes(player: Player, d: ProfileData)
 	end
 end
 
+-- MonetizationService supplies pass ownership and the Starter Pack flag for the sync payload.
+function DataService.SetExtrasProvider(provider: (Player) -> Extras)
+	extrasProvider = provider
+end
+
 function DataService.Sync(player: Player)
 	local d = data(player)
 	if not d then
 		return
 	end
+	local extras: Extras = if extrasProvider then extrasProvider(player) else { vip = false, pitStopPlus = false, showStarterPack = false }
 	local payload: Types.ProfilePayload = {
 		gems = d.Gems,
 		level = d.Level,
@@ -75,6 +87,9 @@ function DataService.Sync(player: Player)
 		paint = d.Paint,
 		upgrades = d.Upgrades,
 		stats = d.Stats,
+		vip = extras.vip,
+		pitStopPlus = extras.pitStopPlus,
+		showStarterPack = extras.showStarterPack,
 		xpToNext = Config.Progression.LevelBaseXp + (d.Level - 1) * Config.Progression.LevelStepXp,
 		xpIntoLevel = d.Xp,
 	}

@@ -22,6 +22,7 @@ export type PlayerSnap = {
 	item: string, -- held item id or ""
 	gems: number, -- session total
 	level: number,
+	vip: boolean,
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking
@@ -57,6 +58,7 @@ export type RoundStatePayload = {
 	startsAt: number, -- server time the phase began
 	endsAt: number, -- server time the phase ends (0 = open-ended)
 	results: { PodiumEntry }?,
+	map: string?, -- current map name
 	votes: number?, -- rematch votes so far (MatchEnd)
 	voters: number?, -- players present
 }
@@ -70,6 +72,9 @@ export type ProfilePayload = {
 	paint: string,
 	upgrades: { [string]: number },
 	stats: { [string]: number },
+	vip: boolean,
+	pitStopPlus: boolean,
+	showStarterPack: boolean, -- first sessions only, until bought
 	xpToNext: number, -- XP needed to reach the next level
 	xpIntoLevel: number, -- XP earned since the current level began
 }

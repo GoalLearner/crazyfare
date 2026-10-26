@@ -43,6 +43,8 @@ export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: numbe
 
 export type PitStopCardDef = { Name: string, Effect: string, Price: number, Value: number }
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
+export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string? }
+export type GamePassDef = { Id: number, Label: string, Effect: string }
 
 local Config = {}
 
@@ -64,6 +66,9 @@ Config.Tags = {
 	Npc = "Npc",
 	Projectile = "Projectile",
 	Trap = "Trap",
+	Sand = "Sand", -- slows cars (Beach)
+	Boardwalk = "Boardwalk", -- speeds cars (Beach)
+	Water = "Water",
 }
 
 Config.Keys = {
@@ -422,6 +427,72 @@ Config.Leaderboards = {
 	FriendsScan = 100, -- how many weekly entries to scan for friends
 }
 
+-- Monetization. Product and pass ids come from the Roblox Creator Dashboard; 0 = not configured (shop hides it).
+-- Nothing here touches passenger HP, item damage, speed or quota.
+Config.Monetization = {
+	Products = {
+		GemsSmall = { Id = 0, Gems = 120, Label = "120 Gems", Robux = 49 },
+		GemsMedium = { Id = 0, Gems = 320, Label = "320 Gems", Robux = 99 },
+		GemsLarge = { Id = 0, Gems = 900, Label = "900 Gems", Robux = 249 },
+		StarterPack = { Id = 0, Gems = 300, Label = "Starter Pack", Robux = 79, Vehicle = "GoKart" }, -- one-time, first 2 sessions
+	} :: { [string]: ProductDef },
+	ProductOrder = { "GemsSmall", "GemsMedium", "GemsLarge" },
+	GamePasses = {
+		VIP = { Id = 0, Label = "VIP", Effect = "2x Gems, VIP badge, VIP horn" },
+		PitStopPlus = { Id = 0, Label = "Pit Stop Plus", Effect = "6 cards at every Pit Stop" },
+	} :: { [string]: GamePassDef },
+	VipGemMult = 2,
+	PitStopPlusCards = 6,
+	StarterPackSessions = 2, -- offered during the player's first N sessions
+	-- Premium vehicles: Robux product OR their (large) Gem price.
+	VehicleProducts = {
+		NightCab = 0,
+		IceCreamTruck = 0,
+	} :: { [string]: number },
+}
+
+-- Sounds. Asset ids are placeholders until the owner uploads audio; 0 = silent. Everything plays through SoundController.
+Config.Sounds = {
+	Volume = 0.5,
+	MusicVolume = 0.25,
+	Ids = {
+		Honk = 0,
+		HonkVip = 0,
+		Engine = 0,
+		Drift = 0,
+		Boost = 0,
+		Pickup = 0,
+		Deliver = 0,
+		Splat = 0,
+		Spinout = 0,
+		Bail = 0,
+		Countdown = 0,
+		Go = 0,
+		RoundEnd = 0,
+		Music = 0,
+	} :: { [string]: number },
+	PassengerLines = { -- spoken as text bubbles already; ids here add voice when available
+		Board = 0,
+		Angry = 0,
+		Thanks = 0,
+	} :: { [string]: number },
+}
+
+-- Camera shake on hits (client only).
+Config.Shake = {
+	Splat = 0.8,
+	Spinout = 1.2,
+	Crash = 0.5,
+	Decay = 6, -- 1/s
+}
+
+-- Touch controls (phones/tablets): on-screen buttons sized in pixels.
+Config.Touch = {
+	ButtonSize = 64,
+	Margin = 18,
+	Opacity = 0.45,
+}
+
 -- Persistent profile (ProfileStore). Bump StoreName to wipe everyone in a test place.
 Config.Data = {
 	StoreName = "CrazyFare_v1",
@@ -436,6 +507,10 @@ Config.Data = {
 		Quests = {} :: { [string]: any },
 		Streak = { Days = 0, LastDay = 0 },
 		Stats = { Matches = 0, Wins = 0, Fares = 0, BestTip = 0, Knockouts = 0 } :: { [string]: number },
+		Purchases = {} :: { [string]: boolean }, -- receipt ids already granted (idempotent ProcessReceipt)
+		Sessions = 0,
+		StarterPackBought = false,
+		TotalGemsEarned = 0,
 	},
 }
 
@@ -494,6 +569,7 @@ Config.Net = {
 		GarageAction = 5,
 		RematchVote = 2,
 		RequestLeaderboards = 1,
+		ShopAction = 4,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.
@@ -516,7 +592,12 @@ Config.Hud = {
 -- Each map is a data entry. The blockout spec is shared by DevBlockout (builds it) and the minimap (draws it).
 Config.Map = {
 	Current = "City",
+	Rotation = { "City", "Beach" }, -- one match per entry, in order
 	City = {
+		DisplayName = "City",
+		Theme = "city",
+		UnlockGems = 0,
+		ClockTime = 14.5,
 		Blockout = {
 			Half = 320, -- playable area is -Half..Half on X and Z
 			RoadCoords = { -300, -180, -60, 60, 180, 300 }, -- road center lines on both axes
@@ -540,6 +621,35 @@ Config.Map = {
 			PropsPerCell = 2,
 		},
 		Gimmicks = {} :: { [string]: number },
+	},
+	Beach = {
+		DisplayName = "Beach",
+		Theme = "beach",
+		UnlockGems = 500, -- cumulative Gems earned (used for private-server map choice later)
+		ClockTime = 16.5,
+		Blockout = {
+			Half = 320,
+			RoadCoords = { -300, -180, -60, 60, 180, 300 },
+			RoadWidth = 24,
+			CellCenters = { -240, -120, 0, 120, 240 },
+			CellSize = 96,
+			Sidewalk = 8,
+			WallHeight = 14,
+			Seed = 21,
+			BuildingMinHeight = 10,
+			BuildingMaxHeight = 30,
+			PickupPoints = 12,
+			DropoffPoints = 12,
+			NearStartPickups = 4,
+			ItemBoxes = 6,
+			SkylineInner = 380,
+			SkylineOuter = 500,
+			SkylineMinHeight = 50,
+			SkylineMaxHeight = 150,
+			WindowFloorHeight = 6,
+			PropsPerCell = 2,
+		},
+		Gimmicks = { SandSlowMult = 0.7, BoardwalkSpeedMult = 1.1 } :: { [string]: number },
 	},
 }
 
