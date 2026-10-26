@@ -1,7 +1,8 @@
 --!strict
 -- The garage: vehicles (owned, selected, or priced in Gems), permanent upgrades, paint. Opens from a button that
--- shows whenever a round is not in progress. Every change goes through GarageAction; the server answers with
--- a ProfileSync, which redraws the panel.
+-- shows whenever a round is not in progress, and the Pit Stop panel hosts the same content behind its GARAGE tab
+-- (Mount/Unmount move the content frame). Every change goes through GarageAction; the server answers with a
+-- ProfileSync, which redraws the panel.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -16,13 +17,23 @@ local UI = require(script.Parent.Parent.UI)
 
 local GarageController = {}
 
+local CONTENT_WIDTH = 820
+local CONTENT_HEIGHT = 508 -- gems line + the 480-tall lists
+local STANDALONE_CONTENT_Y = 56 -- below the title row of the garage's own panel
+
+-- Size of the content frame, for a host panel (the Pit Stop) to size itself around.
+GarageController.ContentSize = Vector2.new(CONTENT_WIDTH, CONTENT_HEIGHT)
+
 local openButton: TextButton
 local panel: Frame
+local content: Frame
 local gemsLabel: TextLabel
 local vehicleList: Frame
 local upgradeList: Frame
 local paintRow: Frame
 local isOpen = false
+local mounted = false
+local parked = false
 local action: RemoteEvent
 
 local function button(text: string, color: Color3, size: UDim2, parent: Instance, enabled: boolean): TextButton
@@ -173,6 +184,9 @@ local function render()
 end
 
 local function setOpen(open: boolean)
+	if open and mounted then
+		return -- the Pit Stop is showing the garage already
+	end
 	isOpen = open
 	panel.Visible = open
 	if open then
@@ -199,10 +213,9 @@ local function build()
 		setOpen(not isOpen)
 	end)
 
-	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 560), BackgroundTransparency = 0.05, Visible = false }, screen)
+	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(CONTENT_WIDTH, STANDALONE_CONTENT_Y + CONTENT_HEIGHT + 16), BackgroundTransparency = 0.05, Visible = false }, screen)
 	UI.Corner(16, panel)
 	UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(200, 36), Text = "GARAGE", TextXAlignment = Enum.TextXAlignment.Left }, panel)
-	gemsLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -70, 0, 18), Size = UDim2.fromOffset(200, 28), Text = "", TextColor3 = UI.Accent, TextXAlignment = Enum.TextXAlignment.Right }, panel)
 	local close = button("X", Color3.fromRGB(80, 50, 50), UDim2.fromOffset(34, 34), panel, true)
 	close.AnchorPoint = Vector2.new(1, 0)
 	close.Position = UDim2.new(1, -16, 0, 16)
@@ -210,10 +223,14 @@ local function build()
 		setOpen(false)
 	end)
 
-	vehicleList = UI.Frame({ Position = UDim2.fromOffset(24, 64), Size = UDim2.fromOffset(490, 480), BackgroundTransparency = 1 }, panel)
+	-- Everything below the title lives in one frame so the Pit Stop can host it behind its GARAGE tab.
+	content = UI.Frame({ Position = UDim2.fromOffset(0, STANDALONE_CONTENT_Y), Size = UDim2.fromOffset(CONTENT_WIDTH, CONTENT_HEIGHT), BackgroundTransparency = 1 }, panel)
+	gemsLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 0), Size = UDim2.fromOffset(200, 24), Text = "", TextColor3 = UI.Accent, TextXAlignment = Enum.TextXAlignment.Right }, content)
+
+	vehicleList = UI.Frame({ Position = UDim2.fromOffset(24, 28), Size = UDim2.fromOffset(490, 480), BackgroundTransparency = 1 }, content)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, vehicleList)
 
-	local right = UI.Frame({ Position = UDim2.fromOffset(530, 64), Size = UDim2.fromOffset(266, 480), BackgroundTransparency = 1 }, panel)
+	local right = UI.Frame({ Position = UDim2.fromOffset(530, 28), Size = UDim2.fromOffset(266, 480), BackgroundTransparency = 1 }, content)
 	UI.Label({ Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(200, 22), Text = "UPGRADES", TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
 	UI.Label({ Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 14), Text = "Permanent, every vehicle", TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 12 }, right)
 	upgradeList = UI.Frame({ Position = UDim2.fromOffset(0, 42), Size = UDim2.new(1, 0, 0, 160), BackgroundTransparency = 1 }, right)
@@ -223,9 +240,35 @@ local function build()
 	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
 end
 
-local function onRound(payload: Types.RoundStatePayload)
-	local parked = payload.phase ~= "Playing" and payload.phase ~= "Countdown"
+-- Show the garage content inside another panel (the Pit Stop's GARAGE tab). The side button hides meanwhile.
+function GarageController.Mount(parent: Instance, position: UDim2)
+	if mounted then
+		return
+	end
+	mounted = true
+	if isOpen then
+		setOpen(false)
+	end
+	content.Position = position
+	content.Parent = parent
+	openButton.Visible = false
+	render()
+end
+
+-- Give the content back to the garage's own panel.
+function GarageController.Unmount()
+	if not mounted then
+		return
+	end
+	mounted = false
+	content.Position = UDim2.fromOffset(0, STANDALONE_CONTENT_Y)
+	content.Parent = panel
 	openButton.Visible = parked
+end
+
+local function onRound(payload: Types.RoundStatePayload)
+	parked = payload.phase ~= "Playing" and payload.phase ~= "Countdown"
+	openButton.Visible = parked and not mounted
 	if not parked and isOpen then
 		setOpen(false)
 	end
@@ -235,7 +278,7 @@ function GarageController.Init()
 	action = Remotes.Get("GarageAction")
 	build()
 	State.ProfileChanged:Connect(function()
-		if isOpen then
+		if isOpen or mounted then
 			render()
 		end
 	end)
