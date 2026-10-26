@@ -151,11 +151,11 @@ local function fillPodium(results: { Types.PodiumEntry })
 		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 36), LayoutOrder = i, BackgroundTransparency = if i == 1 then 0.2 else 0.6, BackgroundColor3 = if i == 1 then Color3.fromRGB(60, 50, 20) else UI.Panel }, podiumRows)
 		UI.Corner(8, row)
 		UI.Label({ Position = UDim2.fromOffset(10, 4), Size = UDim2.fromOffset(30, 28), Text = tostring(i), TextColor3 = if i == 1 then UI.Warn else UI.Muted }, row)
-		UI.Label({ Position = UDim2.fromOffset(48, 4), Size = UDim2.fromOffset(190, 28), Text = entry.name, TextXAlignment = Enum.TextXAlignment.Left }, row)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 4), Size = UDim2.fromOffset(100, 28), Text = UI.Money(entry.cash), TextColor3 = UI.Cash, TextXAlignment = Enum.TextXAlignment.Right }, row)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -116, 0, 8), Size = UDim2.fromOffset(60, 20), Text = string.format("%d fares", entry.fares), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		UI.Label({ Position = UDim2.fromOffset(48, 4), Size = UDim2.fromOffset(110, 28), Text = entry.name, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 4), Size = UDim2.fromOffset(70, 28), Text = UI.Money(entry.cash), TextColor3 = UI.Cash, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -86, 0, 8), Size = UDim2.fromOffset(60, 20), Text = string.format("%d fares", entry.fares), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		if entry.gems then
-			UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -182, 0, 8), Size = UDim2.fromOffset(70, 20), Text = string.format("+%d gems", entry.gems), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+			UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -152, 0, 8), Size = UDim2.fromOffset(70, 20), Text = string.format("+%d gems", entry.gems), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		end
 	end
 end

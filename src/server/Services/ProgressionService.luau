@@ -42,8 +42,9 @@ end
 -- Match end: XP by placement and fares, written into the podium entries.
 function ProgressionService.AwardMatch(results: { Types.PodiumEntry })
 	local cfg = Config.Progression
+	local contested = #results >= 2 -- no rivals, no placement bonus
 	for i, entry in results do
-		local byPlace = cfg.PlacementXp[math.min(i, #cfg.PlacementXp)] or 0
+		local byPlace = if contested then cfg.PlacementXp[math.min(i, #cfg.PlacementXp)] or 0 else 0
 		local xp = cfg.MatchBaseXp + entry.fares * cfg.XpPerFare + byPlace
 		entry.xp = xp
 		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)

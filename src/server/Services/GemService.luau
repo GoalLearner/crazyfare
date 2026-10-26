@@ -22,8 +22,9 @@ end
 -- Pays every entry by placement and fares, writes the award into the entry, records match stats.
 function GemService.AwardMatch(results: { Types.PodiumEntry }): { Types.PodiumEntry }
 	local placement = Config.Gems.Placement
+	local contested = #results >= 2 -- no rivals, no placement bonus
 	for i, entry in results do
-		local byPlace = placement[math.min(i, #placement)] or 0
+		local byPlace = if contested then placement[math.min(i, #placement)] or 0 else 0
 		local gems = byPlace + entry.fares * Config.Gems.PerFare
 		entry.gems = gems
 		local player = Players:GetPlayerByUserId(entry.id)
