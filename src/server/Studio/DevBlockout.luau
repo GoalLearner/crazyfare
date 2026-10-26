@@ -719,11 +719,17 @@ local function buildVehicleTemplate()
 		templates.Name = "VehicleTemplates"
 		templates.Parent = ReplicatedStorage
 	end
+	-- Never replace an imported (mesh) template; only refresh our own parts build.
 	local old = templates:FindFirstChild("YellowCab")
 	if old then
-		old:Destroy()
+		if old:GetAttribute("PartsBuilt") == true then
+			old:Destroy()
+		else
+			return
+		end
 	end
 	local cab = VehicleBuilder.Build("YellowCab")
+	cab:SetAttribute("PartsBuilt", true)
 	CollectionService:AddTag(cab, Tags.VehicleTemplate)
 	cab.Parent = templates
 end

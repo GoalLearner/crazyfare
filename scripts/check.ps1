@@ -26,7 +26,7 @@ if ($LASTEXITCODE -ne 0) { throw "selene failed" }
 
 Write-Host "== rojo build"
 New-Item -ItemType Directory -Force build | Out-Null
-rojo build default.project.json -o build/CrazyFare.rbxl
+rojo build default.project.json -o build/CrazyFare-fresh.rbxl
 if ($LASTEXITCODE -ne 0) { throw "rojo build failed" }
 
 Write-Host "ALL CLEAN"

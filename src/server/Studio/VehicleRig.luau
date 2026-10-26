@@ -22,14 +22,15 @@ local function attachment(name: string, position: Vector3, parent: BasePart): At
 end
 
 -- `targetLength` scales the mesh so its longest horizontal side matches the parts cab (11 studs) unless given.
-function VehicleRig.Rig(imported: Instance, vehicleId: string, targetLength: number?): Model
+function VehicleRig.Rig(imported: Instance?, vehicleId: string, targetLength: number?): Model
 	assert(Config.Vehicles.Stats[vehicleId], "unknown vehicle id " .. vehicleId)
-	local model = if imported:IsA("Model") then imported else nil
-	if not model then
-		model = Instance.new("Model")
-		imported.Parent = model
-	end
-	local mesh = model :: Model
+	assert(imported ~= nil, "nothing selected: click the imported model in the Explorer first")
+	assert(imported:IsA("Model"), "select the imported MODEL (the top item, e.g. taxi), not a part or folder")
+	assert(imported:IsDescendantOf(workspace), "select the model in the Workspace, not one already in VehicleTemplates")
+	assert(not imported:FindFirstChild("Chassis"), "this model is already rigged; import a fresh copy")
+	local mesh = imported :: Model
+	local _, rawSize = mesh:GetBoundingBox()
+	print(string.format("[VehicleRig] imported size %.1f x %.1f x %.1f studs", rawSize.X, rawSize.Y, rawSize.Z))
 
 	-- Scale to size and sit it at the origin facing -Z (Kenney cars face +Z; rotate 180 if the nose points at you).
 	local cf, size = mesh:GetBoundingBox()
