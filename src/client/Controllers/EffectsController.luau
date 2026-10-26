@@ -137,7 +137,10 @@ local function honkBubble()
 end
 
 local function attachBoostEmitter(model: Model?)
-	boostEmitter = nil
+	if boostEmitter then
+		boostEmitter:Destroy()
+		boostEmitter = nil
+	end
 	if not model or not model.PrimaryPart then
 		return
 	end

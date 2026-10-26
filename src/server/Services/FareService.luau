@@ -63,7 +63,8 @@ end
 function FareService.TargetNpcCount(): number
 	local players = #Players:GetPlayers()
 	local want = players * Config.Fares.NpcsPerPlayer
-	return math.clamp(want, Config.Fares.MinNpcs, math.min(Config.Fares.MaxNpcs, #MapService.GetPickups()))
+	local maxCount = math.min(Config.Fares.MaxNpcs, #MapService.GetPickups())
+	return math.clamp(want, math.min(Config.Fares.MinNpcs, maxCount), maxCount)
 end
 
 -- Players sorted by cash (desc), then deliveries (desc), then UserId for stability.

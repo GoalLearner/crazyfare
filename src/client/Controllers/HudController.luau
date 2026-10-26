@@ -175,7 +175,7 @@ local function onFare(payload: Types.FareEventPayload)
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Claimed" then
 		local def = Config.Fares.Tiers[payload.tier or ""]
-		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the blue beacon")
+		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")
 	end
 end
 

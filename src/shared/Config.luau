@@ -141,6 +141,7 @@ Config.Passenger = {
 	CrashDamagePerStud = 0.6,
 	CrashDamageMax = 35,
 	DamageCooldown = 1, -- no second damage inside this window (any source)
+	BoostEndGrace = 0.5, -- crash watch ignores the speed bleed right after a nitro ends
 	SelfHitCost = 15, -- using an attack item while loaded
 	BailWalkSpeed = 12,
 	BailBubbleSeconds = 3,
@@ -246,6 +247,7 @@ Config.Chassis = {
 	AirtimeMinSeconds = 0.35,
 	SpinAngularSpeed = 7, -- radians/s during a Banana spinout
 	SpinGripMult = 0.2,
+	MaxStepSeconds = 1 / 30, -- physics step clamp; longer frames are treated as this
 }
 
 Config.Camera = {

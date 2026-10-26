@@ -73,9 +73,12 @@ end
 local function applyRelease(entry: VehicleEntry)
 	if released then
 		entry.chassis.Anchored = false
-		pcall(function()
+		local ok, err = pcall(function()
 			entry.chassis:SetNetworkOwner(entry.player)
 		end)
+		if not ok then
+			warn("[VehicleService] SetNetworkOwner failed for " .. entry.player.Name .. ": " .. tostring(err))
+		end
 	else
 		entry.chassis.Anchored = true
 	end
@@ -260,7 +263,8 @@ function VehicleService.Start()
 			local v = entry.chassis.AssemblyLinearVelocity
 			local delta = VecUtil.FlatDistance(v, entry.lastVelocity)
 			entry.lastVelocity = v
-			if delta >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil then
+			local boostEnding = now >= entry.boostUntil and now - entry.boostUntil < Config.Passenger.BoostEndGrace
+			if delta >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
 				onCrash:Fire(player, delta)
 			end
 		end

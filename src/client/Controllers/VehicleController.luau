@@ -150,7 +150,9 @@ local function updateWheelVisual(w: Wheel, steer: number, forwardSpeed: number, 
 	weld.C0 = CFrame.new(localPos) * CFrame.Angles(0, if w.isFront then -steer else 0, 0) * CFrame.Angles(w.spin, 0, 0)
 end
 
-local function step(dt: number)
+local function step(rawDt: number)
+	-- A long hitch (breakpoint, window drag) must not become one giant impulse.
+	local dt = math.min(rawDt, C.MaxStepSeconds)
 	local ch = chassis
 	if not ch or ch.Anchored or not ch:IsDescendantOf(workspace) then
 		State.speed = 0
@@ -303,12 +305,14 @@ local function step(dt: number)
 		ch.AssemblyAngularVelocity = Vector3.new(av.X, C.SpinAngularSpeed * State.spinDirection, av.Z)
 	end
 
-	-- Hard horizontal cap (arcade feel; also what the server assumes for speed sanity)
+	-- Horizontal cap (arcade feel; also what the server assumes for speed sanity).
+	-- Bleeds excess speed at brake rate instead of snapping, so a boost ending never reads as a crash.
 	if grounded then
 		local cap = topSpeed * C.SpeedHardCapMult
 		local flat = Vector3.new(vel.X, 0, vel.Z)
-		if flat.Magnitude > cap then
-			ch.AssemblyLinearVelocity = flat.Unit * cap + Vector3.new(0, vel.Y, 0)
+		local allowed = math.max(cap, flat.Magnitude - C.BrakeAccel * dt)
+		if flat.Magnitude > allowed then
+			ch.AssemblyLinearVelocity = flat.Unit * allowed + Vector3.new(0, vel.Y, 0)
 		end
 	end
 
