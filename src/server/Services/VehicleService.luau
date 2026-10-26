@@ -64,11 +64,42 @@ local function padCFrameForSlot(slot: number): CFrame
 	return pad.cframe * CFrame.new(0, 3.2, 0)
 end
 
+-- Why a template cannot be used, or nil when it satisfies the VehicleBuilder contract.
+local function templateProblem(template: Instance): string?
+	if not template:IsA("Model") then
+		return "not a Model"
+	end
+	local chassis = template.PrimaryPart
+	if not chassis then
+		return "no PrimaryPart (needs a part named Chassis set as PrimaryPart)"
+	end
+	for _, name in { "WheelFL", "WheelFR", "WheelRL", "WheelRR", "DropPoint", "Muzzle" } do
+		local att = chassis:FindFirstChild(name)
+		if not att or not att:IsA("Attachment") then
+			return "missing attachment " .. name .. " on the Chassis"
+		end
+	end
+	local visible = 0
+	for _, part in template:GetDescendants() do
+		if part:IsA("BasePart") and part ~= chassis and part.Transparency < 1 then
+			visible += 1
+		end
+	end
+	if visible == 0 then
+		return "no visible parts besides the Chassis"
+	end
+	return nil
+end
+
 local function buildModel(vehicleId: string): Model
 	local templates = ReplicatedStorage:FindFirstChild("VehicleTemplates")
 	local template = if templates then templates:FindFirstChild(vehicleId) else nil
-	if template and template:IsA("Model") then
-		return template:Clone()
+	if template then
+		local problem = templateProblem(template)
+		if not problem then
+			return (template :: Model):Clone()
+		end
+		warn(string.format("[VehicleService] template %s unusable (%s); using the parts build. Re-import and run VehicleRig again.", vehicleId, problem))
 	end
 	return VehicleBuilder.Build(vehicleId)
 end
