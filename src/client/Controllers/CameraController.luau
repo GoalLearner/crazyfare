@@ -16,6 +16,8 @@ local camera = workspace.CurrentCamera
 local camPos: Vector3? = nil
 local heldLook = Vector3.new(0, 0, -1)
 local fov = Config.Camera.FovBase
+local shakeAmount = 0
+local shakeRng = Random.new()
 
 local function overview(dt: number)
 	local half = Config.Map.City.Blockout.Half
@@ -43,7 +45,12 @@ local function follow(dt: number)
 	local desired = target - look * cfg.Distance + Vector3.new(0, cfg.Height, 0)
 	camPos = if camPos then (camPos :: Vector3):Lerp(desired, VecUtil.ExpAlpha(cfg.Stiffness, dt)) else desired
 	local aim = target + look * cfg.LookAhead + Vector3.new(0, 2, 0)
-	camera.CFrame = CFrame.lookAt(camPos :: Vector3, aim)
+	local shakeOffset = Vector3.zero
+	if shakeAmount > 0.01 then
+		shakeOffset = Vector3.new(shakeRng:NextNumber(-1, 1), shakeRng:NextNumber(-1, 1), 0) * shakeAmount
+		shakeAmount *= math.max(0, 1 - Config.Shake.Decay * dt)
+	end
+	camera.CFrame = CFrame.lookAt(camPos :: Vector3, aim) * CFrame.new(shakeOffset)
 
 	local speedFrac = math.clamp(State.speed / State.stats.TopSpeed, 0, 1)
 	local targetFov = cfg.FovBase + cfg.FovSpeedBonus * speedFrac + (if State.boosting then cfg.FovBoostBonus else 0)
@@ -58,6 +65,9 @@ function CameraController.Init()
 	end)
 	State.VehicleChanged:Connect(function()
 		camPos = nil
+	end)
+	State.Shake:Connect(function(strength: number)
+		shakeAmount = math.max(shakeAmount, strength)
 	end)
 end
 

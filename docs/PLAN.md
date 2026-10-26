@@ -103,11 +103,12 @@ Verification
 - [ ] Gate: a second-day session has a reason to exist
 
 ## Phase 6 — Monetization + Beach + polish
-- [ ] Gem packs (dev products) + one-time Starter Pack in the first 2 sessions; `ProcessReceipt` idempotency
-- [ ] VIP gamepass (2× Gems, badge, horn), Pit Stop Plus (6 cards), premium vehicles (Robux or large Gem price), private servers, Premium Payouts
-- [ ] Beach map (sand slows, boardwalk shortcut) via Config map entry + unlock by cumulative Gems
-- [ ] City decoration pass in the generator: streetlights, traffic lights, storefront signs, landmark buildings; then real meshes (cab first, then the six items: the parts banana is a placeholder, owner's words 2026-10-26)
-- [ ] Layout pass: landmarks, loops, shortcuts (see DESIGN §13)
-- [ ] Sound, camera shake, passenger voice lines, music
-- [ ] Mobile touch controls
-- [ ] Gate: store never sells HP, damage, speed or quota
+- [x] Gem packs (dev products) + one-time Starter Pack in the first 2 sessions; `ProcessReceipt` idempotency by receipt id (ids pasted by the owner, see docs/OWNER-STEPS.html)
+- [x] VIP gamepass (2× Gems, badge, horn hook), Pit Stop Plus (6 cards), premium vehicles (Robux product or Gem price); private servers and Premium Payouts are dashboard switches
+- [x] Beach map (sand cells slow to 70%, boardwalk ring at 110%, water, palms) as a Config map entry; maps rotate per match; UnlockGems recorded for private-server choice later
+- [x] City decoration pass: streetlights, traffic lights, storefront signs with invented names, hotel / arena / antenna landmarks
+- [ ] Real meshes (cab first, then the six items: the parts banana is a placeholder, owner's words 2026-10-26)
+- [x] Layout pass v1: landmarks on three corners, two alley shortcuts through blocks (more loops when real art lands)
+- [x] Sound hooks for every moment (ids 0 until the owner uploads audio), camera shake on splat / spinout / crash, passenger voice line hooks, music loop
+- [x] Mobile touch controls (steer left, pedals right, drift/boost/item/honk)
+- [x] Gate: store never sells HP, damage, speed or quota (checked: Gems, passes, vehicles, paint only)

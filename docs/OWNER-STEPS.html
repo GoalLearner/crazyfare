@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Owner Steps</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --text:#e8e8ee; --muted:#9a9fae; --cash:#78f082; --warn:#fad23c; --accent:#50e6ff; --danger:#f04646; --line:#262a33; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:40px 16px 80px; }
+  h1 { font-size:32px; margin:0 0 6px }
+  h2 { font-size:21px; margin:36px 0 12px; color:var(--accent) }
+  p.lead { color:var(--muted); margin:0 0 24px }
+  ol, ul { padding-left:22px } li { margin:8px 0 }
+  code, pre { font-family:"Cascadia Code", Consolas, Menlo, monospace; font-size:14px }
+  code { background:#1f232c; padding:2px 6px; border-radius:5px }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow:auto }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:14px 0 }
+  table { width:100%; border-collapse:collapse; margin:10px 0 }
+  th, td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.04em }
+  .k { color:var(--warn); white-space:nowrap } .muted { color:var(--muted) } .danger { color:var(--danger) }
+</style>
+</head>
+<body>
+<main>
+  <h1>CrazyFare: the parts only you can do</h1>
+  <p class="lead">All six phases are built. These are the dashboard, upload and publish steps that need your Roblox account. Each one is a number pasted into <code>src\shared\Config.luau</code>; the game works without them, it just hides the feature until the id exists.</p>
+
+  <h2>1. Publish the place and turn on saving</h2>
+  <div class="card">
+    <ol>
+      <li>In Studio: <strong>File → Publish to Roblox</strong>. Pick a name (CrazyFare), set it private for now.</li>
+      <li><strong>Home → Game Settings → Security</strong>: turn on <strong>Enable Studio Access to API Services</strong>. Until this is on, Gems, vehicles and leaderboards reset every time you stop a test (they use an in-memory store in Studio).</li>
+      <li><strong>Game Settings → Places → your place → Max Players: 6</strong>.</li>
+      <li>Before the first public test, set <code>Round.MinPlayers = 2</code> in Config so a round doesn't start for a lone player.</li>
+    </ol>
+  </div>
+
+  <h2>2. Create the products and passes</h2>
+  <p>Creator Dashboard → your experience → <strong>Monetization</strong>. Create each item, copy its id, paste it into the matching line in <code>Config.Monetization</code>. Anything left at 0 shows as COMING SOON in the shop.</p>
+  <table>
+    <tr><th>Create</th><th>Type</th><th>Suggested price</th><th>Config line</th></tr>
+    <tr><td>120 Gems</td><td>Developer Product</td><td>49 R$</td><td class="k">Products.GemsSmall.Id</td></tr>
+    <tr><td>320 Gems</td><td>Developer Product</td><td>99 R$</td><td class="k">Products.GemsMedium.Id</td></tr>
+    <tr><td>900 Gems</td><td>Developer Product</td><td>249 R$</td><td class="k">Products.GemsLarge.Id</td></tr>
+    <tr><td>Starter Pack (300 Gems + Go-Kart)</td><td>Developer Product</td><td>79 R$</td><td class="k">Products.StarterPack.Id</td></tr>
+    <tr><td>Night Cab</td><td>Developer Product</td><td>149 R$</td><td class="k">VehicleProducts.NightCab</td></tr>
+    <tr><td>Ice Cream Truck</td><td>Developer Product</td><td>149 R$</td><td class="k">VehicleProducts.IceCreamTruck</td></tr>
+    <tr><td>VIP (2× Gems, badge, horn)</td><td>Game Pass</td><td>199 R$</td><td class="k">GamePasses.VIP.Id</td></tr>
+    <tr><td>Pit Stop Plus (6 cards)</td><td>Game Pass</td><td>99 R$</td><td class="k">GamePasses.PitStopPlus.Id</td></tr>
+  </table>
+  <p class="muted">Private servers and Premium Payouts are switches in the dashboard, not code: <strong>Access → Private Servers</strong> and they're on by default for Premium engagement.</p>
+
+  <h2>3. Upload sounds</h2>
+  <p>Creator Dashboard → <strong>Development Items → Audio → Upload</strong>. Each upload gives an id; paste it into <code>Config.Sounds.Ids</code>. Every hook is already wired; a 0 stays silent.</p>
+  <table>
+    <tr><th>Sound</th><th>What it's for</th><th>Length</th></tr>
+    <tr><td class="k">Honk</td><td>H key</td><td>0.5 s</td></tr>
+    <tr><td class="k">HonkVip</td><td>H key for VIP owners</td><td>1 s, sillier</td></tr>
+    <tr><td class="k">Engine</td><td>loop, pitch follows speed</td><td>2–4 s seamless loop</td></tr>
+    <tr><td class="k">Drift</td><td>loop while sliding</td><td>1–2 s loop</td></tr>
+    <tr><td class="k">Boost</td><td>nitro or tank boost starts</td><td>1 s</td></tr>
+    <tr><td class="k">Pickup / Deliver / Bail</td><td>fare moments</td><td>0.5–1 s each</td></tr>
+    <tr><td class="k">Splat / Spinout</td><td>getting hit</td><td>0.5 s each</td></tr>
+    <tr><td class="k">Countdown / Go / RoundEnd</td><td>round moments</td><td>short stings</td></tr>
+    <tr><td class="k">Music</td><td>background loop</td><td>60–90 s loop</td></tr>
+    <tr><td class="k">PassengerLines.Board / Angry / Thanks</td><td>passenger voice over the text bubble</td><td>1–2 s each, a few takes later</td></tr>
+  </table>
+  <p class="muted">Use the Creator Store's free audio or your own; licensed music is out, per the design rule.</p>
+
+  <h2>4. Art, when you're ready</h2>
+  <div class="card">
+    <p>The game runs on parts on purpose. When you want real models, the order that pays off fastest: the Yellow Cab (on screen every second), then the six items (the banana is a placeholder), then the five other vehicles, then landmark buildings. Any model works if it keeps the contract in <code>VehicleBuilder.luau</code>: a <code>Chassis</code> part, four wheel attachments, and the named parts.</p>
+  </div>
+
+  <h2>5. Rebuilding after you paste ids</h2>
+<pre>cd C:\dev\crazyfare
+.\scripts\check.ps1</pre>
+  <p>That typechecks, lints and rebuilds <code>build\CrazyFare.rbxl</code>. Or ask me to do it.</p>
+
+  <h2 class="danger">Never</h2>
+  <ul>
+    <li>Sell anything that changes passenger HP, item damage, car speed or the quota. The shop has none, keep it that way.</li>
+    <li>Put a licensed character, car or song in. Everything in the game is original.</li>
+  </ul>
+</main>
+</body>
+</html>

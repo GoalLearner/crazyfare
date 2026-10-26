@@ -69,6 +69,7 @@ local profileChanged: Signal.Signal<nil> = Signal.new()
 local questsChanged: Signal.Signal<nil> = Signal.new()
 local boardsChanged: Signal.Signal<nil> = Signal.new()
 local notice: Signal.Signal<string> = Signal.new()
+local shake: Signal.Signal<number> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -81,6 +82,7 @@ State.ProfileChanged = profileChanged
 State.QuestsChanged = questsChanged
 State.BoardsChanged = boardsChanged
 State.Notice = notice -- one-shot HUD messages from the server (quest done, level up, streak)
+State.Shake = shake -- camera shake strength (Config.Shake)
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

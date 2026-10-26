@@ -38,6 +38,7 @@ local ordered: { Controller } = {
 	require(Controllers.GarageController),
 	require(Controllers.ProgressController),
 	require(Controllers.ShopController),
+	require(Controllers.SoundController),
 }
 if RunService:IsStudio() then
 	table.insert(ordered, require(Controllers.DebugPanel))

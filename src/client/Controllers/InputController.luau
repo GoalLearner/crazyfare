@@ -20,11 +20,12 @@ InputController.OnHonk = onHonk
 InputController.OnReset = onReset
 
 local keys = { forward = false, back = false, left = false, right = false, drift = false, boost = false }
+local touch: { [string]: boolean } = { forward = false, back = false, left = false, right = false, drift = false, boost = false }
 local pad = { steer = 0, throttle = 0, brake = 0, drift = false, boost = false }
 local DEADZONE = 0.18
 
 function InputController.GetThrottle(): number
-	local keyboard = (if keys.forward then 1 else 0) - (if keys.back then 1 else 0)
+	local keyboard = (if keys.forward or touch.forward then 1 else 0) - (if keys.back or touch.back then 1 else 0)
 	if keyboard ~= 0 then
 		return keyboard
 	end
@@ -32,7 +33,7 @@ function InputController.GetThrottle(): number
 end
 
 function InputController.GetSteer(): number
-	local keyboard = (if keys.right then 1 else 0) - (if keys.left then 1 else 0)
+	local keyboard = (if keys.right or touch.right then 1 else 0) - (if keys.left or touch.left then 1 else 0)
 	if keyboard ~= 0 then
 		return keyboard
 	end
@@ -40,11 +41,71 @@ function InputController.GetSteer(): number
 end
 
 function InputController.IsDrifting(): boolean
-	return keys.drift or pad.drift
+	return keys.drift or pad.drift or touch.drift
 end
 
 function InputController.IsBoosting(): boolean
-	return keys.boost or pad.boost
+	return keys.boost or pad.boost or touch.boost
+end
+
+-- On-screen buttons for phones and tablets: steer on the left, pedals on the right, actions above the pedals.
+local function buildTouchControls()
+	local UI = require(script.Parent.Parent.UI)
+	local cfg = Config.Touch
+	local screen = UI.Screen("CrazyFareTouch", 8)
+	local size = cfg.ButtonSize
+	local m = cfg.Margin
+
+	local function hold(label: string, x: number, y: number, anchorX: number, onDown: () -> (), onUp: () -> ())
+		local b = UI.New("TextButton", {
+			AnchorPoint = Vector2.new(anchorX, 1),
+			Position = UDim2.new(anchorX, x, 1, -y),
+			Size = UDim2.fromOffset(size, size),
+			BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+			BackgroundTransparency = cfg.Opacity,
+			BorderSizePixel = 0,
+			Font = UI.Font,
+			TextSize = 18,
+			TextColor3 = UI.White,
+			Text = label,
+			AutoButtonColor = false,
+		}, screen) :: TextButton
+		UI.Corner(math.floor(size / 2), b)
+		b.InputBegan:Connect(function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				onDown()
+				b.BackgroundTransparency = cfg.Opacity * 0.4
+			end
+		end)
+		b.InputEnded:Connect(function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				onUp()
+				b.BackgroundTransparency = cfg.Opacity
+			end
+		end)
+		return b
+	end
+
+	local function holdFlag(label: string, x: number, y: number, anchorX: number, field: string)
+		hold(label, x, y, anchorX, function()
+			touch[field] = true
+		end, function()
+			touch[field] = false
+		end)
+	end
+	local function tap(label: string, x: number, y: number, anchorX: number, signal: Signal.Signal<nil>)
+		hold(label, x, y, anchorX, function()
+			signal:Fire()
+		end, function() end)
+	end
+	holdFlag("<", m, m, 0, "left")
+	holdFlag(">", m + size + 10, m, 0, "right")
+	holdFlag("GAS", -m, m, 1, "forward")
+	holdFlag("BRK", -(m + size + 10), m, 1, "back")
+	holdFlag("DRIFT", -m, m + size + 10, 1, "drift")
+	holdFlag("BOOST", -(m + size + 10), m + size + 10, 1, "boost")
+	tap("ITEM", m, m + size + 10, 0, onItem)
+	tap("HONK", m + size + 10, m + size + 10, 0, onHonk)
 end
 
 local function handle(_actionName: string, inputState: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
@@ -128,6 +189,9 @@ function InputController.Init()
 		K.PadHonk,
 		K.PadReset
 	)
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		buildTouchControls()
+	end
 	UserInputService.WindowFocusReleased:Connect(function()
 		keys.forward = false
 		keys.back = false

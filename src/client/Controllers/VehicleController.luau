@@ -43,6 +43,7 @@ local nearMissCooldownUntil = 0
 local nearMissCheckAt = 0
 local recentNearMiss: { [BasePart]: number } = {}
 local hopHeld = false
+local lastSpeed = 0
 local lastHopAt = 0
 
 local comboEvent: RemoteEvent
@@ -392,6 +393,10 @@ local function step(rawDt: number)
 		checkNearMiss(ch, now)
 	end
 
+	if grounded and lastSpeed - speed > Config.Passenger.CrashDeltaThreshold * 0.8 then
+		State.Shake:Fire(Config.Shake.Crash)
+	end
+	lastSpeed = speed
 	State.speed = speed
 	State.forwardSpeed = forwardSpeed
 	State.drifting = drifting

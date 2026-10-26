@@ -77,6 +77,7 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 		State.nitroUntil = now() + (payload.seconds or Config.Items.LemonNitro.Seconds)
 	elseif kind == "Spinout" then
 		State.spinUntil = now() + (payload.seconds or Config.Items.Banana.SpinSeconds)
+		State.Shake:Fire(Config.Shake.Spinout)
 		State.spinDirection = if math.random() < 0.5 then -1 else 1
 	elseif kind == "Oil" then
 		State.oilUntil = now() + (payload.seconds or Config.Items.OilSlick.Seconds)
@@ -85,6 +86,7 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 	elseif kind == "ShieldBreak" then
 		State.shieldUp = false
 	elseif kind == "Splat" then
+		State.Shake:Fire(Config.Shake.Splat)
 		State.splatStartedAt = now()
 		local wipe = payload.seconds or Config.Items.Tomato.WipeSeconds
 		local extraWiper = localPlayer:GetAttribute("Pit_ExtraWiper")
