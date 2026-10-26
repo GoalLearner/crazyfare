@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local VehicleBuilder = require(ReplicatedStorage.Shared.VehicleBuilder)
 
 local VehicleRig = {}
 
@@ -92,6 +93,20 @@ function VehicleRig.Rig(imported: Instance?, vehicleId: string, targetLength: nu
 	mesh.Name = vehicleId
 	mesh:SetAttribute("VehicleId", vehicleId)
 	mesh:SetAttribute("WheelType", Config.Vehicles.Stats[vehicleId].WheelType)
+	-- Vehicles flagged TintMesh take their Config colour (and garage paint) on the body; wheels keep the imported look.
+	if Config.Vehicles.Stats[vehicleId].TintMesh then
+		for _, part in mesh:GetDescendants() do
+			if part:IsA("BasePart") and part ~= chassis and part ~= silhouette and not string.find(string.lower(part.Name), "wheel", 1, true) then
+				part:SetAttribute("Paintable", true)
+				if part:IsA("MeshPart") and part.TextureID ~= "" and not part:FindFirstChildOfClass("SurfaceAppearance") then
+					local appearance = Instance.new("SurfaceAppearance")
+					appearance.ColorMap = part.TextureID
+					appearance.Parent = part
+				end
+			end
+		end
+		VehicleBuilder.ApplyPaint(mesh, nil)
+	end
 	CollectionService:AddTag(mesh, Config.Tags.VehicleTemplate)
 	mesh:PivotTo(CFrame.new())
 

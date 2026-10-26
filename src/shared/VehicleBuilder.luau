@@ -257,6 +257,11 @@ function VehicleBuilder.ApplyPaint(model: Model, color: Color3?)
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") and part:GetAttribute("Paintable") == true then
 			part.Color = target
+			-- Imported meshes carry their texture on a SurfaceAppearance; its Color is what tints them.
+			local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
+			if appearance then
+				appearance.Color = target
+			end
 		end
 	end
 end

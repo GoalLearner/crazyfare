@@ -29,6 +29,7 @@ export type VehicleStats = {
 	SteerMax: number, -- degrees at standstill
 	Gimmick: string,
 	Color: Color3,
+	TintMesh: boolean?, -- imported mesh body takes Color and garage paint (VehicleRig marks it Paintable; wheels stay as imported)
 	GemPrice: number, -- 0 = everyone owns it
 	-- Gimmick flags; systems branch on these, never on the vehicle id.
 	Hop: boolean?, -- Space hops instead of drifting
@@ -343,6 +344,7 @@ Config.Vehicles = {
 			SteerMax = 32,
 			Gimmick = "armor",
 			Color = Color3.fromRGB(30, 32, 44),
+			TintMesh = true,
 			GemPrice = 400,
 			PassengerDamageMult = 0.8,
 		},
