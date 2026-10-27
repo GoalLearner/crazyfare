@@ -93,7 +93,8 @@ Config.Keys = {
 }
 
 Config.Round = {
-	MinPlayers = 1, -- 1 so a solo Studio run plays; raise to 2 for the public place
+	MinPlayers = 2, -- live servers wait for this many before a match starts
+	StudioMinPlayers = 1, -- so a solo Studio run plays
 	AutoStartDelay = 4, -- seconds after MinPlayers is met before PreCountdown
 	PreCountdownSeconds = 3, -- "read the board": NPCs visible, cars frozen
 	CountdownSeconds = 3, -- 3-2-1

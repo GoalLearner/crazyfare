@@ -221,13 +221,17 @@ function RoundService.Init()
 	end)
 end
 
+local function minPlayers(): number
+	return if RunService:IsStudio() then Config.Round.StudioMinPlayers else Config.Round.MinPlayers
+end
+
 function RoundService.Start()
 	RunService.Heartbeat:Connect(function()
 		local t = now()
 		local playerCount = #Players:GetPlayers()
 
 		if phase == "Waiting" then
-			if playerCount >= Config.Round.MinPlayers then
+			if playerCount >= minPlayers() then
 				if not waitingSince then
 					waitingSince = t
 				elseif t - (waitingSince :: number) >= Config.Round.AutoStartDelay then
@@ -260,7 +264,7 @@ function RoundService.Start()
 			end
 		elseif phase == "MatchEnd" then
 			if t >= phaseEndsAt then
-				if playerCount >= Config.Round.MinPlayers then
+				if playerCount >= minPlayers() then
 					beginMatch()
 				else
 					beginWaiting()
