@@ -970,14 +970,16 @@ Config.Chaos = {
 		BotTrapLook = 18, -- ...and this many studs ahead...
 		BotTrapReach = 3, -- ...within its trigger radius plus this of the bot's line
 	},
-	-- Weather: every race round rolls one by Weight among those its map allows (Arcade and the gaps between matches stay
+	-- Weather: every race round rolls one by Weight (0 = off) among those its map allows (Arcade and the gaps between matches stay
 	-- Clear). The server sets the sky for everyone (WeatherService); the grip and speed rules work on players
 	-- (VehicleController), traffic and bots alike. The banner replaces READ THE BOARD while the round gets ready.
 	Weather = {
 		List = {
 			{ Id = "Clear", Name = "", Sub = "", Weight = 4, Color = Color3.new(1, 1, 1), Particle = "", ClockTime = -1, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 1, BotSpeedMult = 1 },
 			{ Id = "Rain", Name = "RAIN!", Sub = "SLICK ROADS. DRIFTS FILL BOOST FAST", Weight = 2, Color = Color3.fromRGB(120, 180, 255), Particle = "Rain", ClockTime = -1, Brightness = 0.6, FogDensity = 0.42, Haze = 1.5, Tint = Color3.fromRGB(205, 215, 230), Saturation = -0.3, GripMult = 0.75, TopSpeedMult = 1, DriftBoostMult = 1.6, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.9, BotSpeedMult = 0.92 },
-			{ Id = "Fog", Name = "FOG!", Sub = "CAN'T SEE A THING. FOLLOW THE ARROW", Weight = 1, Color = Color3.fromRGB(200, 205, 215), Particle = "", ClockTime = -1, Brightness = 0.85, FogDensity = 0.7, Haze = 2.5, Tint = Color3.fromRGB(235, 235, 240), Saturation = -0.35, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.85, BotSpeedMult = 0.9 },
+			-- Fog is OFF (owner 2026-10-27: "way too foggy", then not sure he likes it at all): Weight 0 never rolls; Studio's
+			-- Weather button still shows it. Weight 1 brings it back (already lightened from Density 0.7 / Haze 2.5).
+			{ Id = "Fog", Name = "FOG!", Sub = "HARD TO SEE. FOLLOW THE ARROW", Weight = 0, Color = Color3.fromRGB(200, 205, 215), Particle = "", ClockTime = -1, Brightness = 0.95, FogDensity = 0.48, Haze = 1, Tint = Color3.fromRGB(235, 235, 240), Saturation = -0.2, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.85, BotSpeedMult = 0.9 },
 			{ Id = "Night", Name = "NIGHT SHIFT!", Sub = "NIGHT RATES: FARES x1.25", Weight = 1, Color = Color3.fromRGB(170, 140, 255), Particle = "", ClockTime = 0, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1.25, PayLine = "NIGHT RATES x1.25", TrafficSpeedMult = 1, BotSpeedMult = 1 },
 			{ Id = "Snow", Name = "SNOW!", Sub = "ICY ROADS. EASY ON THE TURNS", Weight = 1, Maps = { City = true }, Color = Color3.fromRGB(220, 240, 255), Particle = "Snow", ClockTime = -1, Brightness = 1.1, FogDensity = 0.4, Haze = 1, Tint = Color3.fromRGB(225, 235, 255), Saturation = -0.25, GripMult = 0.6, TopSpeedMult = 0.92, DriftBoostMult = 1.2, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.8, BotSpeedMult = 0.85 },
 		} :: { WeatherDef },

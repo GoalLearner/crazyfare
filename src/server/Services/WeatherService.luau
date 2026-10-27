@@ -62,14 +62,14 @@ function WeatherService.Set(id: string)
 	end
 end
 
--- A new race round: one weather by Weight among those this map allows (Maps nil = any map).
+-- A new race round: one weather by Weight among those this map allows (Maps nil = any map; Weight 0 = off).
 function WeatherService.Roll()
 	local map = MapService.GetCurrentMap()
 	local pool: { Config.WeatherDef } = {}
 	local total = 0
 	for _, def in Config.Chaos.Weather.List do
 		local maps = def.Maps
-		if not maps or maps[map] then
+		if def.Weight > 0 and (not maps or maps[map]) then
 			table.insert(pool, def)
 			total += def.Weight
 		end
