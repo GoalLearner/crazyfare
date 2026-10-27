@@ -373,7 +373,7 @@ local function onItem(payload: Types.ItemEventPayload)
 end
 
 function EffectsController.Init()
-	splatScreen = UI.Screen("CrazyFareSplat", 20)
+	splatScreen = UI.Screen("CrazyFareSplat", 20, true)
 	for _, part in CollectionService:GetTagged(Config.Tags.DropoffPoint) do
 		addSign(part)
 	end

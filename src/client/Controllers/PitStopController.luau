@@ -78,6 +78,7 @@ local function build()
 		BackgroundTransparency = 0.08,
 		Visible = false,
 	}, screen)
+	UI.CenterBelowTopbar(panel)
 	UI.Corner(16, panel)
 	for i, spec in { { id = "cards", label = "PIT STOP" }, { id = "garage", label = "GARAGE" } } do
 		local button = UI.New("TextButton", {

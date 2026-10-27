@@ -171,6 +171,9 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - Leaderboards: weekly (resets Monday), friends, Biggest Tip Ever, Most Passengers Knocked Out, Best Arcade Run. Weekly top 10 gets an exclusive trail.
 - Personal bests: best match license and best Arcade run (and its grade), saved on the profile.
 - Sound: four licensed tracks play in turn; short stings mark the moments (combo 5 and 10, Golden Fare, a new best, a win) with the music dipping under them; the last 5 seconds of any clock tick out loud.
+- Sessions that chain (Roblox ranks play time, return days and playing with friends): every match in a row pays a small streak bonus, a match with a Roblox friend in the server pays a friend bonus, and a friend who joins through your INVITE pays you both once (Roblox's referral system). All earned by play, never sold.
+- A weekly rhythm: live events on fixed weekly windows (GOLDEN HOUR on Saturday, DOUBLE GEMS on Sunday), shown under the Gems while live and between matches when one is near. Change them on update day in `Config.Events`.
+- Phones first: the whole HUD and every panel shrink to fit a phone screen under Roblox's top bar; the touch pads stay thumb-sized.
 - Seasons later (new map + pass + limited event every 6–8 weeks). No ranked MMR.
 
 ## 10. Monetization

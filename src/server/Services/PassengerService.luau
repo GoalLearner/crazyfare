@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
+local Events = require(ReplicatedStorage.Shared.Events)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 
@@ -328,10 +329,12 @@ local function goldenInPlay(): boolean
 	return false
 end
 
--- `golden` true forces a Golden Fare (debug); nil rolls Config.Golden.Chance while none is in play.
+-- `golden` true forces a Golden Fare (debug); nil rolls Config.Golden.Chance (more during a GOLDEN HOUR event) while
+-- none is in play.
 function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?): Npc
 	local tierDef = Config.Fares.Tiers[tier]
-	local isGolden = if golden ~= nil then golden else (not goldenInPlay() and rng:NextNumber() < Config.Golden.Chance)
+	local chance = Config.Golden.Chance * Events.GoldenChanceMult(os.time())
+	local isGolden = if golden ~= nil then golden else (not goldenInPlay() and rng:NextNumber() < chance)
 	local id = nextId
 	nextId += 1
 	local groundY = MapService.GroundY(point.position, point.position.Y)

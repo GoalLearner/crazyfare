@@ -1,7 +1,9 @@
 --!strict
 -- Tiny helpers for building UI from code. No Studio-authored GUI assets anywhere in the project.
 
-local Money = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Money"))
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Money = require(Shared:WaitForChild("Money"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local UI = {}
 
@@ -27,7 +29,73 @@ function UI.New(className: string, props: { [string]: any }, parent: Instance?):
 	return inst
 end
 
-function UI.Screen(name: string, displayOrder: number?): ScreenGui
+-- Phones: when the screen below Roblox's top bar is smaller than Config.Hud.FitSize every scaled ScreenGui shrinks to
+-- fit. A UIScale on the ScreenGui keeps each piece pinned to its corner. Screen points (WorldToViewportPoint,
+-- AbsolutePosition) divided by UI.FitScale() are offsets inside a scaled screen.
+local fitScales: { UIScale } = {}
+local fitListeners: { () -> () } = {}
+local fitScale = 1
+local fitWatching = false
+
+-- Roblox's top bar height in px; it never scales.
+local function topbar(): number
+	return math.max(game:GetService("GuiService"):GetGuiInset().Y, Config.Hud.TopbarHeight) -- 0 before the bar loads
+end
+
+local function refit()
+	local camera = workspace.CurrentCamera
+	local fit = Config.Hud.FitSize
+	local view = if camera then camera.ViewportSize else fit + Vector2.new(0, topbar())
+	fitScale = math.clamp(math.min(view.X / fit.X, (view.Y - topbar()) / fit.Y), Config.Hud.FitMinScale, 1)
+	for _, scale in fitScales do
+		scale.Scale = fitScale
+	end
+	for _, listener in fitListeners do
+		listener()
+	end
+end
+
+local function watchFit()
+	if fitWatching then
+		return
+	end
+	fitWatching = true
+	local function hook()
+		local camera = workspace.CurrentCamera
+		if camera then
+			camera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
+		end
+		refit()
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(hook)
+	hook()
+end
+
+function UI.FitScale(): number
+	return fitScale
+end
+
+-- Runs now and whenever the phone scale changes (for pieces placed by UI.BelowTopbar or UI.CenterBelowTopbar).
+function UI.OnFit(listener: () -> ())
+	table.insert(fitListeners, listener)
+	listener()
+end
+
+-- A Y offset in a scaled screen that keeps a piece the same distance below Roblox's top bar at any scale (the bar
+-- itself never shrinks). designY is the full-size layout, made for a bar Config.Hud.TopbarHeight tall.
+function UI.BelowTopbar(designY: number): number
+	return designY + topbar() / fitScale - Config.Hud.TopbarHeight
+end
+
+-- A centered panel (AnchorPoint 0.5, 0.5) centers in the space below the top bar, so a tall one never slides under it.
+function UI.CenterBelowTopbar(panel: GuiObject)
+	UI.OnFit(function()
+		panel.Position = UDim2.new(0.5, 0, 0.5, topbar() / fitScale / 2)
+	end)
+end
+
+-- `fixed` screens keep their size on phones (touch pads, full-screen effects).
+function UI.Screen(name: string, displayOrder: number?, fixed: boolean?): ScreenGui
 	local player = game:GetService("Players").LocalPlayer
 	local gui = UI.New("ScreenGui", {
 		Name = name,
@@ -36,6 +104,11 @@ function UI.Screen(name: string, displayOrder: number?): ScreenGui
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = displayOrder or 0,
 	}, player:WaitForChild("PlayerGui")) :: ScreenGui
+	if not fixed then
+		watchFit()
+		local scale = UI.New("UIScale", { Name = "Fit", Scale = fitScale }, gui) :: UIScale
+		table.insert(fitScales, scale)
+	end
 	return gui
 end
 
@@ -102,6 +175,9 @@ end
 
 function UI.FormatTime(seconds: number): string
 	local s = math.max(0, math.floor(seconds + 0.999))
+	if s >= 3600 then
+		return string.format("%d:%02d:%02d", s // 3600, s // 60 % 60, s % 60)
+	end
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 

@@ -150,6 +150,7 @@ local function build()
 	end)
 
 	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 420), BackgroundTransparency = 0.05, Visible = false }, screen)
+	UI.CenterBelowTopbar(panel)
 	UI.Corner(16, panel)
 	UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(200, 36), Text = "SHOP", TextXAlignment = Enum.TextXAlignment.Left }, panel)
 	gemsLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -70, 0, 18), Size = UDim2.fromOffset(200, 28), Text = "", TextColor3 = UI.Accent, TextXAlignment = Enum.TextXAlignment.Right }, panel)

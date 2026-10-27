@@ -86,6 +86,8 @@ export type PitStopCardDef = { Name: string, Effect: string, Share: number, Valu
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
 export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string? }
 export type GamePassDef = { Id: number, Label: string, Effect: string }
+export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: number, GemMult: number }
+export type EventWindow = { Kind: string, Day: number, HourUtc: number, Hours: number } -- Day: 1 = Sunday ... 7 = Saturday
 
 local Config = {}
 
@@ -711,6 +713,45 @@ Config.Streak = {
 	MaxDays = 7,
 }
 
+-- Sessions: Roblox ranks experiences by play time, return days and playing with friends, so the next match, a friend
+-- in the server and an invite that brings someone new all pay Gems (earned by play, never sold). The streak survives a
+-- trip to Arcade and back.
+Config.Session = {
+	StreakGems = 2, -- each match in a row after the first adds this many Gems to the match award...
+	StreakMaxGems = 10, -- ...up to this (the 6th match in a row and on)
+	FriendGems = 3, -- a match finished with a Roblox friend in the server
+	StreakLine = "STREAK x%d +%d",
+	FriendLine = "FRIEND +%d",
+	InviteButton = "INVITE",
+	InvitePrompt = "Race me in CrazyFare!",
+	-- Roblox's referral system: someone new who joins through your invite pays you both, once.
+	Referral = {
+		InviteeGems = 50,
+		InviterGems = 100, -- paid on the spot, or on the inviter's next join when they're elsewhere
+		MaxPerInviter = 10, -- invites that pay, per account, ever
+		Store = "CF_Referrals", -- DataStore of invites waiting for an inviter who wasn't in the server
+		InviteeNotice = "A FRIEND INVITED YOU  +%d GEMS",
+		InviterNotice = "YOUR FRIEND JOINED  +%d GEMS",
+	},
+}
+
+-- Live events: weekly windows (UTC) when something good happens in every server, so players have a time to come back
+-- to. Edit on update day; servers and clients read the same schedule (src/shared/Events.luau).
+Config.Events = {
+	Kinds = {
+		GoldenHour = { Name = "GOLDEN HOUR", Color = Color3.fromRGB(255, 200, 40), GoldenChanceMult = 4, GemMult = 1 },
+		DoubleGems = { Name = "DOUBLE GEMS", Color = Color3.fromRGB(80, 230, 255), GoldenChanceMult = 1, GemMult = 2 },
+	} :: { [string]: EventKindDef },
+	Weekly = {
+		{ Kind = "GoldenHour", Day = 7, HourUtc = 18, Hours = 1 }, -- Saturday 10-11 AM PST
+		{ Kind = "DoubleGems", Day = 1, HourUtc = 18, Hours = 3 }, -- Sunday 10 AM-1 PM PST
+	} :: { EventWindow },
+	SoonHours = 48, -- between matches, the next event shows this far ahead
+	DebugAttribute = "DebugEvent", -- Studio: the Debug panel's "Next event" pretends this kind is live for the next hour
+	LiveLine = "%s  %s LEFT", -- name, time left
+	SoonLine = "%s  %s", -- name, day and time (the player's own clock)
+}
+
 -- Leaderboards (OrderedDataStore; in-memory when DataStores are unavailable).
 Config.Leaderboards = {
 	RefreshSeconds = 60,
@@ -836,6 +877,8 @@ Config.Data = {
 		ArcadeBest = 0, -- best Arcade run (cents)
 		ArcadeBestLicense = 0,
 		CoachDone = false, -- the first-match coach prompts have all been shown
+		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
+		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)
 	},
 }
 
@@ -1027,6 +1070,12 @@ Config.Hud = {
 	CountdownWarn = 10, -- seconds left: the countdown by the cab turns yellow
 	CountdownDanger = 5, -- and red, ticking every second
 	DropRing = { Segments = 32, Width = 0.7, Thickness = 0.2, Transparency = 0.1, DiscTransparency = 0.82, PulseSeconds = 0.8 },
+	-- Phones: when the screen below Roblox's top bar is smaller than FitSize, every HUD and panel shrinks to fit (never
+	-- below FitMinScale), each piece staying in its corner. Touch pads and full-screen effects keep their size.
+	FitSize = Vector2.new(900, 580), -- the garage (820 x 580) is the biggest panel
+	FitMinScale = 0.5,
+	TopbarHeight = 58, -- px: Roblox's top bar, which the top-left money block sits under (it never scales)
+	EventChipY = 196, -- px from the top: the live-event line under the Gems
 }
 
 -- Drop-off names, given out when the map is built: a drop-off on a landmark or park block takes that block's name, the

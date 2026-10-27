@@ -1,14 +1,17 @@
 --!strict
 -- Gems: the persistent currency, stored in the player's profile (DataService).
--- Awarded only at match end (placement + fares delivered). Never spendable mid-match.
+-- Awarded only at match end (placement + fares delivered + the session bonuses: a streak of matches, a friend in the
+-- server), doubled for VIP and by a live event's multiplier. Never spendable mid-match.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Events = require(ReplicatedStorage.Shared.Events)
 local DataService = require(script.Parent.DataService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local SessionService = require(script.Parent.SessionService)
 
 local GemService = {}
 
@@ -24,10 +27,26 @@ end
 function GemService.AwardMatch(results: { Types.PodiumEntry }): { Types.PodiumEntry }
 	local placement = Config.Gems.Placement
 	local contested = #results >= 2 -- no rivals, no placement bonus
+	local t = os.time()
+	local eventMult = Events.GemMult(t)
+	local eventKind = Events.Live(t)
 	for i, entry in results do
 		local byPlace = if contested then placement[math.min(i, #placement)] or 0 else 0
 		local gems = byPlace + entry.fares * Config.Gems.PerFare
 		local player = Players:GetPlayerByUserId(entry.id) -- nil for a bot: bots take places but earn nothing
+		if player then
+			local streak = SessionService.CountMatch(player)
+			local streakGems = SessionService.StreakGems(streak)
+			local friendGems = if SessionService.HasFriendHere(player) then Config.Session.FriendGems else 0
+			gems += streakGems + friendGems
+			entry.streak = if streakGems > 0 then streak else nil
+			entry.streakGems = if streakGems > 0 then streakGems else nil
+			entry.friendGems = if friendGems > 0 then friendGems else nil
+			if eventMult > 1 and eventKind then
+				gems *= eventMult
+				entry.event = eventKind
+			end
+		end
 		if player and MonetizationService.IsVip(player) then
 			gems *= Config.Monetization.VipGemMult
 		end

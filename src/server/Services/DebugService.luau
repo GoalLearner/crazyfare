@@ -56,6 +56,17 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	Bail = function(player)
 		PassengerService.Bail(player, "hp")
 	end,
+	-- Cycles a pretend live event (none -> each kind -> none) so the event line and its multipliers can be seen today.
+	NextEvent = function()
+		local ids: { string } = {}
+		for id in Config.Events.Kinds do
+			table.insert(ids, id)
+		end
+		table.sort(ids)
+		local current = workspace:GetAttribute(Config.Events.DebugAttribute)
+		local index = if typeof(current) == "string" then table.find(ids, current) or 0 else 0
+		workspace:SetAttribute(Config.Events.DebugAttribute, ids[index + 1]) -- past the last: nil, no event
+	end,
 	-- Cycles the garage so every imported vehicle mesh can be checked in one test: grants the next car if needed, swaps now.
 	NextVehicle = function(player)
 		local ids: { string } = {}

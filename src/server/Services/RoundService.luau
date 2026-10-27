@@ -5,7 +5,8 @@
 -- Cash carries across rounds inside a match (unspent cash is quota progress) and resets with the match.
 -- Arcade mode (Config.Arcade): one run on the clock instead of rounds: PreCountdown -> Countdown -> Playing (the clock
 -- grows with pickups and arrivals) -> MatchEnd (the run's grade) -> the next run. A reserved Arcade server is always
--- in it; in Studio the server switches on request.
+-- in it; in Studio the server switches on request. RACE sends you back to the server you came from (your friends are
+-- there), or to any server if that one is gone or full.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -26,6 +27,7 @@ local ProgressionService = require(script.Parent.ProgressionService)
 local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 local BotService = require(script.Parent.BotService)
+local SessionService = require(script.Parent.SessionService)
 
 local MapService = require(script.Parent.MapService)
 
@@ -42,6 +44,8 @@ local matchCount = 0
 local roundState: RemoteEvent
 local mode = "Race" -- "Race" | "Arcade"
 local arcadeServer = false -- a reserved server someone was sent to for Arcade
+local returnTo: { [Player]: string } = {} -- Arcade server: the JobId each player came from
+local retried: { [Player]: boolean } = {}
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -273,7 +277,28 @@ function RoundService.Init()
 		local joined = if ok and typeof(data) == "table" then (data :: any).TeleportData else nil
 		if typeof(joined) == "table" and (joined :: any).mode == "Arcade" and game.PrivateServerId ~= "" then
 			arcadeServer = true
+			local from = (joined :: any).from
+			if typeof(from) == "string" and from ~= "" then
+				returnTo[player] = from
+			end
 		end
+	end)
+	Players.PlayerRemoving:Connect(function(player: Player)
+		returnTo[player] = nil
+		retried[player] = nil
+	end)
+	-- Back from Arcade: the server you came from may be gone or full; then any server will do.
+	game:GetService("TeleportService").TeleportInitFailed:Connect(function(player: Player, _result: any, message: string)
+		if not arcadeServer or retried[player] or not returnTo[player] then
+			return
+		end
+		retried[player] = true
+		warn("[RoundService] return teleport failed, any server instead: " .. tostring(message))
+		pcall(function()
+			local options = Instance.new("TeleportOptions")
+			options:SetTeleportData({ streak = SessionService.GetStreak(player) })
+			game:GetService("TeleportService"):TeleportAsync(game.PlaceId, { player }, options)
+		end)
 	end)
 	Remotes.Get("ArcadeRequest").OnServerEvent:Connect(function(player: Player, action: any)
 		if not RateLimiter.Allow(player, "ArcadeRequest", Config.Net.RateLimits.ArcadeRequest) then
@@ -289,7 +314,8 @@ function RoundService.Init()
 			else
 				local sent, err = pcall(function()
 					local code = TeleportService:ReserveServer(game.PlaceId)
-					TeleportService:TeleportToPrivateServer(game.PlaceId, code, { player }, nil, { mode = "Arcade" })
+					local data = { mode = "Arcade", from = game.JobId, streak = SessionService.GetStreak(player) }
+					TeleportService:TeleportToPrivateServer(game.PlaceId, code, { player }, nil, data)
 				end)
 				if not sent then
 					warn("[RoundService] Arcade teleport failed: " .. tostring(err))
@@ -300,7 +326,13 @@ function RoundService.Init()
 				beginMatch()
 			else
 				pcall(function()
-					TeleportService:TeleportAsync(game.PlaceId, { player })
+					local options = Instance.new("TeleportOptions")
+					local from = returnTo[player]
+					if from then
+						options.ServerInstanceId = from
+					end
+					options:SetTeleportData({ streak = SessionService.GetStreak(player) })
+					TeleportService:TeleportAsync(game.PlaceId, { player }, options)
 				end)
 			end
 		end

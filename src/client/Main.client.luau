@@ -38,6 +38,8 @@ local ordered: { Controller } = {
 	require(Controllers.RiderController),
 	require(Controllers.CoachController),
 	require(Controllers.ArcadeController),
+	require(Controllers.InviteController),
+	require(Controllers.EventController),
 	require(Controllers.PitStopController),
 	require(Controllers.GarageController),
 	require(Controllers.ProgressController),

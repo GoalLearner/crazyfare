@@ -55,6 +55,10 @@ export type PodiumEntry = {
 	bot: boolean?, -- an AI rival taxi
 	license: string?, -- match end / Arcade end, people only: the grade this match earned (Config.License.Grades)
 	newBest: boolean?, -- that grade beats their best (Arcade: the run beats their best run)
+	streak: number?, -- match end: matches in a row, when it paid a bonus
+	streakGems: number?,
+	friendGems: number?, -- a Roblox friend was in the server
+	event: string?, -- a live event multiplied the Gems (Config.Events.Kinds id)
 }
 
 export type RoundStatePayload = {

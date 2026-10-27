@@ -89,6 +89,7 @@ local plateStroke: UIStroke
 local plateBest: TextLabel
 local podiumTitle: TextLabel
 local rematchButton: TextButton
+local podiumBonus: TextLabel
 local gemsLabel: TextLabel
 
 local function tierColor(tier: string): Color3
@@ -188,18 +189,18 @@ local function addPopup(kind: string, amount: number)
 	table.insert(popups, { root = root, label = label, scale = scale, kind = kind, amount = amount, born = now, stack = 0 })
 end
 
--- Screen point just above the cab, or a spot above centre when the cab is off screen.
+-- Point just above the cab, or a spot above centre when the cab is off screen, as an offset in the (phone-scaled) HUD.
 local function popupAnchor(): Vector2
 	local camera = workspace.CurrentCamera
 	local ch = State.chassis
 	if camera and ch then
 		local point, onScreen = camera:WorldToViewportPoint(ch.Position + Vector3.new(0, 7, 0))
 		if onScreen then
-			return Vector2.new(point.X, point.Y)
+			return Vector2.new(point.X, point.Y) / UI.FitScale()
 		end
 	end
 	local size = if camera then camera.ViewportSize else Vector2.new(1280, 720)
-	return Vector2.new(size.X / 2, size.Y * 0.45)
+	return Vector2.new(size.X / 2, size.Y * 0.45) / UI.FitScale()
 end
 
 local function updatePopups()
@@ -226,7 +227,7 @@ local function burstCoins(payout: number)
 	local hud = Config.Hud
 	local count = math.clamp(math.round(payout / 100 * hud.BurstCoinsPerDollar), hud.BurstCoinsMin, hud.BurstCoinsMax)
 	local from = popupAnchor()
-	local to = RollingCounter.GetCenter(totalCounter)
+	local to = RollingCounter.GetCenter(totalCounter) / UI.FitScale()
 	for i = 1, count do
 		local coin = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(from.X, from.Y), Size = UDim2.fromOffset(30, 30), TextColor3 = UI.Cash, TextStrokeTransparency = 0.1, Text = "$" }, popupLayer)
 		local angle = rng:NextNumber(0, math.pi * 2)
@@ -352,6 +353,9 @@ local function build()
 
 	-- Cash + quota (top-left)
 	local cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 76), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
+	UI.OnFit(function()
+		cashBox.Position = UDim2.fromOffset(24, UI.BelowTopbar(76))
+	end)
 	totalCounter = RollingCounter.new(cashBox, Config.Hud.TotalHeight, UI.Cash, UDim2.fromOffset(0, 4), 0)
 	quotaBar = UI.Bar({ Position = UDim2.fromOffset(0, 62), Size = UDim2.fromOffset(220, 10) }, UI.Cash, cashBox)
 	quotaLabel = UI.Label({ Position = UDim2.fromOffset(0, 74), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, cashBox)
@@ -426,6 +430,8 @@ local function build()
 	podium = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(420, 320), BackgroundTransparency = 0.1, Visible = false }, screen)
 	UI.Corner(16, podium)
 	podiumTitle = UI.Label({ Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 40), Text = "ROUND OVER" }, podium)
+	-- Match end: what your Gems got on top (a streak of matches, a friend in the server, a live event)
+	podiumBonus = UI.Label({ Position = UDim2.fromOffset(0, 50), Size = UDim2.new(1, 0, 0, 14), Text = "", TextColor3 = UI.Accent, Font = UI.FontMedium, Visible = false }, podium)
 	podiumRows = UI.Frame({ Position = UDim2.fromOffset(20, 66), Size = UDim2.new(1, -40, 1, -110), BackgroundTransparency = 1 }, podium)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, podiumRows)
 	podiumFooter = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -40, 0, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, podium)
@@ -481,6 +487,27 @@ local function showPlate(results: { Types.PodiumEntry })
 	punch(scaleOf(plate), 1.5)
 end
 
+-- "STREAK x3 +4  ·  FRIEND +3  ·  DOUBLE GEMS x2" for your own row, or nothing.
+local function bonusText(results: { Types.PodiumEntry }): string
+	local parts = {}
+	for _, entry in results do
+		if entry.id ~= Players.LocalPlayer.UserId then
+			continue
+		end
+		if entry.streak and entry.streakGems then
+			table.insert(parts, string.format(Config.Session.StreakLine, entry.streak, entry.streakGems))
+		end
+		if entry.friendGems then
+			table.insert(parts, string.format(Config.Session.FriendLine, entry.friendGems))
+		end
+		local event = if entry.event then Config.Events.Kinds[entry.event] else nil
+		if event then
+			table.insert(parts, string.format("%s x%d", event.Name, event.GemMult))
+		end
+	end
+	return table.concat(parts, "  \u{00B7}  ")
+end
+
 local function fillPodium(results: { Types.PodiumEntry })
 	for _, child in podiumRows:GetChildren() do
 		if child:IsA("Frame") then
@@ -516,6 +543,9 @@ local function onRound(payload: Types.RoundStatePayload)
 		fillPodium(payload.results)
 		podiumTitle.Text = if arcade and isMatchEnd then Config.Arcade.Title elseif isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
 		rematchButton.Visible = isMatchEnd
+		local bonusLine = if isMatchEnd and not arcade then bonusText(payload.results) else ""
+		podiumBonus.Text = bonusLine
+		podiumBonus.Visible = bonusLine ~= ""
 		if isMatchEnd then
 			showPlate(payload.results)
 		else

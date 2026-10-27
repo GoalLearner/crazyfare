@@ -214,6 +214,7 @@ local function build()
 	end)
 
 	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(CONTENT_WIDTH, STANDALONE_CONTENT_Y + CONTENT_HEIGHT + 16), BackgroundTransparency = 0.05, Visible = false }, screen)
+	UI.CenterBelowTopbar(panel)
 	UI.Corner(16, panel)
 	UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(200, 36), Text = "GARAGE", TextXAlignment = Enum.TextXAlignment.Left }, panel)
 	local close = button("X", Color3.fromRGB(80, 50, 50), UDim2.fromOffset(34, 34), panel, true)

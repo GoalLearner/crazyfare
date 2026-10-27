@@ -33,6 +33,8 @@ export type ProfileData = {
 	ArcadeBest: number,
 	ArcadeBestLicense: number,
 	CoachDone: boolean,
+	ReferredBy: number,
+	ReferralsPaid: number,
 }
 
 local DataService = {}

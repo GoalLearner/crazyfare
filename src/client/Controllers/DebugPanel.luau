@@ -27,13 +27,14 @@ local BUTTONS: { Button } = {
 	{ label = "Golden", command = "SpawnGolden", arg = nil },
 	{ label = "End round", command = "ForceEnd", arg = nil },
 	{ label = "Next car", command = "NextVehicle", arg = nil },
+	{ label = "Next event", command = "NextEvent", arg = nil },
 }
 
 function DebugPanel.Init()
 	local debugRemote = Remotes.Get("Debug")
 	local screen = UI.Screen("CrazyFareDebug", 30)
 	local panel = UI.Frame({
-		Position = UDim2.fromOffset(24, 190),
+		Position = UDim2.fromOffset(24, 220), -- under the event line
 		Size = UDim2.fromOffset(120, #BUTTONS * 30 + 30),
 		BackgroundTransparency = 0.4,
 	}, screen)

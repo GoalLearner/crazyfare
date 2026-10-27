@@ -17,6 +17,7 @@ local ordered: { Service } = {
 	require(Services.MapService),
 	require(Services.DataService),
 	require(Services.MonetizationService),
+	require(Services.SessionService),
 	require(Services.VehicleService),
 	require(Services.ComboService),
 	require(Services.PassengerService),

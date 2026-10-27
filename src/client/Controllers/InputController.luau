@@ -52,7 +52,7 @@ end
 local function buildTouchControls()
 	local UI = require(script.Parent.Parent.UI)
 	local cfg = Config.Touch
-	local screen = UI.Screen("CrazyFareTouch", 8)
+	local screen = UI.Screen("CrazyFareTouch", 8, true) -- thumb-sized on every screen
 	local size = cfg.ButtonSize
 	local m = cfg.Margin
 

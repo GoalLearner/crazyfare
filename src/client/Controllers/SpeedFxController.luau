@@ -198,7 +198,7 @@ local function updateSmoke(dt: number)
 end
 
 local function buildStreaks()
-	local screen = UI.Screen("CrazyFareSpeed", 5) -- under the HUD
+	local screen = UI.Screen("CrazyFareSpeed", 5, true) -- under the HUD; streaks are laid out in real pixels
 	streakLayer = UI.Frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false }, screen)
 	for _ = 1, Config.SpeedFx.Streaks.Count do
 		local frame = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = UI.White, BackgroundTransparency = 1, BorderSizePixel = 0 }, streakLayer)

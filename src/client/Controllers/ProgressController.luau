@@ -147,6 +147,7 @@ local function build()
 	end)
 
 	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 440), BackgroundTransparency = 0.05, Visible = false }, screen)
+	UI.CenterBelowTopbar(panel)
 	UI.Corner(16, panel)
 	levelLabel = UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(200, 36), Text = "LEVEL 1", TextXAlignment = Enum.TextXAlignment.Left }, panel)
 	xpBar = UI.Bar({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(300, 10) }, UI.Accent, panel)

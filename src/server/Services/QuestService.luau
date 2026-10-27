@@ -16,6 +16,7 @@ local PassengerService = require(script.Parent.PassengerService)
 local ItemService = require(script.Parent.ItemService)
 local ComboService = require(script.Parent.ComboService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local SessionService = require(script.Parent.SessionService)
 
 type StoredQuest = { id: string, goal: number, progress: number, reward: number, done: boolean }
 type QuestBook = {
@@ -188,6 +189,10 @@ function QuestService.Init()
 		QuestService.Sync(player)
 	end)
 	ProgressionService.OnNotice:Connect(function(player: Player, text: string)
+		pendingNotice[player] = text
+		QuestService.Sync(player)
+	end)
+	SessionService.OnNotice:Connect(function(player: Player, text: string)
 		pendingNotice[player] = text
 		QuestService.Sync(player)
 	end)
