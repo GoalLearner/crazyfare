@@ -179,7 +179,33 @@ local function ensureRival(id: number): RivalMarker
 	return marker
 end
 
+local crown: TextLabel? = nil
+
+local function crownLabel(): TextLabel
+	local existing = crown
+	if existing then
+		return existing
+	end
+	local b = Config.Chaos.Bounty
+	local made = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(b.MinimapCrownSize, b.MinimapCrownSize), Text = b.Crown, TextColor3 = b.Color, ZIndex = 9, Visible = false }, map)
+	crown = made
+	return made
+end
+
+-- The bounty crown over the leader's arrow or marker (yours too).
+local function placeCrown(snapshot: Types.Snapshot)
+	local label = crownLabel()
+	label.Visible = false
+	for _, p in snapshot.players do
+		if p.id == snapshot.bounty then
+			label.Position = toMap(p.x, p.z) + UDim2.fromOffset(0, -6)
+			label.Visible = true
+		end
+	end
+end
+
 local function onSnapshot(snapshot: Types.Snapshot)
+	placeCrown(snapshot)
 	-- NPCs
 	local seenNpc: { [number]: boolean } = {}
 	for _, npc in snapshot.npcs do

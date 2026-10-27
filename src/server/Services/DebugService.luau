@@ -73,6 +73,14 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local BotService = require(script.Parent.BotService) :: any
 		BotService.DebugStage(player, if arg == "charge" then "charge" else "park")
 	end,
+	-- Dollars for the first bot (to make it the leader).
+	BotCash = function(_player, arg)
+		local Racers = require(script.Parent.Parent.Racers) :: any
+		local bot = Racers.Bots()[1]
+		if bot and typeof(arg) == "number" then
+			FareService.AddCash(bot, Money.Cents(arg))
+		end
+	end,
 	-- The first bot's passenger at this HP (to see a ram or a hit make them bail).
 	BotHp = function(_player, arg)
 		local Racers = require(script.Parent.Parent.Racers) :: any

@@ -57,10 +57,12 @@ local function buildSnapshot(): Types.Snapshot
 			bot = Racers.IsBot(player),
 		})
 	end
+	local leader = FareService.GetLeader()
 	return {
 		t = workspace:GetServerTimeNow(),
 		players = players,
 		npcs = PassengerService.Snapshot(),
+		bounty = if leader then leader.UserId else nil,
 	}
 end
 

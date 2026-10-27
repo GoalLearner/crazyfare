@@ -39,6 +39,9 @@ local matchEarned: { [Player]: number } = {}
 local delivered: { [Player]: number } = {}
 local bestTip: { [Player]: number } = {}
 local enabled = false
+local leader: Player? = nil -- this round's cash leader, wearing the bounty crown
+local announced: Player? = nil -- the leader the last NEW LEADER banner named
+local leaderBannerAt = -math.huge
 local quota = Money.Cents(Config.Round.Quotas[1])
 local rng = Random.new()
 local fareEvent: RemoteEvent
@@ -115,6 +118,48 @@ function FareService.TargetNpcCount(): number
 	return math.clamp(want, math.min(Config.Fares.MinNpcs, maxCount), maxCount)
 end
 
+-- The bounty: this round's cash leader, or nil before anyone has MinCash (and in a race of one).
+function FareService.GetLeader(): Player?
+	return leader
+end
+
+-- The crown changes hands only when someone passes the leader outright. Everyone hears about it: at most one banner
+-- per BannerCooldown, and a swap inside the cooldown is announced when it ends (if they still lead).
+local function updateLeader()
+	local cfg = Config.Chaos.Bounty
+	local racers = Racers.All()
+	local minCash = Money.Cents(cfg.MinCash)
+	local best: Player? = nil
+	local bestCash = 0
+	for _, racer in racers do
+		local cash = roundEarned[racer] or 0
+		if cash > bestCash then
+			best, bestCash = racer, cash
+		end
+	end
+	local current = leader
+	local currentCash = if current and current.Parent then roundEarned[current] or 0 else -1
+	local nextLeader = current
+	if #racers < 2 then
+		nextLeader = nil
+	elseif not current or currentCash < minCash then
+		nextLeader = if bestCash >= minCash then best else nil
+	elseif best and best ~= current and bestCash > currentCash then
+		nextLeader = best
+	end
+	leader = nextLeader
+	local now = workspace:GetServerTimeNow()
+	if not nextLeader or nextLeader == announced or now - leaderBannerAt < cfg.BannerCooldown then
+		return
+	end
+	announced = nextLeader
+	leaderBannerAt = now
+	local name = (if Racers.IsBot(nextLeader) then "BOT " else "") .. nextLeader.DisplayName
+	for _, player in Players:GetPlayers() do
+		fire(player, { kind = "NewLeader", line = name, you = if player == nextLeader then true else nil })
+	end
+end
+
 -- Drivers (players and bots) sorted by this round's earnings (or the match total), then deliveries, then UserId.
 local function sortedPlayers(byMatch: boolean?): { Player }
 	local score = if byMatch then matchEarned else roundEarned
@@ -174,6 +219,8 @@ end
 
 -- New match: everything to zero.
 function FareService.ResetMatch()
+	leader = nil
+	announced = nil
 	table.clear(fares)
 	for _, player in Racers.All() do
 		wallet[player] = 0
@@ -186,6 +233,8 @@ end
 
 -- New round inside a match: active fares drop; the quota count restarts at a head start of the unspent wallet.
 function FareService.ResetRound()
+	leader = nil
+	announced = nil
 	table.clear(fares)
 	for _, player in Racers.All() do
 		roundEarned[player] = math.floor((wallet[player] or 0) * Config.PitStop.CarryFrac)
@@ -382,14 +431,15 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 		tier = npc.tier,
 		base = if fare then fare.base else 0,
 	})
-	-- Hunter Bonus: the rival who made them bail gets a share of the lost fare.
+	-- Hunter Bonus: the rival who made them bail gets a share of the lost fare; double when it was the leader's.
 	if RunService:IsStudio() then
 		print(string.format("[FareService] %s's passenger bailed (%s), credit %s, fare %s", victim.Name, reason, if attacker then attacker.Name else "nobody", tostring(fare ~= nil)))
 	end
 	if attacker and fare and attacker ~= victim and attacker.Parent then
-		local bonus = math.round(fare.base * Config.Items.HunterBonusFrac)
+		local bounty = victim == leader
+		local bonus = math.round(fare.base * Config.Items.HunterBonusFrac * (if bounty then Config.Chaos.Bounty.Mult else 1))
 		if bonus > 0 then
-			fire(attacker, { kind = "HunterBonus", payout = bonus, line = victim.DisplayName })
+			fire(attacker, { kind = "HunterBonus", payout = bonus, line = victim.DisplayName, bounty = if bounty then true else nil })
 			FareService.AddCash(attacker, bonus)
 		end
 	end
@@ -399,6 +449,7 @@ local function tick()
 	if not enabled then
 		return
 	end
+	updateLeader()
 	local now = workspace:GetServerTimeNow()
 	local vehicles = VehicleService.GetAll()
 

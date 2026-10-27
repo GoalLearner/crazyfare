@@ -770,6 +770,22 @@ Config.Chaos = {
 		CrashImmuneSeconds = 0.6, -- the bump's own speed loss isn't also a crash for either car
 		Shove = 28, -- studs/s added to the hit car along the attacker's line (half at MinSpeed, full at FullSpeed)
 	},
+	-- Bounty: this round's cash leader wears a crown (over their cab for everyone else, on everyone's minimap); making
+	-- their passenger bail pays the Hunter Bonus times Mult. The crown changes hands only when someone passes the leader.
+	Bounty = {
+		Mult = 2,
+		MinCash = 1, -- dollars this round before anyone wears the crown
+		Banner = "NEW LEADER: %s",
+		You = "YOU",
+		BannerSeconds = 1.4,
+		BannerCooldown = 3, -- seconds between banners when the lead swaps back and forth (the crown still moves)
+		Crown = "\u{1F451}",
+		Color = Color3.fromRGB(255, 205, 50),
+		CrownSize = 46, -- px, the same at any distance
+		CrownHeight = 8, -- studs above the cab
+		MinimapCrownSize = 18, -- px
+		HunterLine = "BOUNTY x%d", -- under the payout when you bail the leader's passenger
+	},
 	Labels = { Ram = "RAMMED!" } :: { [string]: string }, -- popups over your cab
 }
 

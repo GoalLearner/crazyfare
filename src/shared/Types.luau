@@ -41,6 +41,7 @@ export type Snapshot = {
 	t: number,
 	players: { PlayerSnap },
 	npcs: { NpcSnap },
+	bounty: number?, -- UserId of the cash leader wearing the bounty crown (Config.Chaos.Bounty)
 }
 
 export type PodiumEntry = {
@@ -119,6 +120,7 @@ export type PitStopCard = { id: string, name: string, effect: string, price: num
 export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number, buysLeft: number }
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
+-- | "NewLeader" (to everyone: `line` = the new leader's name, `you` when it's you)
 -- | "Golden" (to everyone: a Golden Fare appeared at `position`)
 export type FareEventPayload = {
 	kind: string,
@@ -144,6 +146,8 @@ export type FareEventPayload = {
 	passenger: string?, -- "Claimed": the passenger's kind (Config.PassengerTypes.Kinds key)
 	golden: boolean?, -- "Claimed": a Golden Fare
 	bonus: string?, -- "Delivered": what the passenger's rules did ("SMOOTH RIDE  TIP x2", "GOLDEN x3")
+	bounty: boolean?, -- "HunterBonus": the passenger was the leader's (paid times Config.Chaos.Bounty.Mult)
+	you: boolean?, -- "NewLeader": you took the lead
 }
 
 -- ItemEvent kinds: "Granted" | "Used" | "Splat" | "Spinout" | "Boost" | "HitConfirm" | "BoxTaken"

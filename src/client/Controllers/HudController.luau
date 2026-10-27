@@ -610,7 +610,11 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Expired" then
 		showMessage("TIME'S UP", UI.Warn, Config.Hud.MessageSeconds, "no tip now, still deliver them")
 	elseif payload.kind == "HunterBonus" then
-		showMessage("+" .. UI.Money(payload.payout or 0), UI.Danger, Config.Hud.PayoutPunchSeconds, "HUNTER BONUS  ·  " .. (payload.line or ""))
+		local label = if payload.bounty then string.format(Config.Chaos.Bounty.HunterLine, Config.Chaos.Bounty.Mult) else "HUNTER BONUS"
+		showMessage("+" .. UI.Money(payload.payout or 0), if payload.bounty then Config.Chaos.Bounty.Color else UI.Danger, Config.Hud.PayoutPunchSeconds, label .. "  ·  " .. (payload.line or ""))
+	elseif payload.kind == "NewLeader" then
+		local b = Config.Chaos.Bounty
+		showMessage(b.Crown .. " " .. string.format(b.Banner, if payload.you then b.You else string.upper(payload.line or "")), b.Color, b.BannerSeconds)
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Hurt" and (payload.source == "crash" or payload.source == "ram") then
