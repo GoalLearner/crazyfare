@@ -44,7 +44,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ## 3. Passenger HP and PvP
 
 - Passengers board with HP by tier (60/80/100).
-- **Damage:** item hits and wall crashes. Crashes are measured server-side as speed lost in a fraction of a second (over 30 studs/s hurts; the harder the hit, the more it costs, up to 60, so a full-speed wall hit bails a short fare).
+- **Damage:** item hits and wall crashes. Crashes are measured server-side as the share of the car's top speed lost in a fraction of a second: a third gone costs a third of the trip's HP (3 small crashes to bail), past about half costs more than half (2 to bail), and 85% or more (full speed into a wall) bails the passenger.
 - **No regen:** HP only goes down during a ride, so every crash and hit sticks.
 - Using an **attack** item (Tomato) while loaded costs your own passenger 15 HP.
 - **At 0 HP the passenger bails:** door tween, angry text bubble, walks to the nearest PickupPoint and becomes available again with the **same destination**. The victim loses the fare and the combo. The attacker gets a **Hunter Bonus = 40% of the lost fare's value** (Phase 2).
@@ -60,7 +60,7 @@ Picked up from **item boxes** (respawn 10 s; you cannot pick up while holding on
 
 | Item | Kind | Effect |
 |---|---|---|
-| **Tomato** | attack | Server-side homing projectile to the nearest loaded rival. Loses lock if the target is drifting. On hit: windshield splat overlay (~70% coverage; wipers clear it in 3 s; honking shortens it), −30 HP. |
+| **Tomato** | attack | Server-side homing projectile to the nearest loaded rival. Loses lock if the target is drifting. On hit: windshield splat overlay (~70% coverage; wipers clear it in 3 s; honking shortens it), and the passenger bails: one hit, only Shield or Seatbelt saves them. |
 | **Banana** | trap | Dropped behind. Spinout 1.5 s, −25 HP. |
 | **OilSlick** | trap | Dropped behind. Lose steering 2 s, −10 HP, low-visibility decal. |
 | **LemonNitro** | boost | 3 s speed burst. |

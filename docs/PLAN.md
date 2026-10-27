@@ -48,7 +48,7 @@ Fare loop (server)
 
 Items (server + client)
 - [x] `ItemService`: item boxes (proximity, respawn), rank-weighted roll, one slot
-- [x] Tomato: server homing projectile, loses lock on drifting target, −30 HP, client splat overlay with wipers (3 s) and honk shortening
+- [x] Tomato: server homing projectile, loses lock on drifting target, one hit bails the passenger (was −30 HP), client splat overlay with wipers (3 s) and honk shortening
 - [x] Banana: drop behind, spinout 1.5 s, −25 HP, owner immunity window
 - [x] LemonNitro: 3 s burst
 - [x] Attack-while-loaded self cost (−15)

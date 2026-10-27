@@ -180,11 +180,13 @@ Config.Combo = {
 
 Config.Passenger = {
 	-- No regen: passenger HP only goes down during a ride, so every crash and hit sticks (owner, 2026-10-26).
-	CrashDeltaThreshold = 30, -- horizontal speed (studs/s) lost inside CrashWindow that starts to hurt
+	CrashDeltaThreshold = 24, -- horizontal speed (studs/s) lost inside CrashWindow that starts an impact (under every car's hurt line; braking cannot reach it)
 	CrashWindow = 0.12, -- seconds of speed history the crash watch looks back over: a wall stops the car inside ~0.05 s on the server, while full braking (BrakeAccel) loses under 10 studs/s here even with bursty replication (0.25 s let a hard brake read as a crash)
 	CrashSettle = 0.1, -- seconds the watch keeps measuring once a hit starts, so the whole stop counts (the server sees it over ~3 frames)
-	CrashDamagePerStud = 1.2, -- HP per stud/s lost beyond the threshold: ~34 at 58 lost, cap at ~80 lost
-	CrashDamageMax = 60, -- a full-speed wall hit bails a short fare outright
+	-- Crash damage is a share of the trip's base HP (Fares.Tiers.Hp), set by how much of the car's top speed the hit took:
+	CrashMinIntensity = 0.33, -- share of top speed lost that starts to hurt; a crash this size takes CrashMinShare (3 to bail)
+	CrashFullIntensity = 0.85, -- share of top speed lost that bails the passenger outright (full speed into a wall)
+	CrashMinShare = 0.34, -- share of base HP the smallest hurting crash takes; harder crashes scale up to all of it (2 to bail past ~half)
 	DamageCooldown = 1, -- no second damage inside this window (any source)
 	BoostEndGrace = 0.5, -- crash watch ignores the speed bleed right after a nitro ends
 	SelfHitCost = 15, -- using an attack item while loaded
@@ -228,7 +230,7 @@ Config.Items = {
 		LockRange = 400, -- nearest rival inside this at launch (loaded rivals preferred)
 		HitRadius = 7,
 		Lifetime = 4,
-		Damage = 30,
+		Damage = 1000, -- always bails: more than any passenger's HP even through armor (Shield blocks it, Seatbelt ignores it)
 		SplatCoverage = 0.7,
 		WipeSeconds = 3,
 		HonkWipeBonus = 0.6, -- each honk removes this many seconds of splat

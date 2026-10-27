@@ -436,6 +436,7 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 	if stats and stats.PassengerDamageMult then
 		amount *= stats.PassengerDamageMult
 	end
+	amount = math.min(amount, npc.hp) -- report what was actually lost (a Tomato hit is far more than any HP)
 	npc.hp = math.max(0, npc.hp - amount)
 	onDamaged:Fire(player, amount, source)
 	if npc.hp <= 0 then
@@ -574,11 +575,22 @@ end
 function PassengerService.Init()
 	folder = MapService.GetRuntimeFolder("NPCs")
 
-	VehicleService.OnCrash:Connect(function(player: Player, delta: number)
-		local damage = math.min(Config.Passenger.CrashDamageMax, (delta - Config.Passenger.CrashDeltaThreshold) * Config.Passenger.CrashDamagePerStud)
-		if damage >= 1 then
-			PassengerService.ApplyDamage(player, damage, "crash")
+	-- Crash damage: how much of the car's top speed the hit took decides what share of the trip's base HP it costs.
+	VehicleService.OnCrash:Connect(function(player: Player, lost: number)
+		local npc = loadedByPlayer[player]
+		local entry = VehicleService.GetEntry(player)
+		if not npc or not entry then
+			return
 		end
+		local cfg = Config.Passenger
+		local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
+		local intensity = lost / stats.TopSpeed
+		if intensity < cfg.CrashMinIntensity then
+			return
+		end
+		local t = math.clamp((intensity - cfg.CrashMinIntensity) / (cfg.CrashFullIntensity - cfg.CrashMinIntensity), 0, 1)
+		local share = cfg.CrashMinShare + (1 - cfg.CrashMinShare) * t
+		PassengerService.ApplyDamage(player, share * Config.Fares.Tiers[npc.tier].Hp, "crash")
 	end)
 
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
