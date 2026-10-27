@@ -24,6 +24,7 @@ export type FareInfo = {
 	requestProgress: number,
 	requestDone: boolean,
 	riders: number, -- people aboard (2+ = a carpool)
+	ticking: boolean, -- the fare drops every second (Config.Chaos.Ticking)
 }
 
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]

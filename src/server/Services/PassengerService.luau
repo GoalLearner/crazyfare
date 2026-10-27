@@ -12,6 +12,7 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local Events = require(ReplicatedStorage.Shared.Events)
+local Ticking = require(ReplicatedStorage.Shared.Ticking)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 
@@ -34,6 +35,7 @@ export type Npc = {
 	walkTween: Tween?,
 	riders: number, -- people in the group (2+ = a carpool, Config.Chaos.Carpool)
 	group: TextLabel?, -- "CARPOOL x3" over a waiting group
+	ticking: boolean, -- late, with an alarm clock: the fare drops every second (Config.Chaos.Ticking)
 }
 
 local PassengerService = {}
@@ -155,6 +157,7 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	model:SetAttribute("Tier", npc.tier)
 	model:SetAttribute("Kind", npc.kind)
 	model:SetAttribute("Golden", npc.golden)
+	model:SetAttribute("Ticking", npc.ticking)
 	CollectionService:AddTag(model, Config.Tags.Npc)
 
 	local torsoCf = standCFrame(groundPos, look)
@@ -191,6 +194,13 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 		end
 		buddy.Parent = model
 	end
+	-- A ticking fare hugs a giant alarm clock to their chest, face out (below the face)
+	if npc.ticking then
+		local clock = Ticking.Clock(Config.Chaos.Ticking.ClockSize)
+		clock:PivotTo(torsoCf * CFrame.new(0, -0.2, -0.85) * CFrame.Angles(0, math.pi, 0))
+		weld(torso, clock.PrimaryPart :: BasePart)
+		clock.Parent = model
+	end
 
 	-- The badge: tier color ring, the kind's icon inside ($, a bolt, a nervous face; a star for the Golden Fare)
 	local iconSize = if npc.golden then 60 else 46
@@ -213,11 +223,20 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	stroke.Parent = ring
 	icon.ZIndex = 2
 
+	-- A word over the badge (CARPOOL x3, TICK TOCK): centered on the badge and stacked above it in pixels, so the two
+	-- never overlap however far away they are
+	local function tag(name: string, text: string, color: Color3): TextLabel
+		local label = makeLabel(head, name, UDim2.fromOffset(120, iconSize + 52), Vector3.new(0, 1.6, 0))
+		label.Size = UDim2.new(1, 0, 0, 22)
+		label.Text = text
+		label.TextColor3 = color
+		return label
+	end
 	if npc.riders > 1 then
-		local group = makeLabel(head, "Group", UDim2.fromOffset(120, 22), Vector3.new(0, 3.6, 0))
-		group.Text = string.format(carpool.Label, npc.riders)
-		group.TextColor3 = carpool.Color
-		npc.group = group
+		npc.group = tag("Group", string.format(carpool.Label, npc.riders), carpool.Color)
+	end
+	if npc.ticking then
+		tag("Ticking", Config.Chaos.Ticking.Label, Config.Chaos.Ticking.Color)
 	end
 
 	local bubble = makeLabel(head, "Bubble", UDim2.fromOffset(260, 40), Vector3.new(0, 3.2, 0))
@@ -356,8 +375,8 @@ local function goldenInPlay(): boolean
 end
 
 -- `golden` true forces a Golden Fare (debug); nil rolls Config.Golden.Chance (more during a GOLDEN HOUR event) while
--- none is in play.
-function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?, riders: number?): Npc
+-- none is in play. `riders` and `ticking` likewise force a carpool or a ticking fare; nil rolls their chances.
+function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?, riders: number?, ticking: boolean?): Npc
 	local tierDef = Config.Fares.Tiers[tier]
 	local chance = Config.Golden.Chance * Events.GoldenChanceMult(os.time())
 	local isGolden = if golden ~= nil then golden else (not goldenInPlay() and rng:NextNumber() < chance)
@@ -365,6 +384,8 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden:
 	nextId += 1
 	local groundY = MapService.GroundY(point.position, point.position.Y)
 	local groundPos = Vector3.new(point.position.X, groundY, point.position.Z)
+	local count = riders or (if not isGolden and rng:NextNumber() < Config.Chaos.Carpool.Chance then rng:NextInteger(2, Config.Chaos.Carpool.MaxRiders) else 1)
+	local isTicking = if ticking ~= nil then ticking else (not isGolden and count == 1 and rng:NextNumber() < Config.Chaos.Ticking.Chance)
 	local npc = {
 		id = id,
 		tier = tier,
@@ -375,7 +396,8 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden:
 		position = groundPos,
 		hp = tierDef.Hp,
 		maxHp = tierDef.Hp,
-		riders = riders or (if not isGolden and rng:NextNumber() < Config.Chaos.Carpool.Chance then rng:NextInteger(2, Config.Chaos.Carpool.MaxRiders) else 1),
+		riders = count,
+		ticking = isTicking,
 	} :: any
 	local model, torso, icon, bubble = buildModel(npc, groundPos, point.cframe.LookVector)
 	npc.model = model
@@ -422,6 +444,21 @@ function PassengerService.DebugSpawnCarpool(): Npc?
 	end
 	local point = free[rng:NextInteger(1, #free)]
 	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), false, Config.Chaos.Carpool.MaxRiders)
+end
+
+-- Studio: a ticking fare at a random free curb.
+function PassengerService.DebugSpawnTicking(): Npc?
+	local free: { MapService.Point } = {}
+	for _, point in MapService.GetPickups() do
+		if not npcAtPickup[point.index] then
+			table.insert(free, point)
+		end
+	end
+	if #free == 0 then
+		return nil
+	end
+	local point = free[rng:NextInteger(1, #free)]
+	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), false, 1, true)
 end
 
 -- Debug: a Golden Fare at a random free curb (nil when every curb is taken or one is already in play).
@@ -762,6 +799,7 @@ function PassengerService.Snapshot(): { Types.NpcSnap }
 				kind = npc.kind,
 				golden = npc.golden,
 				riders = npc.riders,
+				ticking = npc.ticking,
 			})
 		end
 	end

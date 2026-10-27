@@ -110,6 +110,36 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	Carpool = function(player)
 		FareService.DebugCarpool(player)
 	end,
+	-- Park facing the nearest waiting passenger, a special one (ticking, carpool, golden) first: to look at curbs.
+	ToCurb = function(player)
+		local entry = VehicleService.GetEntry(player)
+		if not entry or entry.chassis.Anchored then
+			return
+		end
+		local from = entry.chassis.Position
+		local best: PassengerService.Npc? = nil
+		local bestSpecial, bestDist = false, math.huge
+		for _, npc in PassengerService.GetAll() do
+			if npc.state == 0 then
+				local special = npc.ticking or npc.riders > 1 or npc.golden
+				local dist = (npc.position - from).Magnitude
+				if (special and not bestSpecial) or (special == bestSpecial and dist < bestDist) then
+					best, bestSpecial, bestDist = npc, special, dist
+				end
+			end
+		end
+		if not best then
+			return
+		end
+		local stand = best.torso.CFrame
+		local p = (stand * CFrame.new(0, 0, -Config.Fares.DebugCurbDistance)).Position
+		local pos = Vector3.new(p.X, MapService.GroundY(p, p.Y) + Config.Chassis.ResetLift, p.Z)
+		VehicleService.Teleport(entry, CFrame.lookAt(pos, Vector3.new(stand.Position.X, pos.Y, stand.Position.Z)))
+	end,
+	-- A ticking fare appears and climbs in.
+	Ticking = function(player)
+		FareService.DebugTicking(player)
+	end,
 	-- The nearest waiting passenger climbs in, wherever they are.
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)

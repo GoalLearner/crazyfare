@@ -68,6 +68,7 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			requestProgress = 0,
 			requestDone = false,
 			riders = payload.riders or 1,
+			ticking = payload.ticking == true,
 		}
 	elseif payload.kind == "Request" then
 		local fare = State.fare

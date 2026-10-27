@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Money = require(ReplicatedStorage.Shared.Money)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Signal)
+local Ticking = require(ReplicatedStorage.Shared.Ticking)
 local Types = require(ReplicatedStorage.Shared.Types)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local MapService = require(script.Parent.MapService)
@@ -92,6 +93,17 @@ end
 
 function FareService.GetFare(player: Player): Types.Fare?
 	return fares[player]
+end
+
+-- What the fare itself is worth at `now` (cents): its base, or what a ticking fare's clock has left of it.
+local function valueOf(fare: Types.Fare, now: number): number
+	return if fare.ticking then Ticking.Value(fare.base, fare.startedAt, fare.deadline, now) else fare.base
+end
+
+-- The current fare's value right now, in cents (0 when empty).
+function FareService.GetFareValue(player: Player): number
+	local fare = fares[player]
+	return if fare then valueOf(fare, workspace:GetServerTimeNow()) else 0
 end
 
 -- This round's quota, in cents.
@@ -368,8 +380,9 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		requestDone = false,
 		riders = npc.riders,
 		stops = if npc.riders > 1 then pickStops(destination.position, npc.riders - 1, destination.index) else {},
+		ticking = npc.ticking,
 	}
-	local request = rollRequest(player)
+	local request = if npc.ticking then nil else rollRequest(player)
 	if request then
 		fare.request = request.Id
 	end
@@ -391,6 +404,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		golden = npc.golden,
 		request = fare.request,
 		riders = fare.riders,
+		ticking = if fare.ticking then true else nil,
 	})
 	-- Everyone else nearby and empty sees TAKEN.
 	for other, entry in VehicleService.GetAll() do
@@ -455,6 +469,17 @@ function FareService.DebugCarpool(player: Player)
 	end
 end
 
+-- Studio: a ticking fare appears at a free curb and climbs into this driver's car.
+function FareService.DebugTicking(player: Player)
+	if not RunService:IsStudio() or fares[player] or not VehicleService.GetEntry(player) then
+		return
+	end
+	local npc = PassengerService.DebugSpawnTicking()
+	if npc then
+		claim(player, npc)
+	end
+end
+
 -- Studio: the next passenger this driver picks up asks for this request.
 function FareService.DebugForceRequest(player: Player, id: string)
 	if RunService:IsStudio() then
@@ -502,7 +527,13 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	-- Stunt cash rides in the fare (Config.Stunts.HoldUntilDelivery) and is lost with the tip on a late arrival.
 	local stunts = if allowTip then fare.stuntTips else 0
 	local held = if Config.Stunts.HoldUntilDelivery then stunts else 0
-	local payout = fare.base + tipShown + held
+	-- a ticking fare pays what its clock left of the base
+	local fareValue = valueOf(fare, now)
+	if fare.ticking then
+		local line = string.format(Config.Chaos.Ticking.PayLine, Ticking.Mult(fare.startedAt, fare.deadline, now))
+		bonus = if bonus then bonus .. "  ·  " .. line else line
+	end
+	local payout = fareValue + tipShown + held
 	if payMult ~= 1 then
 		payout = math.round(payout * payMult)
 		local line = Config.Chaos.Frenzy.PayLine
@@ -525,7 +556,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	fire(player, {
 		kind = "Delivered",
 		tier = fare.tier,
-		base = fare.base,
+		base = fareValue,
 		payout = payout,
 		tip = tipShown,
 		stunts = stunts,
@@ -581,11 +612,12 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 	local fare = fares[victim]
 	fares[victim] = nil
 	ComboService.Reset(victim, "bail")
+	local lost = if fare then valueOf(fare, workspace:GetServerTimeNow()) else 0 -- a ticking fare: what it was worth just now
 	fire(victim, {
 		kind = "Bailed",
 		reason = reason,
 		tier = npc.tier,
-		base = if fare then fare.base else 0,
+		base = lost,
 	})
 	-- Hunter Bonus: the rival who made them bail gets a share of the lost fare; double when it was the leader's.
 	if RunService:IsStudio() then
@@ -593,7 +625,7 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 	end
 	if attacker and fare and attacker ~= victim and attacker.Parent then
 		local bounty = victim == leader
-		local bonus = math.round(fare.base * Config.Items.HunterBonusFrac * (if bounty then Config.Chaos.Bounty.Mult else 1))
+		local bonus = math.round(lost * Config.Items.HunterBonusFrac * (if bounty then Config.Chaos.Bounty.Mult else 1))
 		if bonus > 0 then
 			fire(attacker, { kind = "HunterBonus", payout = bonus, line = victim.DisplayName, bounty = if bounty then true else nil })
 			FareService.AddCash(attacker, bonus)

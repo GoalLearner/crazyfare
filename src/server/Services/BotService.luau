@@ -236,7 +236,9 @@ local function pickPassenger(bot: Bot): PassengerService.Npc?
 			continue
 		end
 		local tier = Config.Fares.Tiers[npc.tier]
-		local value = (if tier then tier.Base else 1) ^ cfg.Greed * (if npc.golden then Config.Golden.PayMult * cfg.GoldenBias else 1)
+		local ticking = Config.Chaos.Ticking
+		local value = (if tier then tier.Base else 1) ^ cfg.Greed
+			* (if npc.golden then Config.Golden.PayMult * cfg.GoldenBias elseif npc.ticking then (ticking.StartMult + ticking.FloorMult) / 2 else 1)
 		local eta = (flat(npc.position) - bot.rabbit).Magnitude * cfg.RouteFactor / cruise + cfg.PickupOverhead
 		table.insert(ranked, { npc = npc, score = value / eta * rng:NextNumber(1 - cfg.Jitter, 1 + cfg.Jitter) })
 	end

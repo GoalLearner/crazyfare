@@ -55,6 +55,7 @@ local function seat(rider: Rider)
 	model:SetAttribute("RiderPose", rider.pose)
 	model:SetAttribute("RiderKind", rider.npc.kind)
 	model:SetAttribute("RiderCount", rider.npc.riders)
+	model:SetAttribute("RiderTicking", rider.npc.ticking)
 end
 
 local function setPose(rider: Rider, pose: string)
@@ -116,10 +117,11 @@ local function onBoarded(player: Player, npc: PassengerService.Npc)
 			say(rider, "TAKE ME TO " .. point.name .. "!", player)
 		end
 	end)
-	if npc.golden then
+	if npc.golden or npc.ticking then
+		local lines = if npc.golden then Config.Rider.Lines.Golden else Config.Chaos.Ticking.Lines
 		task.delay(Config.Hud.ShoutSeconds, function()
 			if riders[player] == rider then
-				say(rider, pick(Config.Rider.Lines.Golden))
+				say(rider, pick(lines))
 			end
 		end)
 	end

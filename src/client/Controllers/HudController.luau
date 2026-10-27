@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Money = require(Shared:WaitForChild("Money"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Ticking = require(Shared:WaitForChild("Ticking"))
 local Types = require(Shared:WaitForChild("Types"))
 local VecUtil = require(Shared:WaitForChild("VecUtil"))
 local State = require(script.Parent.Parent.State)
@@ -350,12 +351,16 @@ local function updateCountdown(fare: State.FareInfo?, playing: boolean, now: num
 	local anchor = popupAnchor()
 	countdownLabel.Position = UDim2.fromOffset(anchor.X + COUNTDOWN_OFFSET.X, anchor.Y + COUNTDOWN_OFFSET.Y)
 	countdownLabel.Text = tostring(left)
-	countdownLabel.TextColor3 = if left <= hud.CountdownDanger then UI.Danger elseif left <= hud.CountdownWarn then UI.Warn else UI.White
+	countdownLabel.TextColor3 = if left <= hud.CountdownDanger then UI.Danger elseif left <= hud.CountdownWarn then UI.Warn elseif fare.ticking then Config.Chaos.Ticking.Color else UI.White
 	countdownLabel.Visible = true
 	if left ~= lastCountdown then
 		if lastCountdown >= 0 and left <= hud.CountdownDanger then
 			punch(countdownScale, 1.5)
 			SoundController.PlayOneShot("Tick", 0.8)
+		elseif lastCountdown >= 0 and fare.ticking then
+			-- a ticking fare: the clock ticks every second, and the meter drops with it
+			punch(countdownScale, Config.Chaos.Ticking.TickPunch)
+			SoundController.PlayOneShot("Tick", Config.Chaos.Ticking.TickPitch)
 		end
 		lastCountdown = left
 	end
@@ -806,9 +811,15 @@ local function update(dt: number)
 		fareDest.Text = if fare.destinationName ~= "" then fare.destinationName else "DROP-OFF"
 		fareDest.TextColor3 = fareColor(fare)
 		local tierLabel = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
-		fareTier.Text = if fare.golden then Config.Golden.Label .. " " .. tierLabel elseif fare.riders > 1 then string.format("%s  x%d", tierLabel, fare.riders) else tierLabel
-		fareTier.TextColor3 = if fare.golden then Config.Golden.Color elseif fare.riders > 1 then Config.Chaos.Carpool.Color else UI.Muted
-		RollingCounter.SetTarget(fareCounter, fare.base + fare.stunts)
+		local ticking = Config.Chaos.Ticking
+		fareTier.Text = if fare.golden
+			then Config.Golden.Label .. " " .. tierLabel
+			elseif fare.riders > 1 then string.format("%s  x%d", tierLabel, fare.riders)
+			elseif fare.ticking then string.format("%s  x%.1f", ticking.Label, Ticking.Mult(fare.startedAt, fare.deadline, now)) -- short: the meter shares the row
+			else tierLabel
+		fareTier.TextColor3 = if fare.golden then Config.Golden.Color elseif fare.riders > 1 then Config.Chaos.Carpool.Color elseif fare.ticking then ticking.Color else UI.Muted
+		local value = if fare.ticking then Ticking.Value(fare.base, fare.startedAt, fare.deadline, now) else fare.base
+		RollingCounter.SetTarget(fareCounter, value + fare.stunts) -- a ticking fare's drops (snaps) every second
 		stepCounter(fareCounter, dt, 1.25)
 		local total = math.max(0.01, fare.deadline - fare.startedAt)
 		local remaining = VecUtil.Clamp01((fare.deadline - now) / total)

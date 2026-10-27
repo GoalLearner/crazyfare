@@ -229,6 +229,7 @@ Config.Fares = {
 	MinNpcs = 4,
 	MaxNpcs = 12, -- never more than PickupPoints
 	PickupRadius = 12, -- claim: inside this and slower than StopSpeed
+	DebugCurbDistance = 14, -- Studio "To curb": the cab parks this far in front of the passenger, facing them
 	DeliverRadius = 14,
 	StopSpeed = 5,
 	TakenNoticeRadius = 40, -- rivals inside this see "TAKEN"
@@ -886,6 +887,26 @@ Config.Chaos = {
 		Color = Color3.fromRGB(190, 120, 250),
 		Spacing = 2.2, -- studs between the people standing at the curb
 		Shirts = { Color3.fromRGB(240, 240, 240), Color3.fromRGB(90, 160, 220), Color3.fromRGB(240, 140, 60) }, -- the others'
+	},
+	-- Ticking fares: a Chance of a new passenger (never Golden or a carpool) who is late and holds a giant alarm clock.
+	-- The fare starts at StartMult times the base and drops one step every TickSeconds to FloorMult at the deadline,
+	-- so every second costs money; the tip and stunt cash go by the plain base as usual. A rival who makes them bail
+	-- gets the Hunter Bonus on what the fare was worth at that moment. No requests: they're in a hurry.
+	Ticking = {
+		Chance = 0.1,
+		StartMult = 3,
+		FloorMult = 1,
+		TickSeconds = 1,
+		Label = "TICK TOCK", -- over the waiting passenger and on the fare card
+		PayLine = "TICK TOCK x%.1f", -- under the payout: what the clock left of the multiplier
+		Lines = { "I'M LATE! EVERY SECOND COSTS YOU!", "TICK TOCK! FASTER = MORE CASH!", "THE CLOCK IS EATING YOUR TIP!" } :: { string },
+		Color = Color3.fromRGB(255, 120, 40),
+		FaceColor = Color3.fromRGB(250, 250, 245),
+		HandColor = Color3.fromRGB(25, 25, 30),
+		ClockSize = 1.8, -- studs across: the clock the waiting passenger holds up
+		RiderClockSize = 1.5, -- the one beside the rider's head in the cab
+		TickPitch = 1.4, -- the countdown by the cab ticks every second while they ride
+		TickPunch = 1.15, -- and bumps this much on each tick (the last seconds keep their big punch)
 	},
 	Labels = { Ram = "RAMMED!", Cash = "CASH", Request = "REQUEST COMPLETE!" } :: { [string]: string }, -- popups over your cab
 }

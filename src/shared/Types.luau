@@ -13,7 +13,7 @@ export type PlayerSnap = {
 	z: number,
 	yaw: number, -- radians, heading around Y
 	cash: number, -- cents earned toward this round's quota
-	fare: number, -- current fare's base value in cents (0 when empty)
+	fare: number, -- current fare's value in cents (0 when empty; a ticking fare's drops every second)
 	tier: string, -- "" when empty
 	hp: number,
 	maxHp: number,
@@ -36,6 +36,7 @@ export type NpcSnap = {
 	kind: string, -- Config.PassengerTypes.Kinds key
 	golden: boolean,
 	riders: number, -- people in the group (2+ = a carpool)
+	ticking: boolean, -- a ticking fare (Config.Chaos.Ticking)
 }
 
 export type Snapshot = {
@@ -158,6 +159,7 @@ export type FareEventPayload = {
 	progress: number?, -- "Request": toward its Goal
 	done: boolean?, -- "Request": just completed
 	riders: number?, -- "Claimed" / "NextStop": people aboard (2+ = a carpool)
+	ticking: boolean?, -- "Claimed": a ticking fare (the fare drops every second)
 	you: boolean?, -- "NewLeader": you took the lead
 }
 
@@ -197,6 +199,7 @@ export type Fare = {
 	requestDone: boolean,
 	riders: number, -- people still aboard, the one going to this stop included (2+ = a carpool)
 	stops: { number }, -- carpool: drop-off indices after this one
+	ticking: boolean, -- the fare drops every second (Config.Chaos.Ticking)
 }
 
 return {}

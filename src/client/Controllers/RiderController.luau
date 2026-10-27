@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Ticking = require(Shared:WaitForChild("Ticking"))
 local State = require(script.Parent.Parent.State)
 
 local RiderController = {}
@@ -19,6 +20,7 @@ type Figure = {
 	kind: string,
 	golden: boolean,
 	count: number, -- people in the cab (a carpool's others sit beside the one who talks)
+	ticking: boolean, -- holds an alarm clock up beside their head (Config.Chaos.Ticking)
 	torsoC0: CFrame,
 	arms: { Weld },
 	pose: string,
@@ -93,11 +95,12 @@ local function clear(figure: Figure)
 	figure.label = nil
 end
 
-local function build(figure: Figure, car: Model, chassis: BasePart, kind: string, golden: boolean, count: number)
+local function build(figure: Figure, car: Model, chassis: BasePart, kind: string, golden: boolean, count: number, ticking: boolean)
 	clear(figure)
 	figure.kind = kind
 	figure.golden = golden
 	figure.count = count
+	figure.ticking = ticking
 	local cfg = Config.Rider
 	-- The car's Silhouette marks the seat; the top of the car (measured before the rider is added) sets the height.
 	local silhouette = car:FindFirstChild("Silhouette")
@@ -133,6 +136,14 @@ local function build(figure: Figure, car: Model, chassis: BasePart, kind: string
 		local buddyHead = part("BuddyHead", Vector3.one * cfg.HeadSize * 0.95, SKIN, model)
 		buddyHead.Shape = Enum.PartType.Ball
 		weldTo(chassis, buddyHead, c0 * CFrame.new(0, cfg.TorsoSize.Y * 0.45 + cfg.HeadSize * 0.45, 0))
+	end
+
+	-- A ticking fare: the alarm clock beside the head (never above it: the road ahead stays clear), face to the camera
+	if ticking then
+		local size = Config.Chaos.Ticking.RiderClockSize
+		local clock = Ticking.Clock(size)
+		weldTo(chassis, clock.PrimaryPart :: BasePart, figure.torsoC0 * CFrame.new(cfg.TorsoSize.X / 2 + size * 0.6, cfg.TorsoSize.Y / 2, 0))
+		clock.Parent = model
 	end
 
 	-- Speech bubble: white, rounded, black text, over the head
@@ -191,7 +202,7 @@ local function update(car: Model)
 	local lineIdAttr = car:GetAttribute("RiderLineId")
 	local lineId = if typeof(lineIdAttr) == "number" then lineIdAttr else 0
 	if not figure then
-		local made: Figure = { model = nil, kind = "", golden = false, count = 1, torsoC0 = CFrame.new(), arms = {}, pose = "rest", gui = nil, label = nil, lineId = lineId, lineToken = 0 }
+		local made: Figure = { model = nil, kind = "", golden = false, count = 1, ticking = false, torsoC0 = CFrame.new(), arms = {}, pose = "rest", gui = nil, label = nil, lineId = lineId, lineToken = 0 }
 		figures[car] = made
 		figure = made
 	end
@@ -209,8 +220,9 @@ local function update(car: Model)
 	local golden = car:GetAttribute("RiderGolden") == true
 	local countAttr = car:GetAttribute("RiderCount")
 	local count = if typeof(countAttr) == "number" then countAttr else 1
-	if not current.model or current.kind ~= kind or current.golden ~= golden or current.count ~= count then
-		build(current, car, chassis, kind, golden, count)
+	local ticking = car:GetAttribute("RiderTicking") == true
+	if not current.model or current.kind ~= kind or current.golden ~= golden or current.count ~= count or current.ticking ~= ticking then
+		build(current, car, chassis, kind, golden, count, ticking)
 	end
 	local poseAttr = car:GetAttribute("RiderPose")
 	local pose = if typeof(poseAttr) == "string" then poseAttr else "rest"

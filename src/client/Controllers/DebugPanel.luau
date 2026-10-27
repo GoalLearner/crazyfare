@@ -39,6 +39,8 @@ local BUTTONS: { Button } = {
 	{ label = "Board", command = "ClaimNearest", arg = nil },
 	{ label = "Ask: jump", command = "Request", arg = "TakeTheJump" },
 	{ label = "Carpool", command = "Carpool", arg = nil },
+	{ label = "Tick tock", command = "Ticking", arg = nil },
+	{ label = "To curb", command = "ToCurb", arg = nil },
 	{ label = "To drop-off", command = "ToDropoff", arg = nil },
 	{ label = "Ped ahead", command = "PedAhead", arg = nil },
 	{ label = "Ped clip", command = "PedAhead", arg = "clip" },
