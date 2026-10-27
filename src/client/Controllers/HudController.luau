@@ -214,6 +214,8 @@ local function onFare(payload: Types.FareEventPayload)
 		showMessage("+" .. UI.Money(payload.payout or 0), UI.Danger, Config.Hud.PayoutPunchSeconds, "HUNTER BONUS  ·  " .. (payload.line or ""))
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
+	elseif payload.kind == "Hurt" and payload.source == "crash" then
+		showMessage(payload.line or "OW!", UI.Danger, Config.Hud.CrashMessageSeconds, string.format("-%d HP", payload.amount or 0))
 	elseif payload.kind == "Claimed" then
 		local def = Config.Fares.Tiers[payload.tier or ""]
 		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")

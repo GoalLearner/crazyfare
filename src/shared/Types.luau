@@ -115,6 +115,8 @@ export type FareEventPayload = {
 	tip: number?,
 	combo: number?,
 	reason: string?, -- bail reason: "hp" | "timeout"
+	amount: number?, -- "Hurt": HP the passenger lost
+	source: string?, -- "Hurt": "crash" | an item name | "debug" | ...
 	position: Vector3?,
 	line: string?,
 }

@@ -332,6 +332,15 @@ end
 function FareService.Init()
 	fareEvent = Remotes.Get("FareEvent")
 	PassengerService.OnBailed:Connect(handleBail)
+	PassengerService.OnDamaged:Connect(function(player: Player, amount: number, source: string)
+		local lines = Config.Passenger.CrashLines
+		fire(player, {
+			kind = "Hurt",
+			amount = math.round(amount),
+			source = source,
+			line = if source == "crash" then lines[rng:NextInteger(1, #lines)] else nil,
+		})
+	end)
 	Players.PlayerAdded:Connect(function(player: Player)
 		cash[player] = 0
 		delivered[player] = 0

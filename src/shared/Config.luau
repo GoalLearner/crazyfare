@@ -182,7 +182,8 @@ Config.Passenger = {
 	RegenPerSecond = 2,
 	RegenDelay = 3, -- seconds after damage before regen resumes
 	RegenMinSpeed = 5, -- must be driving
-	CrashDeltaThreshold = 30, -- server-observed velocity delta (studs/s) that starts to hurt
+	CrashDeltaThreshold = 30, -- horizontal speed (studs/s) lost inside CrashWindow that starts to hurt
+	CrashWindow = 0.25, -- seconds of speed history the crash watch looks back over; full braking (BrakeAccel) cannot lose CrashDeltaThreshold this fast
 	CrashDamagePerStud = 0.6,
 	CrashDamageMax = 35,
 	DamageCooldown = 1, -- no second damage inside this window (any source)
@@ -200,6 +201,7 @@ Config.Passenger = {
 		"TIME'S UP, I'M OUT",
 	},
 	ThanksLines = { "THANKS!", "FIVE STARS", "YOU'RE A LEGEND", "SMOOTH." },
+	CrashLines = { "OW!", "MY NECK!", "EYES ON THE ROAD!", "WAS THAT A WALL?!", "I SPILLED MY COFFEE!" },
 }
 
 Config.Items = {
@@ -470,6 +472,7 @@ Config.Sounds = {
 		Deliver = 9113728049, -- Cash Register 2
 		Splat = 9119293925, -- Small Splat 2
 		Spinout = 9119197920, -- Slide Whistle 3
+		Crash = 9120369181, -- Vehicle Crash 2 (Pro Sound Effects); wall hit with a passenger aboard
 		Bail = 9113864076, -- Comic Tube Doink 1
 		Countdown = 9114640708, -- Graphic Beeps 6
 		Go = 9113072516, -- Air Horn Various Lengths And Pitches 3
@@ -589,6 +592,7 @@ Config.Hud = {
 	MinimapSize = 190, -- px
 	PayoutPunchSeconds = 1.6,
 	MessageSeconds = 1.6,
+	CrashMessageSeconds = 1.0, -- passenger yelp after a crash
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
 	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face

@@ -27,6 +27,7 @@ export type VehicleEntry = {
 	boostUntil: number, -- server time; speed sanity allowance
 	spinUntil: number, -- server time; crash detection ignores spinouts
 	crashImmuneUntil: number,
+	speedHistory: { { t: number, speed: number } }, -- recent horizontal speeds for the crash watch
 	lastPosition: Vector3, -- last position that passed speed sanity
 	strikes: number, -- consecutive frames that failed it
 }
@@ -35,7 +36,7 @@ local VehicleService = {}
 
 local onCrash: Signal.Signal<Player, number> = Signal.new()
 local onSpawned: Signal.Signal<Player, VehicleEntry> = Signal.new()
-VehicleService.OnCrash = onCrash -- (player, horizontal velocity delta in studs/s)
+VehicleService.OnCrash = onCrash -- (player, horizontal speed lost in studs/s)
 VehicleService.OnSpawned = onSpawned
 
 local entries: { [Player]: VehicleEntry } = {}
@@ -252,6 +253,7 @@ function VehicleService.Spawn(player: Player)
 		boostUntil = 0,
 		spinUntil = 0,
 		crashImmuneUntil = 0,
+		speedHistory = {},
 		lastPosition = chassis.Position,
 		strikes = 0,
 	}
@@ -381,7 +383,8 @@ function VehicleService.Start()
 		end
 	end
 
-	-- Crash watch: horizontal velocity delta between server frames. Jumps and landings are free; walls are not.
+	-- Crash watch: horizontal speed lost over the last CrashWindow seconds (one frame is too fragile: replicated
+	-- velocity can spread a wall hit across several frames). Jumps and landings are free; walls are not.
 	-- Speed sanity: a car that covers more ground per frame than its fastest legal speed allows, several frames
 	-- in a row, is put back where it was last seen behaving.
 	local sanity = Config.Net.SpeedSanity
@@ -390,16 +393,32 @@ function VehicleService.Start()
 		for player, entry in entries do
 			if entry.chassis.Anchored then
 				entry.lastVelocity = Vector3.zero
+				table.clear(entry.speedHistory)
 				entry.lastPosition = entry.chassis.Position
 				entry.strikes = 0
 				continue
 			end
 			local v = entry.chassis.AssemblyLinearVelocity
-			local delta = VecUtil.FlatDistance(v, entry.lastVelocity)
 			entry.lastVelocity = v
+			local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+			local history = entry.speedHistory
+			table.insert(history, { t = now, speed = speed })
+			while history[1] and now - history[1].t > Config.Passenger.CrashWindow do
+				table.remove(history, 1)
+			end
+			local peak = speed
+			for _, sample in history do
+				peak = math.max(peak, sample.speed)
+			end
+			local drop = peak - speed
 			local boostEnding = now >= entry.boostUntil and now - entry.boostUntil < Config.Passenger.BoostEndGrace
-			if delta >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
-				onCrash:Fire(player, delta)
+			if drop >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
+				if RunService:IsStudio() then
+					print(string.format("[VehicleService] crash: %s lost %.0f studs/s", player.Name, drop))
+				end
+				onCrash:Fire(player, drop)
+				table.clear(history)
+				table.insert(history, { t = now, speed = speed })
 			end
 
 			local pos = entry.chassis.Position
