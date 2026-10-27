@@ -51,6 +51,7 @@ local RAY_LENGTH = 120
 local cars: { Car } = {}
 local holds: { [string]: Hold } = {}
 local crossers: { Vector3 } = {} -- pedestrians and walking-back passengers out in the road this frame
+local playerCars: { { position: Vector3, velocity: Vector3 } } = {} -- player cars on the map this frame (flat)
 local folder: Folder
 local groundParams: RaycastParams
 local rng = Random.new()
@@ -218,9 +219,10 @@ local function mayEnter(car: Car, center: Vector3): boolean
 	return true
 end
 
--- Ease toward cruise speed; slow behind a slower car in the lane (down to a stop at a body length) and stop at the
--- line when another direction holds the next intersection.
-local function updateSpeed(car: Car, dt: number)
+-- Ease toward cruise speed; slow behind a slower car in the lane (down to a stop at a body length), stop at the line
+-- when another direction holds the next intersection, and stop short of pedestrians and player cars in the lane.
+-- True when a player car is what holds it back.
+local function updateSpeed(car: Car, dt: number): boolean
 	local cfg = Config.Traffic
 	local target = car.cruise
 	local leader, gap = leaderOf(car)
@@ -247,11 +249,27 @@ local function updateSpeed(car: Car, dt: number)
 			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.BodySize.Z / 2 - 2, 0)))
 		end
 	end
+	-- A player car in its lane ahead (parked at the curb for a pickup, waiting in a junction, slower in the lane):
+	-- brake to stop short of it, or follow it if it is pulling away.
+	local heldByPlayer = false
+	for _, other in playerCars do
+		local rel = other.position - car.rabbit
+		local ahead = rel:Dot(car.dir)
+		if ahead > 0 and ahead < cfg.PlayerStopDistance and math.abs(across(rel, car.dir)) < cfg.PlayerLaneHalf then
+			local pullingAway = math.max(0, other.velocity:Dot(car.dir))
+			local allowed = pullingAway + math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.PlayerStopGap, 0))
+			if allowed < target then
+				target = allowed
+				heldByPlayer = true
+			end
+		end
+	end
 	if target > car.speed then
 		car.speed = math.min(target, car.speed + cfg.Accel * dt)
 	else
 		car.speed = math.max(target, car.speed - cfg.Brake * dt)
 	end
+	return heldByPlayer
 end
 
 -- A player car touched this traffic car: if they closed fast enough it is a crash, at least a small one.
@@ -421,6 +439,14 @@ function TrafficService.Start()
 		for _, walker in PassengerService.GetWalkersInRoad() do
 			table.insert(crossers, walker)
 		end
+		table.clear(playerCars)
+		for _, entry in VehicleService.GetAll() do
+			local chassis = entry.chassis
+			if not chassis.Anchored then
+				local p, v = chassis.Position, chassis.AssemblyLinearVelocity
+				table.insert(playerCars, { position = Vector3.new(p.X, 0, p.Z), velocity = Vector3.new(v.X, 0, v.Z) })
+			end
+		end
 		local lost: { number } = {}
 		for i = #cars, 1, -1 do
 			local car = cars[i]
@@ -431,11 +457,15 @@ function TrafficService.Start()
 				table.insert(lost, car.cruise)
 				continue
 			end
-			updateSpeed(car, dt)
-			-- Held up by a player car: wait (so the cars queued behind wait too); after a while, respawn elsewhere.
+			local heldByPlayer = updateSpeed(car, dt)
+			-- Held up by a player car (stopped for one, or its body pushed back by one): wait, so the cars queued behind
+			-- wait too; after a while, respawn elsewhere.
 			local lag = (car.rabbit - Vector3.new(car.body.Position.X, 0, car.body.Position.Z)):Dot(car.dir)
-			if lag > Config.Traffic.BlockedLag then
+			local pushedBack = lag > Config.Traffic.BlockedLag
+			if pushedBack then
 				car.speed = 0
+			end
+			if pushedBack or (heldByPlayer and car.speed < 1) then
 				car.blockedFor += dt
 				if car.blockedFor > Config.Traffic.BlockedRespawn then
 					release(car)
