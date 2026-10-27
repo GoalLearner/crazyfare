@@ -13,7 +13,7 @@ Defaults chosen so Phase 1 could ship without a round-trip. Each is one Config k
 5. **Fare timer expiry = the passenger bails** (owner call 2026-10-26 after playing both versions; `Config.Fares.TimeoutBails = false` keeps them aboard with no tip).
 6. **Self-cost for attacking while loaded applies to Tomato only.** Banana/OilSlick are traps (`Config.Items.SelfCostItems`).
 7. **Item boxes:** cannot pick up while holding an item; box respawns 10 s after pickup.
-8. **Combo:** +0.1 per step, cap ×1.5; idle 3 s then lose a step every 0.5 s. Clients report drift/airtime/near-miss events; the server rate-limits and speed-checks them.
+8. **Combo:** replaced 2026-10-26 by the stunt chain (DESIGN.md "Stunts and the chain", `Config.Stunts`). Clients still report drift/airtime/near-miss events; the server rate-limits and speed-checks them.
 9. **Crash damage:** server reads the replicated velocity each tick; a delta above 30 studs/s does `(delta−30)×0.6` HP, capped at 35, with a 1 s cooldown.
 10. **Solo testing allowed:** `MinPlayers = 1`, auto-start 4 s after. Phase 1 loops single rounds forever (podium 10 s, then a fresh round).
 11. **Blockout spec is data** in `Config.Map.City.Blockout`; `DevBlockout` and the minimap both read it.
@@ -114,3 +114,11 @@ Verification
 - [x] Sound hooks for every moment (ids 0 until the owner uploads audio), camera shake on splat / spinout / crash, passenger voice line hooks, music loop
 - [x] Mobile touch controls (steer left, pedals right, drift/boost/item/honk)
 - [x] Gate: store never sells HP, damage, speed or quota (checked: Gems, passes, vehicles, paint only)
+
+## Phase A — the Crazy feel (fun pass approved 2026-10-26)
+Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10-item prompt). Owner calls: quota race stays and a solo Arcade clock mode comes later; AI rival taxis fill matches (Phase C); the Crazy feel goes first.
+- [x] A1 Economy: money in integer cents (`Money` helper), fares 5/10/18, quotas 75/100/125 counted per round, 25% of unspent cash carries into the next round, 3-minute rounds, match winner = total over three rounds
+- [x] A2 Live stunt tips: DRIFT! / BIG AIR! / NEAR MISS! pay into the fare at once, chain x1-x10 (+10% per step), 4 s idle / hurting crash / bail ends it, held until delivery, capped at 2x base, popups above the cab, COMBO xN counter, coin ding (Pro Sound Effects 9126073001) pitched up the chain
+- [ ] A3 Money you can hear: rolling TOTAL and FARE counters, cash burst on delivery, SPEEDY / ON TIME / SLOW stamp
+- [ ] A4 Where to: 12 named destinations, rooftop signs, "TAKE ME TO..." on boarding, arrival banner, drop-zone ring, countdown by the cab
+- [ ] A5 Speed and traffic: Dash, boost sound + flames, speed streaks, landing dust, drift smoke, 20-30 traffic vehicles with vans and buses

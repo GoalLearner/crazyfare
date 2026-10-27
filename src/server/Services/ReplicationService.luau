@@ -47,7 +47,7 @@ local function buildSnapshot(): Types.Snapshot
 			tier = (if fare then fare.tier else "") :: string,
 			hp = if npc then math.round(npc.hp) else 0,
 			maxHp = if npc then npc.maxHp else 0,
-			combo = round1(ComboService.GetMultiplier(player)),
+			combo = ComboService.GetChain(player),
 			rank = ranks[player] or 0,
 			item = ItemService.GetHeld(player),
 			gems = GemService.GetTotal(player),

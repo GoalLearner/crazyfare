@@ -603,13 +603,11 @@ function PassengerService.Init()
 	-- Crash damage: how much of the car's top speed the hit took decides what share of the trip's base HP it costs.
 	VehicleService.OnCrash:Connect(function(player: Player, lost: number)
 		local npc = loadedByPlayer[player]
-		local entry = VehicleService.GetEntry(player)
-		if not npc or not entry then
+		if not npc then
 			return
 		end
 		local cfg = Config.Passenger
-		local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
-		local intensity = lost / stats.TopSpeed
+		local intensity = VehicleService.CrashIntensity(player, lost)
 		if intensity < cfg.CrashMinIntensity then
 			return
 		end

@@ -1,5 +1,5 @@
 --!strict
--- The money side of passengers: pickup contests, destinations, timers, delivery, tips, combo at payout, cash, quota, rank.
+-- The money side of passengers: pickup contests, destinations, timers, delivery, tips, stunt cash, quota, rank.
 -- All money here is integer cents (Config is in dollars; Money.Cents converts). Three ledgers per player:
 --   wallet       spendable at the Pit Stop, carried across the match
 --   roundEarned  progress toward this round's quota; each round starts at Config.PitStop.CarryFrac of the wallet
@@ -223,6 +223,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		startedAt = now,
 		deadline = now + duration,
 		distance = distance,
+		stuntTips = 0,
 	}
 	local npcPosition = npc.position
 	PassengerService.Board(npc, player)
@@ -245,6 +246,32 @@ local function claim(player: Player, npc: PassengerService.Npc)
 	end
 end
 
+-- The Tip Jar Pit Stop card multiplies tips, stunt cash included.
+local function tipJarMult(player: Player): number
+	local tipJar = player:GetAttribute("Pit_TipJar")
+	return if typeof(tipJar) == "number" then tipJar else 1
+end
+
+-- An accepted stunt: cash into the current fare at once, more per chain step, capped per fare. The popup fires either
+-- way, so a stunt with no passenger still shows its name.
+local function onStunt(player: Player, kind: string, units: number, chain: number)
+	local cfg = Config.Stunts
+	local fare = fares[player]
+	local amount = 0
+	if enabled and fare and not fare.expired then
+		local raw = Money.Cents(units * (cfg.Pay[kind] or 0)) * (1 + cfg.ChainBonus * (chain - 1)) * tipJarMult(player)
+		local room = math.max(0, math.round(fare.base * cfg.MaxPerFareFrac) - fare.stuntTips)
+		amount = math.min(room, math.round(raw))
+		if amount > 0 then
+			fare.stuntTips += amount
+			if not cfg.HoldUntilDelivery then
+				FareService.AddCash(player, amount)
+			end
+		end
+	end
+	fire(player, { kind = "Stunt", stunt = kind, amount = amount, chain = chain })
+end
+
 local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerService.Npc, now: number, allowTip: boolean)
 	local total = math.max(0.01, fare.deadline - fare.startedAt)
 	local timeFrac = VecUtil.Clamp01((fare.deadline - now) / total)
@@ -253,17 +280,16 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local speedy = VecUtil.Clamp01((timeFrac - tips.TimeFloor) / (tips.TimeCeil - tips.TimeFloor))
 	local chill = VecUtil.Clamp01((hpFrac - tips.HpFloor) / (1 - tips.HpFloor))
 	local tipRaw = if allowTip then fare.base * tips.MaxFrac * (tips.TimeWeight * speedy + tips.ChillWeight * chill) else 0
-	local tipJar = player:GetAttribute("Pit_TipJar")
-	if typeof(tipJar) == "number" then
-		tipRaw *= tipJar
-	end
-	local combo = ComboService.GetMultiplier(player)
-	local payout = math.round((fare.base + tipRaw) * combo)
-	local tipShown = math.round(tipRaw * combo)
+	tipRaw *= tipJarMult(player)
+	local tipShown = math.round(tipRaw)
+	-- Stunt cash rides in the fare (Config.Stunts.HoldUntilDelivery) and is lost with the tip on a late arrival.
+	local stunts = if allowTip then fare.stuntTips else 0
+	local held = if Config.Stunts.HoldUntilDelivery then stunts else 0
+	local payout = fare.base + tipShown + held
 
 	fares[player] = nil
 	delivered[player] = (delivered[player] or 0) + 1
-	bestTip[player] = math.max(bestTip[player] or 0, tipShown)
+	bestTip[player] = math.max(bestTip[player] or 0, tipShown + stunts)
 	PassengerService.Deliver(player)
 	fire(player, {
 		kind = "Delivered",
@@ -271,11 +297,11 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		base = fare.base,
 		payout = payout,
 		tip = tipShown,
-		combo = combo,
+		stunts = stunts,
 		line = if allowTip then nil else "LATE. NO TIP.",
 	})
 	FareService.AddCash(player, payout)
-	onDelivered:Fire(player, fare.tier, tipShown)
+	onDelivered:Fire(player, fare.tier, tipShown + stunts)
 
 	task.delay(Config.Fares.RespawnDelay, function()
 		if enabled then
@@ -287,7 +313,7 @@ end
 local function handleBail(victim: Player, npc: PassengerService.Npc, reason: string, attacker: Player?)
 	local fare = fares[victim]
 	fares[victim] = nil
-	ComboService.Reset(victim)
+	ComboService.Reset(victim, "bail")
 	fire(victim, {
 		kind = "Bailed",
 		reason = reason,
@@ -368,6 +394,10 @@ end
 function FareService.Init()
 	fareEvent = Remotes.Get("FareEvent")
 	PassengerService.OnBailed:Connect(handleBail)
+	ComboService.OnStunt:Connect(onStunt)
+	ComboService.OnChainBroken:Connect(function(player: Player, chain: number, reason: string)
+		fire(player, { kind = "ChainBroken", chain = chain, reason = reason })
+	end)
 	PassengerService.OnDamaged:Connect(function(player: Player, amount: number, source: string)
 		local lines = Config.Passenger.CrashLines
 		fire(player, {

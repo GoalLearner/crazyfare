@@ -372,7 +372,7 @@ local function step(rawDt: number)
 	if drifting then
 		driftAccumulator += dt
 		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * dt)
-		if driftAccumulator >= Config.Combo.DriftTickSeconds then
+		if driftAccumulator >= Config.Stunts.UnitSeconds then
 			reportCombo("Drift", driftAccumulator)
 			driftAccumulator = 0
 		end
@@ -389,7 +389,7 @@ local function step(rawDt: number)
 	end
 
 	-- Near misses, checked ten times a second
-	if speed >= Config.Combo.NearMissMinSpeed and now >= nearMissCooldownUntil and now >= nearMissCheckAt then
+	if speed >= Config.Stunts.NearMissMinSpeed and now >= nearMissCooldownUntil and now >= nearMissCheckAt then
 		nearMissCheckAt = now + 0.1
 		checkNearMiss(ch, now)
 	end

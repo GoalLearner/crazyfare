@@ -125,6 +125,16 @@ function VehicleService.GetEntry(player: Player): VehicleEntry?
 	return entries[player]
 end
 
+-- How big an OnCrash was for this player's car: the share of its top speed the hit took (0 when there's no car).
+function VehicleService.CrashIntensity(player: Player, lost: number): number
+	local entry = entries[player]
+	if not entry then
+		return 0
+	end
+	local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
+	return lost / stats.TopSpeed
+end
+
 -- A hit measured outside the speed watch (TrafficService reports how fast a player car closed on a traffic car).
 -- It joins the crash watch so one hit fires once, with the bigger of the two readings.
 function VehicleService.ReportImpact(player: Player, speed: number)

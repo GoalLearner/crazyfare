@@ -30,13 +30,17 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ### Fares, timers, payout
 - Every fare has a destination (a DropoffPoint in the tier's distance band) and a timer (`TimeBase + distance / TimeSpeed`).
 - Delivery: stop (below 5 studs/s) within 14 studs of the destination.
-- **Payout = base(tier) × tipCurve × combo**, rounded to whole dollars.
+- **Payout = base(tier) + tip + stunt cash**, in cents.
 - **Tips are the edge.** The tip depends on how **speedy** (time remaining at delivery) and how **chill** (passenger HP at delivery) the ride was. A perfect, fast, clean ride on a red fare pays close to double the base and can swing a round.
 - If the timer runs out, the passenger bails (same rules as a 0-HP bail, no attacker).
 
-### Crazy Combo
-- A multiplier that builds from **drifts, near-misses and airtime** and **decays after 3 s** without a new event (then loses a step every 0.5 s).
-- Steps of +0.1, capped at ×1.5. The combo is applied at payout. A bail resets it.
+### Stunts and the chain (live stunt tips)
+- **DRIFT!** pays $1 per half second, **BIG AIR!** $2 per half second of hang time, **NEAR MISS!** $1 each. The names are our own, not Crazy Taxi's.
+- Every stunt adds one to the **chain** (x1 to x10; a long drift adds one per second). Each step past the first pays 10% more, so x10 pays +90%.
+- The chain ends after **4 s without a stunt**, on a **crash big enough to hurt a passenger**, on a bail, and at a new round. A crash or bail shows **COMBO LOST**.
+- Stunt cash lands in the current fare at once and **rides until delivery**: lost on a bail or a timeout. With no passenger the popup still names the stunt but pays nothing.
+- Stunt cash per fare is capped at **2x the fare's base**, because stunts are reported by the client. The Tip Jar card boosts stunt cash too.
+- On screen: a popup just above the cab ("BIG AIR! +$6.24") that punches in, climbs and fades; the same stunt again tops up its popup; a COMBO xN counter with a bar for the time left; a coin ding whose pitch climbs with the chain.
 
 ### Boost tank
 - Drifting and near-misses also fill a small **boost tank** (capacity = the vehicle's `BoostTank` stat). Hold Shift to spend it for speed. LemonNitro is separate: an instant 3 s burst.

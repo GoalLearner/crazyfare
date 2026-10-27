@@ -35,6 +35,7 @@ local fareHpLabel: TextLabel
 
 local comboLabel: TextLabel
 local comboBar: UI.Bar
+local comboScale: UIScale
 local boostBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
@@ -70,6 +71,95 @@ local function showMessage(text: string, color: Color3, seconds: number, sub: st
 	}):Play()
 end
 
+-- Stunt popups: they punch in just above the cab, climb and fade. The same stunt again soon tops up its own popup
+-- (a long drift reads as one growing DRIFT! +$3.30), anything else stacks above.
+type Popup = { root: Frame, label: TextLabel, scale: UIScale, kind: string, amount: number, born: number, stack: number }
+local popupLayer: Frame
+local popups: { Popup } = {}
+local chain = 0 -- the stunt chain as the last Stunt event left it
+local chainAt = 0 -- os.clock() of that event
+local lostUntil = 0
+local HOT = Color3.fromRGB(255, 150, 40)
+local BLAZING = Color3.fromRGB(255, 70, 190)
+local CASH_HEX = "#78F082"
+local MAX_POPUPS = 5
+
+local function punch(scale: UIScale, from: number)
+	scale.Scale = from
+	TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+local function popupText(kind: string, amount: number): string
+	local name = Config.Stunts.Names[kind] or string.upper(kind)
+	if amount > 0 then
+		return string.format('%s <font color="%s">+%s</font>', name, CASH_HEX, UI.Money(amount))
+	end
+	return name
+end
+
+local function chainColor(n: number): Color3
+	return if n >= Config.Stunts.BlazingChain then BLAZING elseif n >= Config.Stunts.HotChain then HOT else UI.Warn
+end
+
+local function addPopup(kind: string, amount: number)
+	local now = os.clock()
+	local last = popups[#popups]
+	if last and last.kind == kind and now - last.born < Config.Stunts.PopupMergeSeconds then
+		last.amount += amount
+		last.label.Text = popupText(kind, last.amount)
+		last.born = now
+		punch(last.scale, 1.35)
+		return
+	end
+	for _, popup in popups do
+		popup.stack += 1
+	end
+	if #popups >= MAX_POPUPS then
+		local oldest = table.remove(popups, 1)
+		if oldest then
+			oldest.root:Destroy()
+		end
+	end
+	local root = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(340, 40), BackgroundTransparency = 1 }, popupLayer)
+	local label = UI.Label({ Size = UDim2.fromScale(1, 1), RichText = true, TextColor3 = chainColor(chain), TextStrokeTransparency = 0.2, Text = popupText(kind, amount) }, root)
+	local scale = UI.New("UIScale", {}, root) :: UIScale
+	punch(scale, 1.6)
+	table.insert(popups, { root = root, label = label, scale = scale, kind = kind, amount = amount, born = now, stack = 0 })
+end
+
+-- Screen point just above the cab, or a spot above centre when the cab is off screen.
+local function popupAnchor(): Vector2
+	local camera = workspace.CurrentCamera
+	local ch = State.chassis
+	if camera and ch then
+		local point, onScreen = camera:WorldToViewportPoint(ch.Position + Vector3.new(0, 7, 0))
+		if onScreen then
+			return Vector2.new(point.X, point.Y)
+		end
+	end
+	local size = if camera then camera.ViewportSize else Vector2.new(1280, 720)
+	return Vector2.new(size.X / 2, size.Y * 0.45)
+end
+
+local function updatePopups()
+	local cfg = Config.Stunts
+	local now = os.clock()
+	local anchor = popupAnchor()
+	for i = #popups, 1, -1 do
+		local popup = popups[i]
+		local t = (now - popup.born) / cfg.PopupSeconds
+		if t >= 1 then
+			popup.root:Destroy()
+			table.remove(popups, i)
+			continue
+		end
+		popup.root.Position = UDim2.fromOffset(anchor.X, anchor.Y - t * cfg.PopupRise - popup.stack * cfg.PopupStack)
+		local fade = math.clamp((t - 0.6) / 0.4, 0, 1)
+		popup.label.TextTransparency = fade
+		popup.label.TextStrokeTransparency = 0.2 + 0.8 * fade
+	end
+end
+
 local function build()
 	screen = UI.Screen("CrazyFareHud", 10)
 
@@ -100,7 +190,9 @@ local function build()
 	-- Combo + boost + speed (bottom-center)
 	local center = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(260, 90), BackgroundTransparency = 1 }, screen)
 	comboLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(200, 40), TextColor3 = UI.Warn, Text = "" }, center)
+	comboScale = UI.New("UIScale", {}, comboLabel) :: UIScale
 	comboBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 44), Size = UDim2.fromOffset(200, 8) }, UI.Warn, center)
+	popupLayer = UI.Frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, screen)
 	boostBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 58), Size = UDim2.fromOffset(200, 8) }, UI.Accent, center)
 	speedLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 68), Size = UDim2.fromOffset(120, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "0" }, center)
 
@@ -194,13 +286,13 @@ end
 local function onFare(payload: Types.FareEventPayload)
 	if payload.kind == "Delivered" then
 		local tip = payload.tip or 0
-		local combo = payload.combo or 1
+		local stunts = payload.stunts or 0
 		local parts = {}
 		if tip > 0 then
 			table.insert(parts, "TIP " .. UI.Money(tip))
 		end
-		if combo > 1.01 then
-			table.insert(parts, string.format("x%.1f", combo))
+		if stunts > 0 then
+			table.insert(parts, "STUNTS " .. UI.Money(stunts))
 		end
 		if payload.line then
 			table.insert(parts, payload.line)
@@ -217,6 +309,21 @@ local function onFare(payload: Types.FareEventPayload)
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Hurt" and payload.source == "crash" then
 		showMessage(payload.line or "OW!", UI.Danger, Config.Hud.CrashMessageSeconds, string.format("-%d HP", payload.amount or 0))
+	elseif payload.kind == "Stunt" then
+		local before = chain
+		chain = payload.chain or chain
+		chainAt = os.clock()
+		lostUntil = 0
+		if chain > before and chain >= 2 then
+			punch(comboScale, 1.4)
+		end
+		addPopup(payload.stunt or "", payload.amount or 0)
+	elseif payload.kind == "ChainBroken" then
+		chain = 0
+		if payload.reason ~= "idle" then
+			lostUntil = os.clock() + Config.Stunts.LostSeconds
+			punch(comboScale, 1.3)
+		end
 	elseif payload.kind == "Claimed" then
 		local def = Config.Fares.Tiers[payload.tier or ""]
 		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")
@@ -322,13 +429,27 @@ local function update()
 		arrowDistance.Visible = false
 	end
 
-	-- Combo
-	local combo = State.combo
-	local maxSteps = (Config.Combo.Max - 1) / Config.Combo.Step
-	local steps = (combo - 1) / Config.Combo.Step
-	comboLabel.Text = if combo > 1.01 then string.format("x%.1f", combo) else ""
-	UI.SetBar(comboBar, if maxSteps > 0 then steps / maxSteps else 0)
-	comboBar.back.Visible = combo > 1.01
+	-- Stunt chain: the counter, a bar for the time left before it ends, and COMBO LOST when a crash or bail breaks it.
+	-- The snapshot's chain catches resets that send no event (a new round).
+	local clock = os.clock()
+	local since = clock - chainAt
+	if chain > 0 and (since >= Config.Stunts.ChainIdleSeconds or (State.combo == 0 and since > 0.6)) then
+		chain = 0
+	end
+	if clock < lostUntil then
+		comboLabel.Text = "COMBO LOST"
+		comboLabel.TextColor3 = UI.Danger
+		comboBar.back.Visible = false
+	elseif chain >= 2 then
+		comboLabel.Text = "COMBO x" .. chain
+		comboLabel.TextColor3 = chainColor(chain)
+		UI.SetBar(comboBar, 1 - since / Config.Stunts.ChainIdleSeconds, chainColor(chain))
+		comboBar.back.Visible = true
+	else
+		comboLabel.Text = ""
+		comboBar.back.Visible = false
+	end
+	updatePopups()
 
 	-- Boost tank + speed
 	UI.SetBar(boostBar, if State.boostTankMax > 0 then State.boostTank / State.boostTankMax else 0, if State.boosting then UI.Warn else UI.Accent)

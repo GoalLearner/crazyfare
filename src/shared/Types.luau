@@ -17,7 +17,7 @@ export type PlayerSnap = {
 	tier: string, -- "" when empty
 	hp: number,
 	maxHp: number,
-	combo: number,
+	combo: number, -- stunt chain (0 = none running)
 	rank: number,
 	item: string, -- held item id or ""
 	gems: number, -- session total
@@ -101,7 +101,7 @@ export type LeaderboardPayload = {
 export type PitStopCard = { id: string, name: string, effect: string, price: number, bought: boolean }
 export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number, buysLeft: number }
 
--- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "NearDestination"
+-- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
 export type FareEventPayload = {
 	kind: string,
 	npcId: number?,
@@ -113,9 +113,11 @@ export type FareEventPayload = {
 	deadline: number?,
 	payout: number?,
 	tip: number?,
-	combo: number?,
-	reason: string?, -- bail reason: "hp" | "timeout" | "pedestrian"
-	amount: number?, -- "Hurt": HP the passenger lost
+	stunts: number?, -- "Delivered": stunt cash this ride paid (cents)
+	stunt: string?, -- "Stunt": "Drift" | "Airtime" | "NearMiss"
+	chain: number?, -- "Stunt": chain after it; "ChainBroken": the chain that ended
+	reason: string?, -- bail reason: "hp" | "timeout" | "pedestrian"; "ChainBroken": "crash" | "bail" | "idle"
+	amount: number?, -- "Hurt": HP the passenger lost; "Stunt": cents it paid (0 with no passenger or at the fare's cap)
 	source: string?, -- "Hurt": "crash" | an item name | "debug" | ...
 	position: Vector3?,
 	line: string?,
@@ -148,6 +150,7 @@ export type Fare = {
 	startedAt: number,
 	deadline: number,
 	distance: number,
+	stuntTips: number, -- cents of stunt cash this ride has earned so far
 }
 
 return {}

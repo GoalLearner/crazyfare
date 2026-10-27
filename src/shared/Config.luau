@@ -221,16 +221,33 @@ Config.Tips = {
 	HpFloor = 0.4, -- passenger HP fraction where the chill tip starts
 }
 
-Config.Combo = {
-	Step = 0.1, -- multiplier per step
-	Max = 1.5,
-	IdleSeconds = 3, -- no event for this long starts the decay
-	DecayStepSeconds = 0.5, -- then lose one step per this
-	DriftTickSeconds = 0.5, -- one step per this much drifting
-	AirtimeStepSeconds = 0.5, -- one step per this much airtime
+-- Live stunt tips (ComboService validates, FareService pays). Every stunt the server accepts adds one to the chain and
+-- pays cash into the current fare at once; each chain step past the first pays ChainBonus more. A crash that hurts the
+-- passenger (Config.Passenger.CrashMinIntensity), a bail, a new round or ChainIdleSeconds without a stunt breaks it.
+Config.Stunts = {
+	Names = { Drift = "DRIFT!", Airtime = "BIG AIR!", NearMiss = "NEAR MISS!" } :: { [string]: string },
+	Pay = { Drift = 1, Airtime = 2, NearMiss = 1 } :: { [string]: number }, -- dollars: Drift and Airtime per UnitSeconds, NearMiss per miss
+	UnitSeconds = 0.5, -- the client reports drift in ticks this long; air pays per this much hang time
+	DriftChainSeconds = 1, -- a long drift adds one to the chain per this much drifting
+	MaxDriftReport = 1, -- seconds the server accepts in one drift report
+	MaxAirSeconds = 3, -- seconds the server accepts in one airtime report
+	ChainBonus = 0.1, -- x1 pays the base; x10 pays +90%
+	ChainMax = 10,
+	ChainIdleSeconds = 4, -- no stunt for this long ends the chain
+	HoldUntilDelivery = true, -- true: stunt cash rides in the fare, paid on delivery, lost on a bail. false: banked at once
+	MaxPerFareFrac = 2, -- stunt cash per fare tops out at this many times the fare's base (stunts are client-reported)
 	NearMissMinSpeed = 45,
-	MinSpeedForEvents = 20, -- server rejects combo events while slower than this
+	MinSpeedForEvents = 20, -- server rejects stunt reports while slower than this
 	MaxEventsPerSecond = 8,
+	-- HUD
+	PopupSeconds = 0.9, -- a popup rises and fades over this
+	PopupMergeSeconds = 0.7, -- the same stunt again inside this tops up its popup instead of stacking a new one
+	PopupRise = 70, -- pixels a popup climbs over its life
+	PopupStack = 34, -- pixels between stacked popups
+	LostSeconds = 1.1, -- "COMBO LOST" shows this long
+	HotChain = 5, -- from this chain the counter turns orange
+	BlazingChain = 8, -- and from this, red
+	CoinPitchPerChain = 0.05, -- the coin sound climbs this much per chain step
 }
 
 -- Ambient traffic (TrafficService): server cars cruising the road grid in right-hand lanes, turning at intersections.
@@ -567,6 +584,7 @@ Config.Sounds = {
 		Boost = 9114329395, -- Energy Cloud Whooshing By Very Fast 1
 		Pickup = 9113205239, -- Audi Car Door Movement Opening Closing 4
 		Deliver = 9113728049, -- Cash Register 2
+		Coin = 9126073001, -- Synth Sparkle Tone High Pitch Bell Tone Ding (1.16 s); one per paid stunt, pitched up the chain
 		Splat = 9119293925, -- Small Splat 2
 		Spinout = 9119197920, -- Slide Whistle 3
 		Crash = 9120369181, -- Vehicle Crash 2 (Pro Sound Effects); wall hit with a passenger aboard

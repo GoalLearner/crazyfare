@@ -39,8 +39,27 @@ local function play(name: string)
 	end
 end
 
+-- One coin per paid stunt, each its own copy so fast stunts overlap; pitch climbs with the chain.
+local function playCoin(chain: number)
+	local coin = sounds.Coin
+	if not coin then
+		return
+	end
+	local sound = coin:Clone()
+	sound.PlaybackSpeed = 1 + math.max(0, chain - 1) * Config.Stunts.CoinPitchPerChain
+	sound.Parent = SoundService
+	sound:Play()
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+end
+
 local function onFare(payload: Types.FareEventPayload)
-	if payload.kind == "Claimed" then
+	if payload.kind == "Stunt" then
+		if (payload.amount or 0) > 0 then
+			playCoin(payload.chain or 1)
+		end
+	elseif payload.kind == "Claimed" then
 		play("Pickup")
 		play("Board")
 	elseif payload.kind == "Delivered" then

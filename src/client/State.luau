@@ -122,7 +122,7 @@ function State.ResetRound()
 	State.shieldUp = false
 	State.splatUntil = 0
 	State.splatCoverage = 0
-	State.combo = 1
+	State.combo = 0 -- stunt chain from the snapshot
 	State.cash = 0
 	State.hp = 0
 	State.maxHp = 0
