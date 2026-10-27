@@ -147,4 +147,5 @@ Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10
 - [x] Hill on the road beside the plaza (x = 60), diagonal park path with a big hump, a big hump on the south road, the tunnel on x = -180 (roof CanQuery off; traffic's ground probe now starts 8 studs up)
 - [x] Arcade air: `Config.Chassis.AirGravityMult` 0.45 while airborne (client chassis)
 - [x] Alleys, park path, jump lane, humps, hill, tunnel and pads on the minimap
-- [ ] Not seen yet: the south hump and the jump block at 120 pad speed (same code as the tested pieces); Beach has no set pieces
+- [x] Jump block at 120 pad speed: leaves the crest at ~94, 16 studs up, ~72 studs and ~0.9 s of air, clears the warehouse and the landing ramp and lands on the road; the radio tower's base is ~48 studs straight ahead of the landing (steer, or hit it)
+- [ ] Not seen yet: the south hump (same code as the park hump); Beach has no set pieces
