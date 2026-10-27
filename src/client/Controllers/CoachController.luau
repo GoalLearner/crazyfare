@@ -4,7 +4,6 @@
 -- marks the account (CoachDone) and the coach never shows again. Words follow the input in use. Config.Coach.
 
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -13,6 +12,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
+local InputController = require(script.Parent.InputController)
 
 local CoachController = {}
 
@@ -25,13 +25,7 @@ local finished = false
 local sent = false
 
 local function inputKind(): string
-	local last = UserInputService:GetLastInputType()
-	if last == Enum.UserInputType.Touch then
-		return "Touch"
-	elseif last.Name:sub(1, 7) == "Gamepad" then
-		return "Gamepad"
-	end
-	return if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then "Touch" else "Keyboard"
+	return InputController.GetMode()
 end
 
 local function advance()

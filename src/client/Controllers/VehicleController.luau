@@ -208,9 +208,10 @@ local function step(rawDt: number)
 	local onBoostPad = padUnder
 
 	-- Dash: brake held while almost stopped arms it; gas soon after letting go launches it.
-	if throttle < 0 and math.abs(forwardSpeed) < C.DashMaxSpeed then
+	local braking = not spinning and InputController.IsBraking()
+	if braking and math.abs(forwardSpeed) < C.DashMaxSpeed then
 		brakeHeldFor += dt
-	elseif throttle >= 0 and brakeHeldFor >= C.DashArmSeconds and brakeHeldFor <= C.DashArmMax then
+	elseif not braking and brakeHeldFor >= C.DashArmSeconds and brakeHeldFor <= C.DashArmMax then
 		-- a short brake tap at a standstill, just let go: gas now launches
 		brakeHeldFor = 0
 		dashArmedUntil = now + C.DashWindow

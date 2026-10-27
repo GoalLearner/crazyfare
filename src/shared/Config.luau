@@ -850,10 +850,22 @@ Config.Shake = {
 }
 
 -- Touch controls (phones/tablets): on-screen buttons sized in pixels.
+-- Phones: the car drives forward by itself (AutoGas) so one thumb is free for DRIFT and BOOST. BRAKE slows to a stop,
+-- holds there for ReverseDelay (time to pick up or drop off), then reverses; a short BRAKE tap at a standstill is a
+-- Dash. Steering is an analog strip.
 Config.Touch = {
-	ButtonSize = 64,
+	ButtonSize = 64, -- px: BRAKE, HONK
+	BigButton = 84, -- px: DRIFT (and BOOST's width), where the right thumb rests
+	ItemButton = Vector2.new(104, 64), -- px: wide enough for the item's name
 	Margin = 18,
+	Gap = 10,
 	Opacity = 0.45,
+	AutoGas = true,
+	HoldSpeed = 4, -- studs/s: slower than this, a held BRAKE holds the car still (fares claim under 5)...
+	ReverseDelay = 0.7, -- ...for this long, then reverses
+	SteerPad = Vector2.new(200, 84), -- px: the steering strip, bottom-left
+	SteerKnob = 56,
+	SteerDeadzone = 0.12, -- share of the strip's half-width around the middle that steers nothing
 }
 
 -- Persistent profile (ProfileStore). Bump StoreName to wipe everyone in a test place.
@@ -907,11 +919,11 @@ Config.Arcade = {
 -- time), once per account. Words per input: keyboard / touch / gamepad.
 Config.Coach = {
 	Steps = {
-		{ Id = "pickup", Keyboard = "STOP NEXT TO A $ TO PICK UP", Touch = "STOP NEXT TO A $ TO PICK UP", Gamepad = "STOP NEXT TO A $ TO PICK UP", MaxSeconds = 0 },
-		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, STOP IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
+		{ Id = "pickup", Keyboard = "STOP NEXT TO A $ TO PICK UP", Touch = "HOLD BRAKE NEXT TO A $ TO PICK UP", Gamepad = "STOP NEXT TO A $ TO PICK UP", MaxSeconds = 0 },
+		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, BRAKE IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
 		{ Id = "drift", Keyboard = "HOLD SPACE WHILE TURNING TO DRIFT", Touch = "HOLD DRIFT WHILE TURNING", Gamepad = "HOLD A WHILE TURNING TO DRIFT", MaxSeconds = 14 },
 		{ Id = "boost", Keyboard = "HOLD SHIFT TO BOOST", Touch = "HOLD BOOST", Gamepad = "HOLD B TO BOOST", MaxSeconds = 12 },
-		{ Id = "item", Keyboard = "PRESS Q TO USE YOUR ITEM", Touch = "TAP THE ITEM BUTTON", Gamepad = "PRESS X TO USE YOUR ITEM", MaxSeconds = 12 },
+		{ Id = "item", Keyboard = "PRESS Q TO USE YOUR ITEM", Touch = "TAP YOUR ITEM", Gamepad = "PRESS X TO USE YOUR ITEM", MaxSeconds = 12 },
 	} :: { { Id: string, Keyboard: string, Touch: string, Gamepad: string, MaxSeconds: number } }, -- MaxSeconds 0 = until done
 	DriftSeconds = 0.5, -- drifting this long counts as done
 	BoostSeconds = 0.3,

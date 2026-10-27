@@ -182,7 +182,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - VIP gamepass (2× Gems, badge, horn). Pit Stop Plus (6 cards instead of 5). Premium vehicles. Cosmetics. Private servers. Premium Payouts via engagement.
 - **Never sell anything that affects passenger HP, item damage, speed, or quota.**
 
-## 11. Controls (v1, keyboard + basic gamepad)
+## 11. Controls (keyboard, gamepad, phones)
 
 | Action | Key | Gamepad |
 |---|---|---|
@@ -194,7 +194,13 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 | Honk (also clears splat faster) | H | Y |
 | Reset car | R | Back |
 
-Mobile touch controls are Phase 6 polish.
+Phones (`Config.Touch`, owner call 2026-10-27; most Roblox players are on phones):
+- The cab drives forward by itself, so the right thumb is free for DRIFT and BOOST.
+- BRAKE slows to a stop and holds the car there for 0.7 s (time to pick up or drop off), then reverses. A short BRAKE tap at a standstill is a Dash.
+- Steering is an analog strip on the left: the farther your thumb from its middle, the harder you turn.
+- ITEM (above the strip) shows the item you hold in its color; tap to use. HONK beside it.
+- Right side: DRIFT in the corner where the thumb rests, BRAKE beside it, BOOST above.
+- A controller on a phone hides the pads and drives like a gamepad.
 
 ## 12. Tech architecture (summary; conventions in CLAUDE.md)
 

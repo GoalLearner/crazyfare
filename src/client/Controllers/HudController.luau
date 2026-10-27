@@ -19,6 +19,7 @@ local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 local RollingCounter = require(script.Parent.Parent.RollingCounter)
 local SoundController = require(script.Parent.SoundController)
+local InputController = require(script.Parent.InputController)
 
 local HudController = {}
 
@@ -47,6 +48,7 @@ local boostBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
 local itemLabel: TextLabel
+local itemKey: TextLabel
 
 -- Where to: the passenger's shout over the cab, the arrival banner, the countdown by the cab
 local shoutRoot: Frame
@@ -420,7 +422,14 @@ local function build()
 	UI.Corner(14, itemSlot)
 	UI.Stroke(Color3.fromRGB(60, 60, 70), 2, itemSlot)
 	itemLabel = UI.Label({ Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 1, -16), Text = "" }, itemSlot)
-	UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 16), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "Q" }, itemSlot)
+	itemKey = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 16), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, itemSlot)
+	-- The slot names its key; on a phone the ITEM button shows the item instead, so the slot goes
+	local function fitInput(inputMode: string)
+		itemSlot.Visible = inputMode ~= "Touch"
+		itemKey.Text = if inputMode == "Gamepad" then (Config.Keys.PadItem.Name:gsub("^Button", "")) else Config.Keys.Item.Name
+	end
+	fitInput(InputController.GetMode())
+	InputController.ModeChanged:Connect(fitInput)
 
 	-- Center messages
 	message = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.3), Size = UDim2.fromScale(0.6, 0.11), Text = "", Visible = false }, screen)
