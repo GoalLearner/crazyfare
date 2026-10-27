@@ -74,6 +74,7 @@ export type RoundStatePayload = {
 	voters: number?, -- players present
 	mode: string?, -- "Race" | "Arcade"
 	timeBonus: number?, -- Arcade: seconds just added to the clock
+	frenzy: boolean?, -- the last Config.Chaos.Frenzy.Seconds of a race round
 }
 
 export type ProfilePayload = {

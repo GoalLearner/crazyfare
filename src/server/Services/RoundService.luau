@@ -43,6 +43,7 @@ local rematchVotes: { [Player]: boolean } = {}
 local matchCount = 0
 local roundState: RemoteEvent
 local mode = "Race" -- "Race" | "Arcade"
+local frenzy = false -- the last Config.Chaos.Frenzy.Seconds of a race round
 local arcadeServer = false -- a reserved server someone was sent to for Arcade
 local returnTo: { [Player]: string } = {} -- Arcade server: the JobId each player came from
 local retried: { [Player]: boolean } = {}
@@ -73,6 +74,7 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		votes = if phase == "MatchEnd" then voteCount() else nil,
 		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
 		mode = mode,
+		frenzy = if frenzy then true else nil,
 	}
 end
 
@@ -86,7 +88,28 @@ local function broadcast(timeBonus: number?)
 	roundState:FireAllClients(payload)
 end
 
+-- Frenzy: payouts multiplied, item boxes back fast, one Golden Fare; everyone is told (the RoundState flag).
+local function startFrenzy()
+	local cfg = Config.Chaos.Frenzy
+	frenzy = true
+	FareService.SetPayMult(cfg.PayMult)
+	ItemService.SetBoxRespawn(cfg.BoxRespawnSeconds)
+	PassengerService.SpawnGolden()
+end
+
+local function stopFrenzy()
+	if not frenzy then
+		return
+	end
+	frenzy = false
+	FareService.SetPayMult(1)
+	ItemService.SetBoxRespawn(nil)
+end
+
 local function setPhase(newPhase: Types.RoundPhase, duration: number)
+	if newPhase ~= "Playing" then
+		stopFrenzy()
+	end
 	phase = newPhase
 	phaseStartsAt = now()
 	phaseEndsAt = if duration > 0 then phaseStartsAt + duration else 0
@@ -254,6 +277,14 @@ function RoundService.ForceEnd()
 	endRound()
 end
 
+-- Studio: the running round's clock jumps to `seconds` left (to see Frenzy without waiting).
+function RoundService.DebugSetClock(seconds: number)
+	if RunService:IsStudio() and phase == "Playing" then
+		phaseEndsAt = now() + seconds
+		broadcast()
+	end
+end
+
 function RoundService.Init()
 	roundState = Remotes.Get("RoundState")
 
@@ -419,6 +450,9 @@ function RoundService.Start()
 		elseif phase == "Playing" then
 			if t >= phaseEndsAt then
 				endRound()
+			elseif mode == "Race" and not frenzy and phaseEndsAt - t <= Config.Chaos.Frenzy.Seconds then
+				startFrenzy()
+				broadcast()
 			end
 		elseif phase == "RoundEnd" then
 			if t >= phaseEndsAt then

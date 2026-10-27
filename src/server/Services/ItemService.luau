@@ -46,6 +46,7 @@ ItemService.OnTomatoHit = onTomatoHit -- (attacker, victim) on a landed splat
 
 local held: { [Player]: string } = {}
 local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
+local boxRespawn: number? = nil -- Frenzy: boxes come back this fast
 local boxes: { Box } = {}
 local projectiles: { Projectile } = {}
 local traps: { Trap } = {}
@@ -153,6 +154,20 @@ local function consumeShield(victim: Player, position: Vector3): boolean
 	fire(victim, { kind = "ShieldBreak", item = "Shield" })
 	broadcast({ kind = "Burst", item = "Shield", position = position })
 	return true
+end
+
+-- Frenzy: item boxes respawn in `seconds` (nil = the normal Config.Items.BoxRespawnSeconds); boxes already waiting
+-- come back that soon too.
+function ItemService.SetBoxRespawn(seconds: number?)
+	boxRespawn = seconds
+	if seconds then
+		local soon = workspace:GetServerTimeNow() + seconds
+		for _, box in boxes do
+			if box.activeAt > soon then
+				box.activeAt = soon
+			end
+		end
+	end
 end
 
 -- A non-item hit (a pedestrian clip) a raised Shield can take instead of the passenger. True when it did.
@@ -558,7 +573,7 @@ local function stepBoxes()
 				local item = roll(FareService.GetRankBucket(player))
 				held[player] = item
 				fire(player, { kind = "Granted", item = item })
-				box.activeAt = t + Config.Items.BoxRespawnSeconds
+				box.activeAt = t + (boxRespawn or Config.Items.BoxRespawnSeconds)
 				setBoxActive(box, false)
 				break
 			end

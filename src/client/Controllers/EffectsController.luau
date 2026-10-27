@@ -8,6 +8,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -372,6 +373,25 @@ local function onItem(payload: Types.ItemEventPayload)
 	end
 end
 
+-- Frenzy: the whole picture warms to red while it lasts (Lighting's ColorCorrection tint), and back after.
+local frenzyTinted = false
+local normalTint: Color3? = nil
+local function onRound(payload: Types.RoundStatePayload)
+	local on = payload.frenzy == true and payload.phase == "Playing"
+	if on == frenzyTinted then
+		return
+	end
+	frenzyTinted = on
+	local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+	if not cc then
+		return
+	end
+	local base = normalTint or cc.TintColor
+	normalTint = base
+	local f = Config.Chaos.Frenzy
+	TweenService:Create(cc, TweenInfo.new(f.TintSeconds, Enum.EasingStyle.Quad), { TintColor = if on then f.Tint else base }):Play()
+end
+
 function EffectsController.Init()
 	splatScreen = UI.Screen("CrazyFareSplat", 20, true)
 	for _, part in CollectionService:GetTagged(Config.Tags.DropoffPoint) do
@@ -384,6 +404,7 @@ function EffectsController.Init()
 		end
 	end)
 	State.ItemEvent:Connect(onItem)
+	State.RoundChanged:Connect(onRound)
 	State.FareEvent:Connect(function(payload: Types.FareEventPayload)
 		if payload.kind == "Claimed" then
 			setBeacon(State.fare)

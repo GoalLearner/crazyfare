@@ -786,6 +786,23 @@ Config.Chaos = {
 		MinimapCrownSize = 18, -- px
 		HunterLine = "BOUNTY x%d", -- under the payout when you bail the leader's passenger
 	},
+	-- Frenzy: the last Seconds of every race round (not Arcade, whose clock moves and has its own best-run board):
+	-- payouts x PayMult, item boxes back in BoxRespawnSeconds, one Golden Fare, faster music, a red tint, FRENZY!.
+	Frenzy = {
+		Seconds = 30,
+		PayMult = 2, -- the whole delivery payout (fare, tip and stunt cash), bots too
+		BoxRespawnSeconds = 1,
+		MusicSpeed = 1.12, -- pitch and tempo together (Roblox plays them as one)
+		Tint = Color3.fromRGB(255, 190, 178), -- Lighting ColorCorrection tint while it lasts
+		TintSeconds = 1.2,
+		Color = Color3.fromRGB(255, 80, 60),
+		Banner = "FRENZY!",
+		BannerSub = "PAYOUTS x2  ·  GOLDEN FARE!", -- the Golden Fare that spawns with it would be announced in the same frame
+		BannerSeconds = 1.6,
+		Phase = "FRENZY  ·  PAYOUTS x2", -- under the timer while it lasts
+		PayLine = "FRENZY x2", -- under the payout
+		Sting = "Combo", -- Config.Sounds.Stings key played when it starts
+	},
 	Labels = { Ram = "RAMMED!" } :: { [string]: string }, -- popups over your cab
 }
 

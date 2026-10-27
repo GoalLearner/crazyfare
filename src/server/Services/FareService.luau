@@ -39,6 +39,7 @@ local matchEarned: { [Player]: number } = {}
 local delivered: { [Player]: number } = {}
 local bestTip: { [Player]: number } = {}
 local enabled = false
+local payMult = 1 -- Frenzy doubles delivery payouts
 local leader: Player? = nil -- this round's cash leader, wearing the bounty crown
 local announced: Player? = nil -- the leader the last NEW LEADER banner named
 local leaderBannerAt = -math.huge
@@ -116,6 +117,11 @@ function FareService.TargetNpcCount(): number
 	local want = players * Config.Fares.NpcsPerPlayer
 	local maxCount = math.min(Config.Fares.MaxNpcs, #MapService.GetPickups())
 	return math.clamp(want, math.min(Config.Fares.MinNpcs, maxCount), maxCount)
+end
+
+-- Frenzy: every delivery pays this many times over (1 the rest of the time).
+function FareService.SetPayMult(mult: number)
+	payMult = mult
 end
 
 -- The bounty: this round's cash leader, or nil before anyone has MinCash (and in a race of one).
@@ -392,6 +398,11 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local stunts = if allowTip then fare.stuntTips else 0
 	local held = if Config.Stunts.HoldUntilDelivery then stunts else 0
 	local payout = fare.base + tipShown + held
+	if payMult ~= 1 then
+		payout = math.round(payout * payMult)
+		local line = Config.Chaos.Frenzy.PayLine
+		bonus = if bonus then bonus .. "  ·  " .. line else line
+	end
 	local grades = Config.Grades
 	local grade = if not allowTip then "Slow" elseif timeFrac >= grades.SpeedyFrac then "Speedy" elseif timeFrac >= grades.OnTimeFrac then "OnTime" else "Slow"
 

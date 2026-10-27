@@ -89,9 +89,25 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			PassengerService.SetHp(bot, arg)
 		end
 	end,
+	-- Your car parked on your passenger's drop-off (the delivery happens on the next tick).
+	ToDropoff = function(player)
+		local fare = FareService.GetFare(player)
+		local entry = VehicleService.GetEntry(player)
+		if not fare or not entry or entry.chassis.Anchored then
+			return
+		end
+		local d = fare.destination
+		local pos = Vector3.new(d.X, MapService.GroundY(d, d.Y) + Config.Chassis.ResetLift, d.Z)
+		VehicleService.Teleport(entry, CFrame.lookAt(pos, pos + entry.chassis.CFrame.LookVector * Vector3.new(1, 0, 1)))
+	end,
 	-- The nearest waiting passenger climbs in, wherever they are.
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)
+	end,
+	-- The round clock jumps to just before Frenzy (or to `arg` seconds left).
+	Clock = function(_player, arg)
+		local RoundService = require(script.Parent.RoundService) :: any
+		RoundService.DebugSetClock(if typeof(arg) == "number" then arg else Config.Chaos.Frenzy.Seconds + 3)
 	end,
 	-- A walker on the road ahead of your car (arg "dive" / "clip" forces the outcome; nil rolls as usual).
 	PedAhead = function(player, arg)

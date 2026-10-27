@@ -132,7 +132,25 @@ local function onItem(payload: Types.ItemEventPayload)
 	end -- Lemon Nitro's whoosh plays when the boost starts (Heartbeat), like Shift and Dash
 end
 
+local frenzyOn = false
+
+-- Frenzy: the music speeds up (pitch and tempo) and a sting marks the start.
+local function setFrenzy(on: boolean)
+	if on == frenzyOn then
+		return
+	end
+	frenzyOn = on
+	local m = music
+	if m then
+		m.PlaybackSpeed = if on then Config.Chaos.Frenzy.MusicSpeed else 1
+	end
+	if on then
+		sting(Config.Chaos.Frenzy.Sting)
+	end
+end
+
 local function onRound(payload: Types.RoundStatePayload)
+	setFrenzy(payload.frenzy == true and payload.phase == "Playing")
 	if payload.phase == lastPhase then
 		return
 	end

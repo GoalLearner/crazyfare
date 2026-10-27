@@ -92,6 +92,7 @@ local plateBest: TextLabel
 local podiumTitle: TextLabel
 local rematchButton: TextButton
 local podiumBonus: TextLabel
+local frenzyShown = false -- the FRENZY! banner went up for the current Frenzy
 local gemsLabel: TextLabel
 
 local function tierColor(tier: string): Color3
@@ -575,6 +576,12 @@ local function onRound(payload: Types.RoundStatePayload)
 	else
 		podium.Visible = false
 	end
+	local frenzyNow = payload.frenzy == true and payload.phase == "Playing"
+	if frenzyNow and not frenzyShown then
+		local f = Config.Chaos.Frenzy
+		showMessage(f.Banner, f.Color, f.BannerSeconds, f.BannerSub)
+	end
+	frenzyShown = frenzyNow
 	if payload.phase == "PreCountdown" and payload.round == 1 then
 		rematchButton.Text = "REMATCH"
 		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
@@ -703,11 +710,14 @@ local function update(dt: number)
 		timeBonusLabel.Visible = false
 	end
 
-	-- Timer / phase text
+	-- Timer / phase text (white and muted unless a running clock says otherwise)
+	timerLabel.TextColor3 = UI.White
+	phaseLabel.TextColor3 = UI.Muted
 	if round and phase == "Playing" then
 		timerLabel.Text = UI.FormatTime(round.endsAt - now)
-		timerLabel.TextColor3 = if round.endsAt - now < (if arcade then Config.Arcade.DangerSeconds else 30) then UI.Danger else UI.White
-		phaseLabel.Text = ""
+		timerLabel.TextColor3 = if round.endsAt - now < (if arcade then Config.Arcade.DangerSeconds else Config.Chaos.Frenzy.Seconds) then UI.Danger else UI.White
+		phaseLabel.Text = if round.frenzy then Config.Chaos.Frenzy.Phase else ""
+		phaseLabel.TextColor3 = if round.frenzy then Config.Chaos.Frenzy.Color else UI.Muted
 	elseif round and phase == "Countdown" then
 		local remaining = round.endsAt - now
 		local n = math.ceil(remaining)

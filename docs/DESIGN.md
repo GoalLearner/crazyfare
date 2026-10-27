@@ -14,6 +14,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - A match is **3 rounds**.
 - Round start: all players spawn on the **StartGrid**. NPCs are already standing across the map so players can read the board during the **3-2-1 countdown** (a short "read the board" beat precedes it). Then free-for-all.
 - Round end: first player to earn the **quota this round** (round 1 $75, round 2 $100, round 3 $125) or a **3-minute cap** (highest earnings that round win). The match winner is whoever earned the most over all three rounds. Money is shown with cents.
+- **Frenzy** (Phase X, `Config.Chaos.Frenzy`): the last 30 s of every race round (not Arcade). Every delivery pays double (fare, tip and stunt cash; bots too), item boxes come back in 1 s, one Golden Fare spawns, the music speeds up, the picture warms to red, and FRENZY! (PAYOUTS x2 · GOLDEN FARE!) shows under the timer with FRENZY · PAYOUTS x2 staying there. A round that hits its quota earlier never gets one.
 - Between rounds: a **30 s Pit Stop** (section 7).
 - Match end: podium, placements, Gem payout, rematch vote, and your **license plate**: a grade from your three-round total (D, C, B, A, S, LEGEND; `Config.License.Race`) in the grade's color. Your best is saved; beating it says NEW BEST!
 
