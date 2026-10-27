@@ -266,13 +266,67 @@ function VehicleBuilder.ApplyPaint(model: Model, color: Color3?)
 	end
 end
 
--- A plain civilian car for ambient traffic (TrafficService). "Body" is the only collider and carries the mass; built at
--- the origin facing -Z like the rest, so the caller pivots it into place and sets its collision group.
-function VehicleBuilder.BuildTraffic(color: Color3): (Model, Part)
+-- Ambient traffic (TrafficService): a sedan, a van or a bus (Config.Traffic.Kinds). "Body" is the only collider and
+-- carries the mass; built at the origin facing -Z like the rest, so the caller pivots it into place and sets its
+-- collision group.
+local function trafficWheels(model: Model, body: Part, size: Vector3, diameter: number, inset: number)
+	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
+	for _, x in { -1, 1 } do
+		for _, z in { -1, 1 } do
+			local wheel = makePart("Wheel", Vector3.new(1, diameter, diameter), CFrame.new(x * (halfX - 0.3), -halfY + 0.05, z * (halfZ - inset)), DARK, model)
+			wheel.Shape = Enum.PartType.Cylinder
+			weld(body, wheel)
+		end
+	end
+end
+
+local function buildSedanBody(model: Model, body: Part, size: Vector3, color: Color3)
+	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
+	local cabin = makePart("Cabin", Vector3.new(size.X - 1, 1.8, size.Z * 0.48), CFrame.new(0, halfY + 0.9, 0.4), color, model)
+	weld(body, cabin)
+	glassPart("Windshield", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 - size.Z * 0.24), body, model)
+	glassPart("RearWindow", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 + size.Z * 0.24), body, model)
+	lights(model, body, halfX - 0.9, -halfZ - 0.05, halfZ + 0.05)
+	trafficWheels(model, body, size, 1.8, 2.2)
+end
+
+-- A tall box with a big windshield and a window strip up front.
+local function buildVanBody(model: Model, body: Part, size: Vector3)
+	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
+	glassPart("Windshield", Vector3.new(size.X - 0.8, 1.6, 0.3), CFrame.new(0, halfY - 1.2, -halfZ - 0.05), body, model)
+	for _, side in { -1, 1 } do
+		glassPart("SideWindow", Vector3.new(0.3, 1.4, 3.2), CFrame.new(side * (halfX + 0.05), halfY - 1.2, -halfZ + 2.4), body, model)
+		glassPart("RearWindow", Vector3.new(size.X * 0.36, 1.4, 0.3), CFrame.new(side * size.X * 0.22, halfY - 1.2, halfZ + 0.05), body, model)
+	end
+	local bumper = makePart("Bumper", Vector3.new(size.X + 0.2, 0.7, 0.5), CFrame.new(0, -halfY + 0.6, -halfZ - 0.2), DARK, model)
+	weld(body, bumper)
+	lights(model, body, halfX - 0.9, -halfZ - 0.05, halfZ + 0.05)
+	trafficWheels(model, body, size, 2, 2.4)
+end
+
+-- A long city bus: window bands down both sides, a lit route board up front, a pale stripe low on the sides.
+local function buildBusBody(model: Model, body: Part, size: Vector3)
+	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
+	glassPart("Windshield", Vector3.new(size.X - 0.8, 2.6, 0.3), CFrame.new(0, halfY - 2.3, -halfZ - 0.05), body, model)
+	neon("RouteBoard", Vector3.new(size.X - 2, 0.7, 0.3), CFrame.new(0, halfY - 0.5, -halfZ - 0.05), Color3.fromRGB(255, 170, 40), body, model)
+	glassPart("RearWindow", Vector3.new(size.X - 2, 1.8, 0.3), CFrame.new(0, halfY - 1.8, halfZ + 0.05), body, model)
+	for _, side in { -1, 1 } do
+		glassPart("WindowBand", Vector3.new(0.3, 2.2, size.Z - 5), CFrame.new(side * (halfX + 0.05), halfY - 2.1, 0.8), body, model)
+		local stripe = makePart("Stripe", Vector3.new(0.3, 0.6, size.Z - 1), CFrame.new(side * (halfX + 0.05), -halfY + 1.6, 0), Color3.fromRGB(240, 240, 235), model)
+		weld(body, stripe)
+	end
+	local bumper = makePart("Bumper", Vector3.new(size.X + 0.2, 0.8, 0.5), CFrame.new(0, -halfY + 0.7, -halfZ - 0.2), DARK, model)
+	weld(body, bumper)
+	lights(model, body, halfX - 1, -halfZ - 0.05, halfZ + 0.05)
+	trafficWheels(model, body, size, 2.6, 4)
+end
+
+function VehicleBuilder.BuildTraffic(kind: string, color: Color3): (Model, Part)
 	local cfg = Config.Traffic
-	local size = cfg.BodySize
+	local kindCfg = cfg.Kinds[kind] or cfg.Kinds.Sedan
+	local size = kindCfg.Size
 	local model = Instance.new("Model")
-	model.Name = "TrafficCar"
+	model.Name = "Traffic" .. kind
 	local body = Instance.new("Part")
 	body.Name = "Body"
 	body.Size = size
@@ -282,21 +336,15 @@ function VehicleBuilder.BuildTraffic(color: Color3): (Model, Part)
 	body.TopSurface = Enum.SurfaceType.Smooth
 	body.BottomSurface = Enum.SurfaceType.Smooth
 	body.CanCollide = true
-	body.CustomPhysicalProperties = PhysicalProperties.new(cfg.Density, 0.3, 0.1, 1, 1)
+	body.CustomPhysicalProperties = PhysicalProperties.new(kindCfg.Density, 0.3, 0.1, 1, 1)
 	body.Parent = model
 	model.PrimaryPart = body
-	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
-	local cabin = makePart("Cabin", Vector3.new(size.X - 1, 1.8, size.Z * 0.48), CFrame.new(0, halfY + 0.9, 0.4), color, model)
-	weld(body, cabin)
-	glassPart("Windshield", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 - size.Z * 0.24), body, model)
-	glassPart("RearWindow", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 + size.Z * 0.24), body, model)
-	lights(model, body, halfX - 0.9, -halfZ - 0.05, halfZ + 0.05)
-	for _, x in { -1, 1 } do
-		for _, z in { -1, 1 } do
-			local wheel = makePart("Wheel", Vector3.new(1, 1.8, 1.8), CFrame.new(x * (halfX - 0.3), -halfY + 0.05, z * (halfZ - 2.2)), DARK, model)
-			wheel.Shape = Enum.PartType.Cylinder
-			weld(body, wheel)
-		end
+	if kind == "Bus" then
+		buildBusBody(model, body, size)
+	elseif kind == "Van" then
+		buildVanBody(model, body, size)
+	else
+		buildSedanBody(model, body, size, color)
 	end
 	return model, body
 end

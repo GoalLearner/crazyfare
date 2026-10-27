@@ -45,7 +45,8 @@ local State = {
 	speed = 0,
 	forwardSpeed = 0,
 	drifting = false,
-	boosting = false,
+	boosting = false, -- Shift boost, Lemon Nitro or a Dash: flames, whoosh, wider FOV
+	dashing = false,
 	grounded = true,
 	boostTank = 0,
 	boostTankMax = defaultStats.BoostTank,
@@ -72,6 +73,8 @@ local questsChanged: Signal.Signal<nil> = Signal.new()
 local boardsChanged: Signal.Signal<nil> = Signal.new()
 local notice: Signal.Signal<string> = Signal.new()
 local shake: Signal.Signal<number> = Signal.new()
+local dashed: Signal.Signal<nil> = Signal.new()
+local landed: Signal.Signal<number> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -85,6 +88,8 @@ State.QuestsChanged = questsChanged
 State.BoardsChanged = boardsChanged
 State.Notice = notice -- one-shot HUD messages from the server (quest done, level up, streak)
 State.Shake = shake -- camera shake strength (Config.Shake)
+State.Dashed = dashed -- the local cab just launched a Dash
+State.Landed = landed -- the local cab touched down after this many seconds of air
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

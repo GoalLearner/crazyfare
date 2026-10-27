@@ -1,5 +1,6 @@
 --!strict
--- Ambient traffic: Config.Traffic.Count server-owned cars cruising the road grid in right-hand lanes and turning at
+-- Ambient traffic: Config.Traffic.Count server-owned vehicles (sedans, vans, buses: Config.Traffic.Kinds) cruising
+-- the road grid in right-hand lanes and turning at
 -- intersections. They are obstacles, not opponents: player cars collide with them (a hit is a crash like any wall,
 -- slipping past one is a near miss), while they ignore the map and each other (collision groups) and follow the
 -- ground over bumps. Cars queue behind slower cars in their lane and take turns at intersections (one approach
@@ -25,6 +26,9 @@ local TrafficService = {}
 type Car = {
 	model: Model,
 	body: Part,
+	kind: string, -- Config.Traffic.Kinds key
+	size: Vector3, -- the body's size; longer vehicles keep longer gaps and stop farther back
+	extra: number, -- half the length this vehicle has beyond a sedan: added to every stop distance
 	align: AlignPosition,
 	orient: AlignOrientation,
 	rabbit: Vector3, -- lane point the car chases, at Y = 0; the ground height is added each frame
@@ -226,19 +230,22 @@ local function updateSpeed(car: Car, dt: number): boolean
 	local cfg = Config.Traffic
 	local target = car.cruise
 	local leader, gap = leaderOf(car)
-	if leader and gap < cfg.FollowGap then
-		local room = math.clamp((gap - cfg.BodySize.Z) / (cfg.FollowGap - cfg.BodySize.Z), 0, 1)
-		target = math.min(target, leader.speed * room)
+	if leader then
+		local bumperToBumper = (car.size.Z + leader.size.Z) / 2
+		if gap < bumperToBumper + cfg.FollowSlack then
+			local room = math.clamp((gap - bumperToBumper) / cfg.FollowSlack, 0, 1)
+			target = math.min(target, leader.speed * room)
+		end
 	end
 	local holdingCenter = car.holdingCenter
-	if holdingCenter and (car.rabbit - holdingCenter).Magnitude > cfg.JunctionClear then
+	if holdingCenter and (car.rabbit - holdingCenter).Magnitude > cfg.JunctionClear + car.extra then
 		release(car)
 	end
 	local junction = car.junction
 	if junction then
 		local toCenter = (junction - car.rabbit):Dot(car.dir)
-		if toCenter > 0 and toCenter < cfg.JunctionApproach and not mayEnter(car, junction) then
-			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine, 0)))
+		if toCenter > 0 and toCenter < cfg.JunctionApproach + car.extra and not mayEnter(car, junction) then
+			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine - car.extra, 0)))
 		end
 	end
 	-- Someone crossing in its lane ahead: stop short of them.
@@ -246,18 +253,19 @@ local function updateSpeed(car: Car, dt: number): boolean
 		local rel = crosser - car.rabbit
 		local ahead = rel:Dot(car.dir)
 		if ahead > 0 and ahead < cfg.PedestrianStopDistance and math.abs(across(rel, car.dir)) < cfg.PedestrianLaneHalf then
-			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.BodySize.Z / 2 - 2, 0)))
+			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(ahead - car.size.Z / 2 - 2, 0)))
 		end
 	end
 	-- A player car in its lane ahead (parked at the curb for a pickup, waiting in a junction, slower in the lane):
 	-- brake to stop short of it, or follow it if it is pulling away.
 	local heldByPlayer = false
+	local laneHalf = cfg.PlayerLaneHalf + (car.size.X - cfg.Kinds.Sedan.Size.X) / 2
 	for _, other in playerCars do
 		local rel = other.position - car.rabbit
 		local ahead = rel:Dot(car.dir)
-		if ahead > 0 and ahead < cfg.PlayerStopDistance and math.abs(across(rel, car.dir)) < cfg.PlayerLaneHalf then
+		if ahead > 0 and ahead < cfg.PlayerStopDistance + car.extra and math.abs(across(rel, car.dir)) < laneHalf then
 			local pullingAway = math.max(0, other.velocity:Dot(car.dir))
-			local allowed = pullingAway + math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.PlayerStopGap, 0))
+			local allowed = pullingAway + math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.PlayerStopGap - car.extra, 0))
 			if allowed < target then
 				target = allowed
 				heldByPlayer = true
@@ -306,7 +314,7 @@ local function targetFor(car: Car): Vector3
 	local probe = Vector3.new(car.rabbit.X, car.body.Position.Y + RAY_UP, car.rabbit.Z)
 	local hit = workspace:Raycast(probe, Vector3.new(0, -RAY_LENGTH, 0), groundParams)
 	local groundY = if hit then hit.Position.Y else 0
-	return Vector3.new(car.rabbit.X, groundY + cfg.RideHeight + cfg.BodySize.Y / 2, car.rabbit.Z)
+	return Vector3.new(car.rabbit.X, groundY + cfg.RideHeight + car.size.Y / 2, car.rabbit.Z)
 end
 
 local function spotIsFree(rabbit: Vector3): boolean
@@ -324,8 +332,10 @@ local function spotIsFree(rabbit: Vector3): boolean
 	return true
 end
 
-local function spawnCar(cruise: number): boolean
+local function spawnCar(cruise: number, kind: string): boolean
 	local cfg = Config.Traffic
+	local kindCfg = cfg.Kinds[kind] or cfg.Kinds.Sedan
+	local size = kindCfg.Size
 	local coords = MapService.GetBlockout().RoadCoords
 	local low, high = math.huge, -math.huge
 	for _, c in coords do
@@ -340,7 +350,7 @@ local function spawnCar(cruise: number): boolean
 		local alongValue = rng:NextNumber(low, high)
 		local inJunction = false
 		for _, c in coords do
-			if math.abs(alongValue - c) < cfg.JunctionClear then
+			if math.abs(alongValue - c) < cfg.JunctionClear + size.Z / 2 then
 				inJunction = true
 			end
 		end
@@ -348,7 +358,8 @@ local function spawnCar(cruise: number): boolean
 		if inJunction or not spotIsFree(rabbit) then
 			continue
 		end
-		local model, body = VehicleBuilder.BuildTraffic(cfg.Colors[rng:NextInteger(1, #cfg.Colors)])
+		local palette = if kind == "Bus" then cfg.BusColors else cfg.Colors
+		local model, body = VehicleBuilder.BuildTraffic(kind, palette[rng:NextInteger(1, #palette)])
 		for _, part in model:GetDescendants() do
 			if part:IsA("BasePart") then
 				part.CollisionGroup = Config.CollisionGroups.Traffic
@@ -372,12 +383,15 @@ local function spawnCar(cruise: number): boolean
 		local car: Car = {
 			model = model,
 			body = body,
+			kind = kind,
+			size = size,
+			extra = (size.Z - cfg.Kinds.Sedan.Size.Z) / 2,
 			align = align,
 			orient = orient,
 			rabbit = rabbit,
 			dir = dir,
-			cruise = cruise,
-			speed = cruise,
+			cruise = math.min(cruise, kindCfg.MaxSpeed),
+			speed = math.min(cruise, kindCfg.MaxSpeed),
 			cornerAt = rabbit,
 			nextDir = dir,
 			blockedFor = 0,
@@ -406,7 +420,8 @@ local function spawnAll()
 	table.clear(cars)
 	table.clear(holds)
 	groundParams = MapService.StaticRaycastParams()
-	-- One cruise speed per slice of SpeedMin..SpeedMax, shuffled, so every car runs at its own speed.
+	-- One cruise speed per slice of SpeedMin..SpeedMax, shuffled, so every car runs at its own speed (capped by its
+	-- kind: buses are slow). Kinds split Count by Weight; the last kind takes what rounding leaves.
 	local cfg = Config.Traffic
 	local speeds: { number } = {}
 	for i = 1, cfg.Count do
@@ -416,8 +431,19 @@ local function spawnAll()
 		local j = rng:NextInteger(1, i)
 		speeds[i], speeds[j] = speeds[j], speeds[i]
 	end
-	for _, cruise in speeds do
-		spawnCar(cruise)
+	local totalWeight = 0
+	for _, kind in cfg.KindOrder do
+		totalWeight += cfg.Kinds[kind].Weight
+	end
+	local kinds: { string } = {}
+	for i, kind in cfg.KindOrder do
+		local n = if i == #cfg.KindOrder then cfg.Count - #kinds else math.round(cfg.Count * cfg.Kinds[kind].Weight / totalWeight)
+		for _ = 1, n do
+			table.insert(kinds, kind)
+		end
+	end
+	for i, cruise in speeds do
+		spawnCar(cruise, kinds[i] or "Sedan")
 	end
 end
 
@@ -447,14 +473,14 @@ function TrafficService.Start()
 				table.insert(playerCars, { position = Vector3.new(p.X, 0, p.Z), velocity = Vector3.new(v.X, 0, v.Z) })
 			end
 		end
-		local lost: { number } = {}
+		local lost: { { cruise: number, kind: string } } = {}
 		for i = #cars, 1, -1 do
 			local car = cars[i]
 			if not car.body:IsDescendantOf(workspace) then
 				release(car)
 				car.model:Destroy()
 				table.remove(cars, i)
-				table.insert(lost, car.cruise)
+				table.insert(lost, { cruise = car.cruise, kind = car.kind })
 				continue
 			end
 			local heldByPlayer = updateSpeed(car, dt)
@@ -471,7 +497,7 @@ function TrafficService.Start()
 					release(car)
 					car.model:Destroy()
 					table.remove(cars, i)
-					table.insert(lost, car.cruise)
+					table.insert(lost, { cruise = car.cruise, kind = car.kind })
 					continue
 				end
 			else
@@ -486,8 +512,8 @@ function TrafficService.Start()
 			car.align.Position = target
 			car.orient.CFrame = CFrame.lookAt(Vector3.zero, car.dir)
 		end
-		for _, cruise in lost do
-			spawnCar(cruise)
+		for _, gone in lost do
+			spawnCar(gone.cruise, gone.kind)
 		end
 	end)
 end

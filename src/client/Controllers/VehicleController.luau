@@ -2,7 +2,7 @@
 -- The raycast chassis. Runs only for the local player's taxi (which this client network-owns).
 -- Every number comes from Config.Chassis and the vehicle's stats; the model only supplies attachments.
 -- Reports drift / airtime / near-miss events and the drifting flag to the server; applies server-sent
--- spinouts and boosts by reading State.
+-- spinouts and boosts by reading State. Dash: hold brake while almost stopped, then hit the gas, for a short launch.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -45,6 +45,10 @@ local recentNearMiss: { [BasePart]: number } = {}
 local hopHeld = false
 local lastSpeed = 0
 local lastHopAt = 0
+local brakeHeldFor = 0 -- seconds the brake has been held while almost stopped
+local dashArmedUntil = 0 -- after letting go of an armed brake, gas before this time launches a Dash
+local dashUntil = 0
+local dashReadyAt = 0
 
 local comboEvent: RemoteEvent
 local driveState: RemoteEvent
@@ -175,6 +179,7 @@ local function step(rawDt: number)
 		State.forwardSpeed = 0
 		State.drifting = false
 		State.boosting = false
+		State.dashing = false
 		return
 	end
 	local now = workspace:GetServerTimeNow()
@@ -200,11 +205,33 @@ local function step(rawDt: number)
 	end
 	local wantBoost = InputController.IsBoosting() and State.boostTank > 0 and not spinning
 
+	-- Dash: brake held while almost stopped arms it; gas soon after letting go launches it.
+	if throttle < 0 and math.abs(forwardSpeed) < C.DashMaxSpeed then
+		brakeHeldFor += dt
+	elseif brakeHeldFor >= C.DashArmSeconds then
+		brakeHeldFor = 0
+		dashArmedUntil = now + C.DashWindow
+	else
+		brakeHeldFor = 0
+	end
+	if throttle > 0 and now < dashArmedUntil and now >= dashReadyAt and math.abs(forwardSpeed) < C.DashMaxSpeed then
+		dashArmedUntil = 0
+		dashUntil = now + C.DashSeconds
+		dashReadyAt = dashUntil + C.DashCooldown
+		local kick = math.max(0, C.DashKick - forwardSpeed)
+		ch.AssemblyLinearVelocity = vel + look * kick
+		vel = ch.AssemblyLinearVelocity
+		State.Dashed:Fire()
+	end
+	local dashing = now < dashUntil
+
 	local speedMult = 1
 	local accelMult = 1
-	if nitro then
-		speedMult *= Config.Items.LemonNitro.SpeedMult
-		accelMult *= Config.Items.LemonNitro.AccelMult
+	if nitro or dashing then
+		-- Lemon Nitro and Dash do not stack: the bigger push wins (the server's speed check assumes the same)
+		local nitroCfg = Config.Items.LemonNitro
+		speedMult *= math.max(if nitro then nitroCfg.SpeedMult else 1, if dashing then C.DashSpeedMult else 1)
+		accelMult *= math.max(if nitro then nitroCfg.AccelMult else 1, if dashing then C.DashAccelMult else 1)
 	end
 	if wantBoost then
 		speedMult *= C.BoostSpeedMult
@@ -328,6 +355,7 @@ local function step(rawDt: number)
 	else
 		if airTime >= C.AirtimeMinSeconds then
 			reportCombo("Airtime", airTime)
+			State.Landed:Fire(airTime)
 		end
 		airTime = 0
 	end
@@ -401,7 +429,8 @@ local function step(rawDt: number)
 	State.speed = speed
 	State.forwardSpeed = forwardSpeed
 	State.drifting = drifting
-	State.boosting = wantBoost or nitro
+	State.boosting = wantBoost or nitro or dashing
+	State.dashing = dashing
 	State.grounded = grounded
 end
 

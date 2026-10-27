@@ -253,12 +253,12 @@ Config.Stunts = {
 -- Ambient traffic (TrafficService): server cars cruising the road grid in right-hand lanes, turning at intersections.
 -- Hitting one is a crash like any wall; slipping past one at speed counts as a near miss.
 Config.Traffic = {
-	Count = 10, -- cars per map
+	Count = 24, -- vehicles per map, split across Kinds by Weight
 	SpeedMin = 18, -- cruise speeds are spread evenly across this range so no two cars match (studs/s; the Yellow Cab tops out at 90)
 	SpeedMax = 50,
 	Accel = 12, -- studs/s^2 back up to cruise
 	Brake = 40, -- studs/s^2 when closing on a slower car ahead
-	FollowGap = 24, -- inside this gap (lane point to lane point) a car matches the car ahead; at a body length it stops
+	FollowSlack = 12.5, -- clear road between bumpers where a car starts matching the car ahead; bumper to bumper it stops
 	MinImpactSpeed = 15, -- closing speed into a traffic car that counts as a crash (at least a small one); below is a nudge
 	JunctionApproach = 60, -- inside this distance of the next intersection's center a car claims it, or stops to wait its turn
 	JunctionClear = 24, -- a car holds the intersection until its lane point is this far past the center
@@ -274,9 +274,15 @@ Config.Traffic = {
 	SpawnClearance = 70, -- no car spawns this close to a start pad
 	SpawnSpacing = 45, -- nor this close to another traffic car
 	SpawnTries = 30,
-	BodySize = Vector3.new(6, 2.4, 11.5),
+	-- What drives around. Sizes are the collider; longer vehicles stop farther back at junctions and hold them longer.
+	Kinds = {
+		Sedan = { Size = Vector3.new(6, 2.4, 11.5), Weight = 14, Density = 3, MaxSpeed = 50 },
+		Van = { Size = Vector3.new(6.4, 4.6, 13), Weight = 6, Density = 2.2, MaxSpeed = 44 },
+		Bus = { Size = Vector3.new(7.6, 6, 26), Weight = 4, Density = 1.2, MaxSpeed = 34 },
+	} :: { [string]: { Size: Vector3, Weight: number, Density: number, MaxSpeed: number } },
+	KindOrder = { "Sedan", "Van", "Bus" },
+	BusColors = { Color3.fromRGB(245, 190, 40), Color3.fromRGB(40, 150, 140), Color3.fromRGB(215, 60, 55) },
 	RideHeight = 0.85, -- gap under the body (the wheels fill it)
-	Density = 3, -- several times a player cab: you bounce off, it barely notices
 	MaxForce = 1000000, -- AlignPosition / AlignOrientation strength that keeps it in its lane
 	Responsiveness = 25,
 	ResetDistance = 40, -- knocked this far from its lane point, it snaps back
@@ -578,13 +584,17 @@ Config.Monetization = {
 Config.Sounds = {
 	Volume = 0.5,
 	MusicVolume = 0.25,
+	BoostLoopRegion = { 1.2, 6.6 }, -- seconds of the BoostLoop clip that loop (skips the lighter's click on and off)
+	BoostLoopPitch = 0.75, -- deeper than the clip: a rocket, not a lighter
 	Ids = {
 		-- Roblox-licensed Creator Store clips (Pro Sound Effects + APM), picked 2026-10-26; swap any for the owner's own uploads.
 		Honk = 9114402481, -- Ferrari 308 Car Honking Dual Air Horns 7
 		HonkVip = 9113071178, -- Air Horn Bursts 5
 		Engine = 80317022777602, -- Car-Engine-Loop (Roblox Resources group), 9 s loop; pitch follows speed
 		Drift = 9120399191, -- Vehicle Skids Long Heavy Tire Squeal 4 (looped while drifting)
-		Boost = 9114329395, -- Energy Cloud Whooshing By Very Fast 1
+		Boost = 9114329395, -- Energy Cloud Whooshing By Very Fast 1; plays as any boost lights (Shift, Lemon Nitro, Dash)
+		BoostLoop = 9120192582, -- Torch Lighter 3 (SFX, Pro Sound Effects, 8.0 s): steady mini rocket flame, looped while boosting
+		Land = 9114742182, -- Gym Bag Thudding 5 (SFX, Pro Sound Effects, 1.25 s): touchdown after airtime
 		Pickup = 9113205239, -- Audi Car Door Movement Opening Closing 4
 		Deliver = 9113728049, -- Cash Register 2
 		Coin = 9126073001, -- Synth Sparkle Tone High Pitch Bell Tone Ding (1.16 s); one per paid stunt, pitched up the chain
@@ -672,6 +682,34 @@ Config.Chassis = {
 	SpinAngularSpeed = 7, -- radians/s during a Banana spinout
 	SpinGripMult = 0.2,
 	MaxStepSeconds = 1 / 30, -- physics step clamp; longer frames are treated as this
+	-- Dash: hold brake while almost stopped, then hit the gas = a launch. A movement trick, not a paid stunt.
+	DashMaxSpeed = 15, -- studs/s: slower than this counts as almost stopped
+	DashArmSeconds = 0.1, -- brake held at least this long first
+	DashWindow = 0.35, -- seconds after letting go of the brake to hit the gas
+	DashSeconds = 1.2,
+	DashSpeedMult = 1.4, -- top speed while dashing (does not stack with Lemon Nitro; the bigger one wins)
+	DashAccelMult = 2.5,
+	DashKick = 35, -- studs/s of forward speed the launch gives at once
+	DashCooldown = 1,
+}
+
+-- Speed feel (client only): boost flames, speed streaks, landing dust, drift smoke, the DASH! popup.
+Config.SpeedFx = {
+	Labels = { Dash = "DASH!" } :: { [string]: string },
+	Flames = { Rate = 140, Lifetime = 0.18, Speed = 18, Size = 1.3, Spread = 12, LightRange = 12, LightBrightness = 4 },
+	Streaks = {
+		StartFrac = 0.72, -- of top speed: streaks start fading in
+		Count = 26,
+		Seconds = 0.32, -- one streak's trip from the inner ring to the screen edge
+		InnerRadius = 0.22, -- of the screen's half-diagonal: streaks start this far out (the cab stays clear)
+		Length = 140, -- px at full intensity
+		Thickness = 3,
+		MaxOpacity = 0.6,
+		BoostBonus = 0.4, -- extra intensity while boosting or dashing
+	},
+	-- Cartoon puffs (balls that swell and fade): a ring of dust on landing, tire smoke while drifting
+	Dust = { MinPuffs = 7, MaxPuffs = 16, PerAirSecond = 8, Speed = 14, Rise = 2, StartSize = 1.6, EndSize = 5, Seconds = 0.55, Opacity = 0.8, GroundLift = 0.8, Shake = 0.35, ShakeAirSeconds = 1.2 },
+	Smoke = { Rate = 14, StartSize = 1, EndSize = 4.5, Seconds = 0.8, Rise = 4, Spread = 1.5, Opacity = 0.6 }, -- Rate: puffs per second per rear tire
 }
 
 Config.Camera = {

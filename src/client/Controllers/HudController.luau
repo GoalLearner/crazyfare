@@ -120,7 +120,7 @@ local function punch(scale: UIScale, from: number)
 end
 
 local function popupText(kind: string, amount: number): string
-	local name = Config.Stunts.Names[kind] or string.upper(kind)
+	local name = Config.Stunts.Names[kind] or Config.SpeedFx.Labels[kind] or string.upper(kind)
 	if amount > 0 then
 		return string.format('%s <font color="%s">+%s</font>', name, CASH_HEX, UI.Money(amount))
 	end
@@ -698,6 +698,9 @@ function HudController.Init()
 	State.ItemEvent:Connect(onItem)
 	State.Notice:Connect(function(text: string)
 		showMessage(text, UI.Accent, 2.2)
+	end)
+	State.Dashed:Connect(function()
+		addPopup("Dash", 0) -- "DASH!" over the cab, no cash: a trick, not a paid stunt
 	end)
 end
 

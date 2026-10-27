@@ -1,7 +1,7 @@
 --!strict
 -- Local VFX: windshield splat + wipers (honk shortens), destination beacon (named) + glowing drop-off ring, rooftop name
--- signs over every drop-off, item-box spin, tomato/banana bursts, boost particles, honk bubble. Nothing here affects
--- gameplay.
+-- signs over every drop-off, item-box spin, tomato/banana bursts, honk bubble. Boost flames and other speed effects
+-- live in SpeedFxController. Nothing here affects gameplay.
 
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
@@ -32,7 +32,6 @@ local activeColor = UI.White
 local SIGN_BACK = Color3.fromRGB(20, 20, 26)
 local SIGN_EDGE = Color3.fromRGB(70, 72, 84)
 local SIGN_TEXT = Color3.fromRGB(235, 235, 245)
-local boostEmitter: ParticleEmitter? = nil
 local boxBases: { [BasePart]: CFrame } = {}
 local rng = Random.new()
 
@@ -346,28 +345,6 @@ local function honkBubble()
 	Debris:AddItem(gui, 0.5)
 end
 
-local function attachBoostEmitter(model: Model?)
-	if boostEmitter then
-		boostEmitter:Destroy()
-		boostEmitter = nil
-	end
-	if not model or not model.PrimaryPart then
-		return
-	end
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "BoostTrail"
-	emitter.Enabled = false
-	emitter.Rate = 120
-	emitter.Lifetime = NumberRange.new(0.25, 0.45)
-	emitter.Speed = NumberRange.new(20, 35)
-	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 0) })
-	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 120, 30))
-	emitter.LightEmission = 1
-	emitter.EmissionDirection = Enum.NormalId.Back
-	emitter.Parent = model.PrimaryPart
-	boostEmitter = emitter
-end
-
 local function spinBoxes(dt: number)
 	local t = os.clock()
 	for _, inst in CollectionService:GetTagged(Config.Tags.ItemBox) do
@@ -420,10 +397,6 @@ function EffectsController.Init()
 			clearSplat()
 		end
 	end)
-	State.VehicleChanged:Connect(attachBoostEmitter)
-	if State.vehicle then
-		attachBoostEmitter(State.vehicle)
-	end
 	InputController.OnHonk:Connect(function()
 		State.Honk:Fire()
 		honkBubble()
@@ -444,9 +417,6 @@ function EffectsController.Start()
 		updateSplat()
 		updateArrow()
 		spinBoxes(dt)
-		if boostEmitter then
-			boostEmitter.Enabled = State.boosting
-		end
 	end)
 end
 

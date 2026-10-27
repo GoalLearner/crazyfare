@@ -59,6 +59,13 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ### Boost tank
 - Drifting and near-misses also fill a small **boost tank** (capacity = the vehicle's `BoostTank` stat). Hold Shift to spend it for speed. LemonNitro is separate: an instant 3 s burst.
 
+### Dash and speed feel
+- **Dash:** hold brake while almost stopped (under 15 studs/s), let go and hit the gas within a third of a second: the cab launches (an instant kick to 35, then x1.4 top speed and x2.5 acceleration for 1.2 s, 1 s cooldown). "DASH!" pops over the cab. A trick for leaving a pickup fast, not a paid stunt. It does not stack with Lemon Nitro (the bigger push wins).
+- Any boost (Shift, Lemon Nitro, Dash) lights **exhaust flames** with an orange glow, a whoosh as it lights and a rocket roar while it lasts; the camera widens.
+- Near top speed (and while boosting) **speed streaks** race out from the middle of the screen.
+- Landing after airtime throws a **ring of dust puffs** and a thump; drifting coughs **tire smoke** puffs from the rear wheels. Dust and smoke are cartoon puffs (balls that swell and fade) so they read on pale roads and match the blocky city.
+- All of it is local to your own cab (rivals don't see your flames yet).
+
 ## 3. Passenger HP and PvP
 
 - Passengers board with HP by tier (60/80/100).
@@ -139,7 +146,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 | Action | Key | Gamepad |
 |---|---|---|
-| Throttle / brake-reverse | W / S | R2 / L2 |
+| Throttle / brake-reverse (brake then gas from a stop = Dash) | W / S | R2 / L2 |
 | Steer | A / D | Left stick |
 | Drift (handbrake) / vehicle special (Horse hop) | Space | A |
 | Boost (tank) | Left Shift | B |

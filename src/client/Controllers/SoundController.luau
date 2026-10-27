@@ -16,8 +16,10 @@ local SoundController = {}
 local sounds: { [string]: Sound } = {}
 local engine: Sound? = nil
 local drift: Sound? = nil
+local boostLoop: Sound? = nil
 local music: Sound? = nil
 local lastPhase = ""
+local wasBoosting = false
 
 local function make(name: string, id: number, looped: boolean, volume: number): Sound?
 	if id <= 0 then
@@ -82,9 +84,7 @@ local function onItem(payload: Types.ItemEventPayload)
 		play("Splat")
 	elseif payload.kind == "Spinout" then
 		play("Spinout")
-	elseif payload.kind == "Boost" then
-		play("Boost")
-	end
+	end -- Lemon Nitro's whoosh plays when the boost starts (Heartbeat), like Shift and Dash
 end
 
 local function onRound(payload: Types.RoundStatePayload)
@@ -114,7 +114,7 @@ function SoundController.Init()
 	local ids = Config.Sounds.Ids
 	local volume = Config.Sounds.Volume
 	for name, id in ids do
-		if name ~= "Engine" and name ~= "Drift" and name ~= "Music" then
+		if name ~= "Engine" and name ~= "Drift" and name ~= "BoostLoop" and name ~= "Music" then
 			local sound = make(name, id, false, volume)
 			if sound then
 				sounds[name] = sound
@@ -129,6 +129,13 @@ function SoundController.Init()
 	end
 	engine = make("Engine", ids.Engine, true, volume * 0.6)
 	drift = make("Drift", ids.Drift, true, volume * 0.8)
+	boostLoop = make("BoostLoop", ids.BoostLoop or 0, true, volume * 0.7)
+	if boostLoop then
+		local region = Config.Sounds.BoostLoopRegion
+		boostLoop.PlaybackRegionsEnabled = true
+		boostLoop.PlaybackRegion = NumberRange.new(region[1], region[2])
+		boostLoop.PlaybackSpeed = Config.Sounds.BoostLoopPitch
+	end
 	music = make("Music", ids.Music, true, Config.Sounds.MusicVolume)
 	if music then
 		music:Play()
@@ -138,6 +145,9 @@ function SoundController.Init()
 	State.ItemEvent:Connect(onItem)
 	State.RoundChanged:Connect(onRound)
 	State.Honk:Connect(onHonk)
+	State.Landed:Connect(function(airSeconds: number)
+		SoundController.PlayOneShot("Land", math.clamp(1.15 - airSeconds * 0.15, 0.8, 1.15)) -- bigger air, deeper thump
+	end)
 end
 
 function SoundController.Start()
@@ -156,6 +166,20 @@ function SoundController.Start()
 				dr:Play()
 			elseif not State.drifting and dr.IsPlaying then
 				dr:Stop()
+			end
+		end
+		-- Boost (Shift, Lemon Nitro, Dash): a whoosh as it lights, the flame roar while it lasts
+		local boosting = State.boosting
+		if boosting and not wasBoosting then
+			SoundController.PlayOneShot("Boost", if State.dashing then 1.2 else 1)
+		end
+		wasBoosting = boosting
+		local loop = boostLoop
+		if loop then
+			if boosting and not loop.IsPlaying then
+				loop:Play()
+			elseif not boosting and loop.IsPlaying then
+				loop:Stop()
 			end
 		end
 	end)
