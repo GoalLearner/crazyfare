@@ -17,6 +17,13 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - Between rounds: a **30 s Pit Stop** (section 7).
 - Match end: podium, placements, Gem payout, rematch vote.
 
+### AI rival taxis (bots)
+- With too few people, **bots fill the match to 4 drivers** (`Config.Bots.FillTo`). They give their seats up as real players join, at the next round. A live server starts a match with one person when bots are on; with nobody left the bots go home.
+- Each bot is a stand-in driver (`Racers`) with a real car entry, so every rule applies to it: it claims a passenger by stopping beside them (rivals see TAKEN like any claim), delivers by stopping at the drop-off, picks up item boxes and uses items (Tomato at a loaded rival when it's empty, traps when someone's behind, Nitro on long straights, Shield and Seatbelt when loaded), gets hit, races for the Golden Fare, and shows up in the standings and on the podium. Its passenger rides on its roof and talks like any other.
+- Always tagged **BOT** (name tag, podium). No gems, XP, quests or leaderboard entries. Losing to bots still counts as last place for the Pit Stop discount.
+- Balance (tuned 2026-10-27 so a good driver wins): bots cruise at 36 studs/s (the cab tops out at 90), rest 3-6 s between fares, choose among their best few passengers with fare value softened (`Greed`), earn half tips, earn no stunt cash, and their own driving never hurts their passenger. Each bot has a skill (0.8 / 0.9 / 1.0) on speed and thinking.
+- Driving: server-steered like traffic, on the road center line over the grid, keeping right when another bot comes the other way, slowing for cars and people ahead and waiting for crossing traffic at junctions, then pulling over to the road edge to stop. They ghost through traffic (no collisions) and bump player cars.
+
 ### Passengers (NPCs)
 - NPCs stand at curb **PickupPoints** with an icon colored by tier:
   - **Green**: short trip, small fare, 60 HP

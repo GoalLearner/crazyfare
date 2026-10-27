@@ -447,6 +447,15 @@ local function spawnAll()
 	end
 end
 
+-- Where every traffic vehicle is and where it's heading (BotService yields to crossing traffic at junctions).
+function TrafficService.GetCars(): { { position: Vector3, dir: Vector3, speed: number, halfLength: number } }
+	local list = {}
+	for _, car in cars do
+		table.insert(list, { position = car.body.Position, dir = car.dir, speed = car.speed, halfLength = car.size.Z / 2 })
+	end
+	return list
+end
+
 function TrafficService.Init()
 	local groups = Config.CollisionGroups
 	if not PhysicsService:IsCollisionGroupRegistered(groups.Traffic) then

@@ -12,6 +12,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Racers = require(script.Parent.Parent.Racers)
 
 local LeaderboardService = {}
 
@@ -195,12 +196,15 @@ function LeaderboardService.AddWeeklyGems(player: Player, gems: number)
 end
 
 function LeaderboardService.ReportTip(player: Player, tip: number)
-	if tip > 0 then
+	if tip > 0 and not Racers.IsBot(player) then
 		submit(getBoard("bestTip", "CF_BestTip"), player, tip, "max")
 	end
 end
 
 function LeaderboardService.AddKnockout(player: Player)
+	if Racers.IsBot(player) then
+		return
+	end
 	submit(getBoard("knockouts", "CF_Knockouts"), player, 1, "add")
 end
 

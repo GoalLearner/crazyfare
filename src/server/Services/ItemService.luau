@@ -17,6 +17,7 @@ local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
+local Racers = require(script.Parent.Parent.Racers)
 local FareService = require(script.Parent.FareService)
 
 type Box = { part: BasePart, activeAt: number }
@@ -54,6 +55,9 @@ local folder: Folder
 local itemEvent: RemoteEvent
 
 local function fire(player: Player, payload: Types.ItemEventPayload)
+	if Racers.IsBot(player) then
+		return -- bots have no client; BotService reads their spinouts and boosts from the car entry
+	end
 	itemEvent:FireClient(player, payload)
 end
 
@@ -580,6 +584,12 @@ function ItemService.ClearAll()
 	for _, player in Players:GetPlayers() do
 		fire(player, { kind = "Granted", item = "" })
 	end
+end
+
+-- A bot went home: drop what it held (players are forgotten on PlayerRemoving).
+function ItemService.Forget(player: Player)
+	held[player] = nil
+	shieldHits[player] = nil
 end
 
 -- Re-read item boxes from the current map (after MapService.LoadMap).

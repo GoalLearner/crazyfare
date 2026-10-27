@@ -22,6 +22,7 @@ local GemService = require(script.Parent.GemService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local BotService = require(script.Parent.BotService)
 
 local MapService = require(script.Parent.MapService)
 
@@ -84,9 +85,10 @@ function RoundService.GetRound(): number
 	return roundIndex
 end
 
--- Fresh round: board, items, cars on the grid, boosts from the Pit Stop applied.
+-- Fresh round: bots fill (or give up) seats, board, items, cars on the grid, boosts from the Pit Stop applied.
 local function beginRoundSetup()
 	results = nil
+	BotService.Rebalance()
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
 	FareService.ResetRound()
@@ -168,6 +170,7 @@ local function beginWaiting()
 	ItemService.SetEnabled(false)
 	VehicleService.SetReleased(false)
 	PitStopService.Close()
+	BotService.RemoveAll()
 	setPhase("Waiting", 0)
 end
 
@@ -222,7 +225,11 @@ function RoundService.Init()
 end
 
 local function minPlayers(): number
-	return if RunService:IsStudio() then Config.Round.StudioMinPlayers else Config.Round.MinPlayers
+	if RunService:IsStudio() then
+		return Config.Round.StudioMinPlayers
+	end
+	-- with bots filling the empty seats, one person is enough for a match
+	return if Config.Bots.Enabled then math.min(Config.Bots.MinHumans, Config.Round.MinPlayers) else Config.Round.MinPlayers
 end
 
 function RoundService.Start()

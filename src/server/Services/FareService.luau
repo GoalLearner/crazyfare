@@ -19,6 +19,7 @@ local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
 local ComboService = require(script.Parent.ComboService)
+local Racers = require(script.Parent.Parent.Racers)
 
 local FareService = {}
 
@@ -39,6 +40,9 @@ local rng = Random.new()
 local fareEvent: RemoteEvent
 
 local function fire(player: Player, payload: Types.FareEventPayload)
+	if Racers.IsBot(player) then
+		return -- bots have no client
+	end
 	fareEvent:FireClient(player, payload)
 end
 
@@ -96,16 +100,16 @@ function FareService.SetEnabled(value: boolean)
 end
 
 function FareService.TargetNpcCount(): number
-	local players = #Players:GetPlayers()
+	local players = #Racers.All()
 	local want = players * Config.Fares.NpcsPerPlayer
 	local maxCount = math.min(Config.Fares.MaxNpcs, #MapService.GetPickups())
 	return math.clamp(want, math.min(Config.Fares.MinNpcs, maxCount), maxCount)
 end
 
--- Players sorted by this round's earnings (or the match total), then deliveries, then UserId for stability.
+-- Drivers (players and bots) sorted by this round's earnings (or the match total), then deliveries, then UserId.
 local function sortedPlayers(byMatch: boolean?): { Player }
 	local score = if byMatch then matchEarned else roundEarned
-	local list = Players:GetPlayers()
+	local list = Racers.All()
 	table.sort(list, function(a, b)
 		local ca, cb = score[a] or 0, score[b] or 0
 		if ca ~= cb then
@@ -153,6 +157,7 @@ function FareService.GetResults(byMatch: boolean?): { Types.PodiumEntry }
 			cash = score[player] or 0,
 			fares = delivered[player] or 0,
 			bestTip = bestTip[player] or 0,
+			bot = if Racers.IsBot(player) then true else nil,
 		})
 	end
 	return results
@@ -161,7 +166,7 @@ end
 -- New match: everything to zero.
 function FareService.ResetMatch()
 	table.clear(fares)
-	for _, player in Players:GetPlayers() do
+	for _, player in Racers.All() do
 		wallet[player] = 0
 		roundEarned[player] = 0
 		matchEarned[player] = 0
@@ -173,9 +178,19 @@ end
 -- New round inside a match: active fares drop; the quota count restarts at a head start of the unspent wallet.
 function FareService.ResetRound()
 	table.clear(fares)
-	for _, player in Players:GetPlayers() do
+	for _, player in Racers.All() do
 		roundEarned[player] = math.floor((wallet[player] or 0) * Config.PitStop.CarryFrac)
 	end
+end
+
+-- A bot went home: forget its money and fare (players are forgotten on PlayerRemoving).
+function FareService.RemoveRacer(player: Player)
+	fares[player] = nil
+	wallet[player] = nil
+	roundEarned[player] = nil
+	matchEarned[player] = nil
+	delivered[player] = nil
+	bestTip[player] = nil
 end
 
 local function pickDestination(npc: PassengerService.Npc): MapService.Point?
@@ -293,6 +308,9 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local chill = VecUtil.Clamp01((hpFrac - tips.HpFloor) / (1 - tips.HpFloor))
 	local tipRaw = if allowTip then fare.base * tips.MaxFrac * (tips.TimeWeight * speedy + tips.ChillWeight * chill) else 0
 	tipRaw *= tipJarMult(player)
+	if Racers.IsBot(player) then
+		tipRaw *= Config.Bots.TipMult
+	end
 	-- The passenger's kind bends the tip: a Thrill Seeker who got no stunt halves it, a Nervous one who arrived without
 	-- a scratch doubles it. `bonus` tells the driver why.
 	local bonus: string? = if fare.golden then Config.Golden.PayLine else nil

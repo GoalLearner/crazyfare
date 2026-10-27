@@ -27,12 +27,12 @@ function GemService.AwardMatch(results: { Types.PodiumEntry }): { Types.PodiumEn
 	for i, entry in results do
 		local byPlace = if contested then placement[math.min(i, #placement)] or 0 else 0
 		local gems = byPlace + entry.fares * Config.Gems.PerFare
-		local player = Players:GetPlayerByUserId(entry.id)
+		local player = Players:GetPlayerByUserId(entry.id) -- nil for a bot: bots take places but earn nothing
 		if player and MonetizationService.IsVip(player) then
 			gems *= Config.Monetization.VipGemMult
 		end
-		entry.gems = gems
 		if player then
+			entry.gems = gems
 			GemService.Add(player, gems)
 			local d = DataService.Get(player)
 			if d then

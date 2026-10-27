@@ -1,6 +1,8 @@
 --!strict
 -- Spawns one taxi per player, hands physics to that player, freezes/releases cars with the round,
 -- and watches replicated velocity for crashes. Vehicle stats come from Config; the model from the template or VehicleBuilder.
+-- AI rival taxis get entries too (SpawnBot, keyed by their Racers stand-in): same grid, crash watch and item rules, but
+-- the server keeps their physics and BotService steers them.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -32,6 +34,8 @@ export type VehicleEntry = {
 	impact: { peak: number, low: number, settleAt: number, bonus: number }?, -- a hit in progress, measured until settleAt so the whole stop counts; bonus = biggest reported contact speed (traffic)
 	lastPosition: Vector3, -- last position that passed speed sanity
 	strikes: number, -- consecutive frames that failed it
+	isBot: boolean, -- an AI rival taxi (server-owned physics, never sent anything)
+	paint: Color3?, -- a bot's paint, kept for respawns
 }
 
 local VehicleService = {}
@@ -111,7 +115,7 @@ local function applyRelease(entry: VehicleEntry)
 	if released then
 		entry.chassis.Anchored = false
 		local ok, err = pcall(function()
-			entry.chassis:SetNetworkOwner(entry.player)
+			entry.chassis:SetNetworkOwner(if entry.isBot then nil else entry.player)
 		end)
 		if not ok then
 			warn("[VehicleService] SetNetworkOwner failed for " .. entry.player.Name .. ": " .. tostring(err))
@@ -295,12 +299,64 @@ function VehicleService.Spawn(player: Player)
 		impact = nil,
 		lastPosition = chassis.Position,
 		strikes = 0,
+		isBot = false,
+		paint = nil,
 	}
 	entries[player] = entry
 	applyRelease(entry)
 	applyTrail(entry)
 	Remotes.Get("VehicleAssigned"):FireClient(player, model)
 	onSpawned:Fire(player, entry)
+end
+
+-- An AI rival's taxi: the parts build of the vehicle (paint takes on every panel, so each bot has its own color; the
+-- imported cab mesh keeps its yellow texture), on a free grid pad, in the Bots collision group.
+function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3)
+	if entries[bot] then
+		VehicleService.Despawn(bot)
+	end
+	local model = VehicleBuilder.Build(vehicleId)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CollisionGroup = Config.CollisionGroups.Bots
+		end
+	end
+	VehicleBuilder.ApplyPaint(model, paint)
+	local chassis = model.PrimaryPart
+	if not chassis then
+		model:Destroy()
+		return
+	end
+	local slot = freeSlot()
+	model.Name = bot.Name .. "_" .. vehicleId
+	model:SetAttribute("OwnerUserId", bot.UserId)
+	model:SetAttribute("OwnerName", bot.DisplayName)
+	model:SetAttribute("IsBot", true)
+	CollectionService:AddTag(model, Config.Tags.Vehicle)
+	chassis.Anchored = true
+	model:PivotTo(padCFrameForSlot(slot))
+	model.Parent = folder
+	local entry: VehicleEntry = {
+		player = bot,
+		model = model,
+		chassis = chassis,
+		vehicleId = vehicleId,
+		slot = slot,
+		lastVelocity = Vector3.zero,
+		drifting = false,
+		boostUntil = 0,
+		spinUntil = 0,
+		crashImmuneUntil = 0,
+		speedHistory = {},
+		impact = nil,
+		lastPosition = chassis.Position,
+		strikes = 0,
+		isBot = true,
+		paint = paint,
+	}
+	entries[bot] = entry
+	applyRelease(entry)
+	onSpawned:Fire(bot, entry)
 end
 
 -- Put a car back on its grid pad, frozen, with clean state.
@@ -318,15 +374,19 @@ function VehicleService.PlaceOnGrid(entry: VehicleEntry)
 end
 
 function VehicleService.RespawnAll()
-	for player in entries do
-		VehicleService.Spawn(player)
+	for player, entry in entries do
+		if entry.isBot then
+			VehicleService.SpawnBot(player, entry.vehicleId, entry.paint or Config.Vehicles.Stats[entry.vehicleId].Color)
+		else
+			VehicleService.Spawn(player)
+		end
 	end
 end
 
 function VehicleService.ResetAllToGrid()
 	released = false
 	for player, entry in entries do
-		if DataService.GetSelectedVehicle(player) ~= entry.vehicleId then
+		if not entry.isBot and DataService.GetSelectedVehicle(player) ~= entry.vehicleId then
 			VehicleService.Spawn(player) -- garage choice takes effect between rounds
 		else
 			VehicleService.PlaceOnGrid(entry)
@@ -367,8 +427,10 @@ local function resetVehicle(player: Player)
 end
 
 function VehicleService.Init()
-	if not PhysicsService:IsCollisionGroupRegistered(Config.CollisionGroups.Vehicles) then
-		PhysicsService:RegisterCollisionGroup(Config.CollisionGroups.Vehicles)
+	for _, group in { Config.CollisionGroups.Vehicles, Config.CollisionGroups.Bots } do
+		if not PhysicsService:IsCollisionGroupRegistered(group) then
+			PhysicsService:RegisterCollisionGroup(group)
+		end
 	end
 	folder = MapService.GetRuntimeFolder("Vehicles")
 
@@ -433,6 +495,12 @@ function VehicleService.Start()
 	RunService.Heartbeat:Connect(function(dt: number)
 		local now = workspace:GetServerTimeNow()
 		for player, entry in entries do
+			if entry.isBot then
+				-- Server-steered: no crash watch (a bot's passenger is hurt by items, not by its own driving) and nothing
+				-- to sanity-check.
+				entry.lastVelocity = entry.chassis.AssemblyLinearVelocity
+				continue
+			end
 			if entry.chassis.Anchored then
 				entry.lastVelocity = Vector3.zero
 				table.clear(entry.speedHistory)

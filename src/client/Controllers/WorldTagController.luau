@@ -72,7 +72,7 @@ local function onSnapshot(snapshot: Types.Snapshot)
 		if tag then
 			seen[p.id] = true
 			local loaded = p.fare > 0
-			tag.name.Text = string.format("%s%s  ·  LV %d", if p.vip then "VIP " else "", p.name, p.level or 1)
+			tag.name.Text = if p.bot then "BOT " .. p.name else string.format("%s%s  ·  LV %d", if p.vip then "VIP " else "", p.name, p.level or 1)
 			tag.value.Text = if loaded then UI.Money(p.fare) else ""
 			tag.value.TextColor3 = (Config.Fares.Tiers[p.tier] or Config.Fares.Tiers.Green).Color
 			tag.hp.back.Visible = loaded

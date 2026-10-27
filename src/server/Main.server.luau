@@ -26,6 +26,7 @@ local ordered: { Service } = {
 	require(Services.ItemService),
 	require(Services.PedestrianService),
 	require(Services.TrafficService),
+	require(Services.BotService),
 	require(Services.PitStopService),
 	require(Services.GarageService),
 	require(Services.ProgressionService),

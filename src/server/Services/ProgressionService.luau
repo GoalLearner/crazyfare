@@ -46,9 +46,9 @@ function ProgressionService.AwardMatch(results: { Types.PodiumEntry })
 	for i, entry in results do
 		local byPlace = if contested then cfg.PlacementXp[math.min(i, #cfg.PlacementXp)] or 0 else 0
 		local xp = cfg.MatchBaseXp + entry.fares * cfg.XpPerFare + byPlace
-		entry.xp = xp
-		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)
+		local player = game:GetService("Players"):GetPlayerByUserId(entry.id) -- nil for a bot
 		if player then
+			entry.xp = xp
 			entry.levelUp = ProgressionService.AddXp(player, xp)
 		end
 	end

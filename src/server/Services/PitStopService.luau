@@ -16,6 +16,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local Racers = require(script.Parent.Parent.Racers)
 
 local PitStopService = {}
 
@@ -66,7 +67,7 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 	local quotas = Config.Round.Quotas
 	local nextQuota = quotas[math.min(roundIndex + 1, #quotas)]
 	local ranks = FareService.GetRanks()
-	local playerCount = #Players:GetPlayers()
+	local playerCount = #Racers.All() -- bots count for "last place": losing to bots still earns the pity discount
 	for _, player in Players:GetPlayers() do
 		local ids = cardIds()
 		for i = #ids, 2, -1 do

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Racers = require(script.Parent.Parent.Racers)
 local DataService = require(script.Parent.DataService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local FareService = require(script.Parent.FareService)
@@ -201,6 +202,9 @@ function QuestService.Init()
 
 	-- Progress sources
 	FareService.OnDelivered:Connect(function(player: Player, tier: string, tip: number)
+		if Racers.IsBot(player) then
+			return
+		end
 		QuestService.Progress(player, "deliver", 1)
 		if tier == "Red" then
 			QuestService.Progress(player, "red", 1)
@@ -211,13 +215,16 @@ function QuestService.Init()
 		end
 	end)
 	PassengerService.OnBailed:Connect(function(_victim: Player, _npc: PassengerService.Npc, reason: string, attacker: Player?)
-		if reason == "hp" and attacker then
+		if reason == "hp" and attacker and not Racers.IsBot(attacker) then
 			QuestService.Progress(attacker, "knockouts", 1)
 			DataService.AddStat(attacker, "Knockouts", 1)
 			LeaderboardService.AddKnockout(attacker)
 		end
 	end)
 	ItemService.OnTomatoHit:Connect(function(attacker: Player)
+		if Racers.IsBot(attacker) then
+			return
+		end
 		QuestService.Progress(attacker, "tomato", 1)
 	end)
 	ComboService.OnDrift:Connect(function(player: Player, seconds: number)

@@ -14,6 +14,7 @@ local FareService = require(script.Parent.FareService)
 local ComboService = require(script.Parent.ComboService)
 local ItemService = require(script.Parent.ItemService)
 local GemService = require(script.Parent.GemService)
+local Racers = require(script.Parent.Parent.Racers)
 
 local ReplicationService = {}
 
@@ -53,6 +54,7 @@ local function buildSnapshot(): Types.Snapshot
 			gems = GemService.GetTotal(player),
 			level = levelOf(player),
 			vip = player:GetAttribute("VIP") == true,
+			bot = Racers.IsBot(player),
 		})
 	end
 	return {

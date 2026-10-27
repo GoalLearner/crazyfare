@@ -136,6 +136,7 @@ Config.CollisionGroups = {
 	Default = "Default", -- Roblox's built-in group (the map)
 	Vehicles = "Vehicles", -- player cars
 	Traffic = "Traffic",
+	Bots = "Bots", -- AI rival taxis: bump player cars and each other, float over the map and ghost through traffic
 }
 
 Config.Keys = {
@@ -263,6 +264,63 @@ Config.Rider = {
 		Bored = { "BOOORING!", "IS THIS A TAXI OR A HEARSE?", "DO A FLIP OR SOMETHING", "MY GRANDMA DRIVES FASTER" },
 		Golden = { "DRIVE! I'M LOADED!", "THERE'S A BIG TIP IN IT", "FIRST CLASS, PLEASE" },
 	} :: { [string]: any },
+}
+
+-- AI rival taxis. With too few people, bots fill the match to FillTo drivers, and give their seats up as real players
+-- join (at the next round). They follow every rule a player does (stop to claim, stop to deliver, items, standings) but
+-- earn no stunt cash, gems or XP, and are always named with a BOT tag. Server-steered over the road grid.
+Config.Bots = {
+	Enabled = true,
+	FillTo = 4, -- drivers per match, people + bots
+	MinHumans = 1, -- a live match starts with this many people when bots fill the rest
+	Names = { "REX", "DOT", "ZIPPY", "MAMA CAB", "BOLT", "PICKLE" },
+	Colors = {
+		Color3.fromRGB(150, 80, 220),
+		Color3.fromRGB(110, 200, 70),
+		Color3.fromRGB(230, 70, 70),
+		Color3.fromRGB(40, 170, 170),
+		Color3.fromRGB(245, 140, 30),
+		Color3.fromRGB(240, 100, 170),
+	},
+	Skills = { 0.8, 0.9, 1 }, -- one per bot in turn: scales cruise speed and how quickly it thinks
+	VehicleId = "YellowCab",
+	-- Driving (studs, studs/s, studs/s^2). The Yellow Cab tops out at 90, so a good driver outruns them.
+	CruiseSpeed = 36, -- tuned 2026-10-27: at 52 the best bot made the $75 quota in 1:50, faster than the owner
+	CornerSpeed = 16,
+	Accel = 30,
+	Brake = 55, -- gentler than the crash watch's line, so a bot braking never reads as a crash
+	RideHeight = 1.35, -- chassis center above the road
+	MaxForce = 1000000,
+	Responsiveness = 30,
+	PassShift = 3.3, -- studs right of the center line when another bot comes the other way
+	PassLook = 100, -- how far ahead it watches for that
+	StopReach = 7, -- stops this far (sideways) from its passenger or drop-off
+	MaxCurbOffset = 7.5, -- but never farther off the center line than this (the car's side stays on the road, off the sidewalk)
+	FollowDistance = 32, -- cars and people in the road this far ahead slow it down
+	CarClearance = 5.6, -- a car whose center is closer than this to the bot's line counts as in the way
+	PersonClearance = 7, -- the same for people crossing
+	FollowGap = 13, -- stops this far behind what's in the way
+	JunctionLook = 34, -- watches the next junction from this far out
+	JunctionBox = 13, -- traffic crossing inside this half-size box around the junction makes it wait
+	StuckLag = 10, -- the car this far behind its target (something in the way): the target waits
+	StuckSeconds = 5, -- held up this long: the car is put back on its route
+	SpinRate = 7, -- radians/s while a Banana spins it
+	-- Brain
+	ThinkSeconds = 0.8, -- base time between decisions (divided by skill)
+	RouteFactor = 1.35, -- straight-line distance x this ~ the drive on the grid
+	PickupOverhead = 4, -- seconds added to every pickup's drive when comparing them (stopping, boarding)
+	Greed = 0.5, -- how much a passenger's fare counts when choosing (fare ^ Greed): 1 = always the long red trips, lower = nearer short ones
+	GoldenBias = 1.5, -- a Golden Fare looks this much better again, on top of its pay
+	Jitter = 0.15, -- +/- randomness on how good each passenger looks, so bots don't all pick the same
+	ClaimWait = 3, -- seconds stopped at a curb without boarding: try another passenger
+	RestMin = 3, -- seconds a bot sits after a delivery or a bail before picking its next passenger
+	RestMax = 6,
+	Choices = 3, -- picks one of its best few passengers (better ones likelier), not always the very best
+	TipMult = 0.5, -- passengers tip bots half (they see the whole map and never crash; humans earn stunt cash instead)
+	ItemUseChance = 0.5, -- chance per decision to use an item when there's a reason to
+	ItemHoldMax = 12, -- seconds holding a trap before it gets dropped anyway
+	TrapBehind = 45, -- a rival this close behind: drop the trap
+	NitroStraight = 120, -- studs of straight road ahead before using a Lemon Nitro
 }
 
 -- Pit Stop: between rounds, spend this round's cash on next-round-only boosts. Unspent cash carries forward.

@@ -23,6 +23,7 @@ export type PlayerSnap = {
 	gems: number, -- session total
 	level: number,
 	vip: boolean,
+	bot: boolean, -- an AI rival taxi
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking
@@ -48,9 +49,10 @@ export type PodiumEntry = {
 	cash: number, -- cents: this round's earnings, or the match total on the last round
 	fares: number,
 	bestTip: number, -- cents
-	gems: number?, -- awarded at match end
+	gems: number?, -- awarded at match end (players only)
 	xp: number?,
 	levelUp: boolean?,
+	bot: boolean?, -- an AI rival taxi
 }
 
 export type RoundStatePayload = {
