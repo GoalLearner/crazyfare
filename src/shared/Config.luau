@@ -212,6 +212,8 @@ Config.Traffic = {
 	MaxForce = 1000000, -- AlignPosition / AlignOrientation strength that keeps it in its lane
 	Responsiveness = 25,
 	ResetDistance = 40, -- knocked this far from its lane point, it snaps back
+	BlockedLag = 6, -- body this far behind its lane point (a player car in the way): the car waits, and so does the queue behind it
+	BlockedRespawn = 8, -- seconds blocked before the car respawns elsewhere so the lane clears
 	Colors = {
 		Color3.fromRGB(235, 235, 235),
 		Color3.fromRGB(170, 175, 185),

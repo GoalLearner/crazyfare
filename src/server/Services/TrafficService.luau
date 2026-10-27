@@ -34,6 +34,7 @@ type Car = {
 	junction: Vector3?, -- center of the next intersection ahead
 	holding: string?, -- key of the intersection this car is allowed through
 	holdingCenter: Vector3?,
+	blockedFor: number, -- seconds its body has been held up (a player car in the way)
 }
 
 type Exit = { dir: Vector3, weight: number }
@@ -350,6 +351,7 @@ local function spawnCar(cruise: number): boolean
 			speed = cruise,
 			cornerAt = rabbit,
 			nextDir = dir,
+			blockedFor = 0,
 		}
 		body.Touched:Connect(function(hit: BasePart)
 			onTouched(car, hit)
@@ -415,6 +417,21 @@ function TrafficService.Start()
 				continue
 			end
 			updateSpeed(car, dt)
+			-- Held up by a player car: wait (so the cars queued behind wait too); after a while, respawn elsewhere.
+			local lag = (car.rabbit - Vector3.new(car.body.Position.X, 0, car.body.Position.Z)):Dot(car.dir)
+			if lag > Config.Traffic.BlockedLag then
+				car.speed = 0
+				car.blockedFor += dt
+				if car.blockedFor > Config.Traffic.BlockedRespawn then
+					release(car)
+					car.model:Destroy()
+					table.remove(cars, i)
+					table.insert(lost, car.cruise)
+					continue
+				end
+			else
+				car.blockedFor = 0
+			end
 			advance(car, dt)
 			local target = targetFor(car)
 			if (car.body.Position - target).Magnitude > Config.Traffic.ResetDistance then
