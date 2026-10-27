@@ -25,7 +25,7 @@ src/
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau   boots controllers the same way
     Controllers/*.luau Input, Vehicle (raycast chassis), Camera, Hud, Minimap, WorldTags, Effects, DebugPanel
-docs/                  DESIGN.md, PLAN.md, GETTING-STARTED.html
+docs/                  DESIGN.md, PLAN.md, GETTING-STARTED.html, OWNER-STEPS.html, LAUNCH.html (+ launch/ thumbnails, icon)
 ```
 
 ## Toolchain / how to run

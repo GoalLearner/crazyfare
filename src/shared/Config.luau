@@ -301,6 +301,7 @@ Config.Rider = {
 -- earn no stunt cash, gems or XP, and are always named with a BOT tag. Server-steered over the road grid.
 Config.Bots = {
 	Enabled = true,
+	IdBase = -1000, -- bot UserIds count down from here (Studio's test players are -1, -2...)
 	FillTo = 4, -- drivers per match, people + bots
 	MinHumans = 1, -- a live match starts with this many people when bots fill the rest
 	Names = { "REX", "DOT", "ZIPPY", "MAMA CAB", "BOLT", "PICKLE" },

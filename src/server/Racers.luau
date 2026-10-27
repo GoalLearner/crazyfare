@@ -5,6 +5,9 @@
 -- never a real Instance: anything that talks to a client (FireClient) or to saved data must skip it (Racers.IsBot).
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local Racers = {}
 
@@ -27,11 +30,12 @@ function Racers.Bots(): { Player }
 	return table.clone(bots)
 end
 
--- A new stand-in driver. `slot` (1, 2, 3...) gives it UserId -slot, so ids stay unique and never collide with a player.
+-- A new stand-in driver. `slot` (1, 2, 3...) gives it UserId IdBase - slot: unique, and clear of real players (positive)
+-- and of Studio's test players (Player1 is -1, Player2 is -2...).
 function Racers.NewBot(slot: number, name: string): Player
 	local attributes: { [string]: any } = {}
 	local bot = {
-		UserId = -slot,
+		UserId = Config.Bots.IdBase - slot,
 		Name = "Bot_" .. name,
 		DisplayName = name,
 		Parent = Players, -- reads as "still here" wherever a service checks player.Parent
