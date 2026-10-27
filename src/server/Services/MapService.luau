@@ -5,6 +5,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local DevBlockout = require(script.Parent.Parent.Studio.DevBlockout)
 local Lighting = game:GetService("Lighting")
@@ -17,6 +18,9 @@ export type Point = {
 }
 
 local MapService = {}
+
+local onMapLoaded: Signal.Signal<nil> = Signal.new()
+MapService.OnMapLoaded = onMapLoaded -- after LoadMap swapped the world (traffic respawns on it)
 
 local pickups: { Point } = {}
 local dropoffs: { Point } = {}
@@ -88,6 +92,15 @@ function MapService.GetCurrentMap(): string
 	return currentMap
 end
 
+-- The current map's blockout spec: road grid, cell layout.
+function MapService.GetBlockout(): typeof(Config.Map.City.Blockout)
+	local mapCfg = (Config.Map :: any)[currentMap]
+	if typeof(mapCfg) == "table" and mapCfg.Blockout then
+		return mapCfg.Blockout
+	end
+	return Config.Map.City.Blockout
+end
+
 -- Replace the world with another map from Config.Map and rediscover its points. Callers respawn cars and clear NPCs.
 function MapService.LoadMap(name: string)
 	local mapCfg = (Config.Map :: any)[name]
@@ -101,6 +114,7 @@ function MapService.LoadMap(name: string)
 		Lighting.ClockTime = mapCfg.ClockTime
 	end
 	discover()
+	onMapLoaded:Fire()
 end
 
 function MapService.Init()

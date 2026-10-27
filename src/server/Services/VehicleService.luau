@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
@@ -227,6 +228,11 @@ function VehicleService.Spawn(player: Player)
 	end
 	local vehicleId = DataService.GetSelectedVehicle(player)
 	local model = buildModel(vehicleId)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CollisionGroup = Config.CollisionGroups.Vehicles -- traffic collides with this group only
+		end
+	end
 	VehicleBuilder.ApplyPaint(model, DataService.GetPaint(player))
 	local chassis = model.PrimaryPart
 	if not chassis then
@@ -330,6 +336,9 @@ local function resetVehicle(player: Player)
 end
 
 function VehicleService.Init()
+	if not PhysicsService:IsCollisionGroupRegistered(Config.CollisionGroups.Vehicles) then
+		PhysicsService:RegisterCollisionGroup(Config.CollisionGroups.Vehicles)
+	end
 	folder = MapService.GetRuntimeFolder("Vehicles")
 
 	Remotes.Get("DriveState").OnServerEvent:Connect(function(player: Player, drifting: any)

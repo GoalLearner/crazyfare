@@ -117,6 +117,7 @@ local function isNearMissTarget(part: BasePart): boolean
 	return CollectionService:HasTag(part, Config.Tags.Building)
 		or CollectionService:HasTag(part, Config.Tags.Wall)
 		or CollectionService:HasTag(part, Config.Tags.Prop)
+		or CollectionService:HasTag(part, Config.Tags.Traffic)
 end
 
 -- A tagged obstacle inside the padded box but outside the tight box = a near miss.

@@ -70,6 +70,14 @@ Config.Tags = {
 	Sand = "Sand", -- slows cars (Beach)
 	Boardwalk = "Boardwalk", -- speeds cars (Beach)
 	Water = "Water",
+	Traffic = "Traffic", -- ambient NPC cars (near-miss targets)
+}
+
+-- Physics collision groups. Traffic hits player cars only: not the map, not other traffic.
+Config.CollisionGroups = {
+	Default = "Default", -- Roblox's built-in group (the map)
+	Vehicles = "Vehicles", -- player cars
+	Traffic = "Traffic",
 }
 
 Config.Keys = {
@@ -177,6 +185,36 @@ Config.Combo = {
 	NearMissMinSpeed = 45,
 	MinSpeedForEvents = 20, -- server rejects combo events while slower than this
 	MaxEventsPerSecond = 8,
+}
+
+-- Ambient traffic (TrafficService): server cars cruising the road grid in right-hand lanes, turning at intersections.
+-- Hitting one is a crash like any wall; slipping past one at speed counts as a near miss.
+Config.Traffic = {
+	Count = 10, -- cars per map
+	Speed = 30, -- cruise speed, studs/s (the Yellow Cab tops out at 90)
+	SpeedJitter = 0.15, -- each car cruises within this share of Speed, up or down
+	LaneOffset = 6, -- lane center from the road center line
+	StraightWeight = 2, -- odds at an intersection: straight vs each possible turn
+	TurnWeight = 1,
+	SpawnClearance = 70, -- no car spawns this close to a start pad
+	SpawnSpacing = 45, -- nor this close to another traffic car
+	SpawnTries = 30,
+	BodySize = Vector3.new(6, 2.4, 11.5),
+	RideHeight = 0.85, -- gap under the body (the wheels fill it)
+	Density = 3, -- several times a player cab: you bounce off, it barely notices
+	MaxForce = 1000000, -- AlignPosition / AlignOrientation strength that keeps it in its lane
+	Responsiveness = 25,
+	ResetDistance = 40, -- knocked this far from its lane point, it snaps back
+	Colors = {
+		Color3.fromRGB(235, 235, 235),
+		Color3.fromRGB(170, 175, 185),
+		Color3.fromRGB(45, 60, 110),
+		Color3.fromRGB(120, 35, 40),
+		Color3.fromRGB(50, 95, 60),
+		Color3.fromRGB(60, 62, 68),
+		Color3.fromRGB(110, 150, 200),
+		Color3.fromRGB(200, 180, 140),
+	},
 }
 
 Config.Passenger = {

@@ -266,4 +266,39 @@ function VehicleBuilder.ApplyPaint(model: Model, color: Color3?)
 	end
 end
 
+-- A plain civilian car for ambient traffic (TrafficService). "Body" is the only collider and carries the mass; built at
+-- the origin facing -Z like the rest, so the caller pivots it into place and sets its collision group.
+function VehicleBuilder.BuildTraffic(color: Color3): (Model, Part)
+	local cfg = Config.Traffic
+	local size = cfg.BodySize
+	local model = Instance.new("Model")
+	model.Name = "TrafficCar"
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = size
+	body.CFrame = CFrame.new()
+	body.Color = color
+	body.Material = Enum.Material.SmoothPlastic
+	body.TopSurface = Enum.SurfaceType.Smooth
+	body.BottomSurface = Enum.SurfaceType.Smooth
+	body.CanCollide = true
+	body.CustomPhysicalProperties = PhysicalProperties.new(cfg.Density, 0.3, 0.1, 1, 1)
+	body.Parent = model
+	model.PrimaryPart = body
+	local halfX, halfY, halfZ = size.X / 2, size.Y / 2, size.Z / 2
+	local cabin = makePart("Cabin", Vector3.new(size.X - 1, 1.8, size.Z * 0.48), CFrame.new(0, halfY + 0.9, 0.4), color, model)
+	weld(body, cabin)
+	glassPart("Windshield", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 - size.Z * 0.24), body, model)
+	glassPart("RearWindow", Vector3.new(size.X - 1.2, 1.3, 0.3), CFrame.new(0, halfY + 0.95, 0.4 + size.Z * 0.24), body, model)
+	lights(model, body, halfX - 0.9, -halfZ - 0.05, halfZ + 0.05)
+	for _, x in { -1, 1 } do
+		for _, z in { -1, 1 } do
+			local wheel = makePart("Wheel", Vector3.new(1, 1.8, 1.8), CFrame.new(x * (halfX - 0.3), -halfY + 0.05, z * (halfZ - 2.2)), DARK, model)
+			wheel.Shape = Enum.PartType.Cylinder
+			weld(body, wheel)
+		end
+	end
+	return model, body
+end
+
 return VehicleBuilder
