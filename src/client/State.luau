@@ -57,6 +57,7 @@ local State = {
 	grounded = true,
 	boostTank = 0,
 	boostTankMax = defaultStats.BoostTank,
+	hopReadyAt = 0, -- os.clock() when the hop is ready again (Config.Chaos.Hop.Cooldown)
 	-- timed effects (server time)
 	nitroUntil = 0,
 	spinUntil = 0,
@@ -83,6 +84,7 @@ local notice: Signal.Signal<string> = Signal.new()
 local shake: Signal.Signal<number> = Signal.new()
 local dashed: Signal.Signal<string> = Signal.new()
 local landed: Signal.Signal<number> = Signal.new()
+local hopped: Signal.Signal<nil> = Signal.new()
 local riderSaid: Signal.Signal<string> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
@@ -99,6 +101,7 @@ State.Notice = notice -- one-shot HUD messages from the server (quest done, leve
 State.Shake = shake -- camera shake strength (Config.Shake)
 State.Dashed = dashed -- the local cab just launched: "Dash" (brake tap) or "Pad" (a boost pad)
 State.Landed = landed -- the local cab touched down after this many seconds of air
+State.Hopped = hopped -- the local cab just hopped (dust, a thump, the coach)
 State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's bubble over your cab, never stacked)
 
 function State.SetVehicle(model: Model?)
@@ -133,6 +136,7 @@ function State.ResetRound()
 	State.fare = nil
 	State.item = ""
 	State.boostTank = 0
+	State.hopReadyAt = 0
 	State.nitroUntil = 0
 	State.spinUntil = 0
 	State.oilUntil = 0

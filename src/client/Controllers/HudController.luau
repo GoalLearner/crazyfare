@@ -47,6 +47,8 @@ local comboLabel: TextLabel
 local comboBar: UI.Bar
 local comboScale: UIScale
 local boostBar: UI.Bar
+local hopChip: TextLabel -- right of the boost bar: the hop's key, green when ready (phones have the HOP button)
+local hopBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
 local itemLabel: TextLabel
@@ -443,6 +445,8 @@ local function build()
 	countdownScale = UI.New("UIScale", {}, countdownLabel) :: UIScale
 	boostBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 58), Size = UDim2.fromOffset(200, 8) }, UI.Accent, center)
 	speedLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 68), Size = UDim2.fromOffset(120, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "0" }, center)
+	hopChip = UI.Label({ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0.5, 108, 0, 62), Size = UDim2.fromOffset(64, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.FontMedium, Text = "" }, center)
+	hopBar = UI.Bar({ AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0.5, 108, 0, 72), Size = UDim2.fromOffset(40, 3) }, UI.Muted, center)
 
 	-- Item slot (bottom-left)
 	itemSlot = UI.Frame({ AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 24, 1, -24), Size = UDim2.fromOffset(120, 120) }, screen)
@@ -901,6 +905,15 @@ local function update(dt: number)
 
 	-- Boost tank + speed
 	UI.SetBar(boostBar, if State.boostTankMax > 0 then State.boostTank / State.boostTankMax else 0, if State.boosting then UI.Warn else UI.Accent)
+	-- The hop: its key, green when ready; a bar fills while it cools down
+	local inputMode = InputController.GetMode()
+	local hopLeft = State.hopReadyAt - os.clock()
+	local showHop = inputMode ~= "Touch" and phase == "Playing"
+	hopChip.Visible = showHop
+	hopBar.back.Visible = showHop and hopLeft > 0
+	hopChip.Text = (if inputMode == "Gamepad" then (Config.Keys.PadHop.Name:gsub("^Button", "")) else Config.Keys.Hop.Name) .. " HOP"
+	hopChip.TextColor3 = if hopLeft <= 0 then UI.Cash else UI.Muted
+	UI.SetBar(hopBar, 1 - math.clamp(hopLeft / Config.Chaos.Hop.Cooldown, 0, 1), UI.Muted)
 	local me = State.GetSelfSnap()
 	gemsLabel.Text = string.format("LV %d  ·  %d GEMS", if me then me.level else 1, State.gems)
 	speedLabel.Text = string.format("%d", math.round(State.speed))

@@ -45,6 +45,15 @@ local recentNearMiss: { [BasePart]: number } = {}
 local hopHeld = false
 local lastSpeed = 0
 local lastHopAt = 0
+local hopPressedAt = -math.huge -- os.clock() of the last HOP press (Config.Chaos.Hop.Buffer)
+local hopAt = -math.huge -- os.clock() of the last hop (the HOP button or the Horse's Space)
+local hopFreeAir = 0 -- seconds after hopAt that are the hop's own flight, never paid as BIG AIR
+local airStartedAt = 0 -- os.clock() when the current flight left the ground
+
+-- A hop's flight time with the arcade air gravity, plus a little: airtime inside it is the hop's, not a stunt's.
+local function freeAir(upSpeed: number, gravity: number): number
+	return 2 * upSpeed / (gravity * C.AirGravityMult) + Config.Chaos.Hop.FreeAirSlack
+end
 local brakeHeldFor = 0 -- seconds the brake has been held while almost stopped
 local dashArmedUntil = 0 -- after letting go of an armed brake, gas before this time launches a Dash
 local dashUntil = 0
@@ -362,6 +371,9 @@ local function step(rawDt: number)
 
 	-- Air: damp tumbling and level out so landings are drivable
 	if not grounded then
+		if airTime == 0 then
+			airStartedAt = os.clock()
+		end
 		airTime += dt
 		local av = ch.AssemblyAngularVelocity
 		ch.AssemblyAngularVelocity = av * math.clamp(1 - C.AirAngularDamping * dt, 0, 1)
@@ -372,7 +384,13 @@ local function step(rawDt: number)
 		ch:ApplyImpulse(Vector3.new(0, mass * g * (1 - C.AirGravityMult) * dt, 0))
 	else
 		if airTime >= C.AirtimeMinSeconds then
-			reportCombo("Airtime", airTime)
+			-- a hop's own flight doesn't pay: only the air outside its window (off a ramp, a roof) is BIG AIR
+			local landedAt = os.clock()
+			local free = math.max(0, math.min(landedAt, hopAt + hopFreeAir) - math.max(airStartedAt, hopAt))
+			local paid = airTime - free
+			if paid >= C.AirtimeMinSeconds then
+				reportCombo("Airtime", paid)
+			end
 			State.Landed:Fire(airTime)
 		end
 		airTime = 0
@@ -392,9 +410,23 @@ local function step(rawDt: number)
 	-- Horse: Space hops instead of drifting (edge-triggered, grounded only)
 	if stats.Hop and driftHeld and not hopHeld and grounded and now - lastHopAt > 0.45 then
 		lastHopAt = now
-		ch.AssemblyLinearVelocity = Vector3.new(vel.X, stats.HopPower or 40, vel.Z)
+		local power = stats.HopPower or 40
+		ch.AssemblyLinearVelocity = Vector3.new(vel.X, power, vel.Z)
+		hopAt = os.clock()
+		hopFreeAir = freeAir(power, g)
 	end
 	hopHeld = driftHeld
+	-- HOP (everyone): straight up, grounded only, once per Cooldown; a press just before landing waits for touchdown
+	local hopCfg = Config.Chaos.Hop
+	local clock = os.clock()
+	if grounded and not spinning and clock - hopPressedAt <= hopCfg.Buffer and clock >= State.hopReadyAt then
+		hopPressedAt = -math.huge
+		State.hopReadyAt = clock + hopCfg.Cooldown
+		ch.AssemblyLinearVelocity = Vector3.new(vel.X, hopCfg.Speed, vel.Z)
+		hopAt = clock
+		hopFreeAir = freeAir(hopCfg.Speed, g)
+		State.Hopped:Fire()
+	end
 
 	-- Rammed: the push lands once
 	local shove = State.pendingShove
@@ -469,6 +501,9 @@ function VehicleController.Init()
 	end
 	InputController.OnReset:Connect(function()
 		resetVehicle:FireServer()
+	end)
+	InputController.OnHop:Connect(function()
+		hopPressedAt = os.clock()
 	end)
 	workspace.ChildAdded:Connect(function(child: Instance)
 		if child.Name == "Map" then

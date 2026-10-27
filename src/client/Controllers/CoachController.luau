@@ -1,6 +1,6 @@
 --!strict
 -- First-match coach: one short prompt at a time in a small pill under the timer (never over the road), in order: pick
--- up, deliver, drift, boost, use an item. Each goes when done (or when its time is up); once all have gone the server
+-- up, deliver, drift, boost, hop, use an item. Each goes when done (or when its time is up); once all have gone the server
 -- marks the account (CoachDone) and the coach never shows again. Words follow the input in use. Config.Coach.
 
 local RunService = game:GetService("RunService")
@@ -112,6 +112,11 @@ function CoachController.Init()
 	label = UI.Label({ Position = UDim2.fromOffset(14, 4), Size = UDim2.new(1, -28, 1, -8), Text = "", TextColor3 = UI.White, Font = UI.FontMedium }, pill)
 	State.FareEvent:Connect(onFare)
 	State.ItemEvent:Connect(onItem)
+	State.Hopped:Connect(function()
+		if not finished and Config.Coach.Steps[step].Id == "hop" then
+			advance()
+		end
+	end)
 end
 
 function CoachController.Start()

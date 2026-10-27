@@ -148,6 +148,15 @@ local function setStandActive(stand: Stand, active: boolean, dir: Vector3?)
 	stand.model:SetAttribute("Active", active)
 end
 
+-- Bananas and Oil Slicks on the road (bots hop over them).
+function ItemService.GetTraps(): { { position: Vector3, radius: number } }
+	local list: { { position: Vector3, radius: number } } = {}
+	for _, trap in traps do
+		table.insert(list, { position = trap.position, radius = trap.triggerRadius })
+	end
+	return list
+end
+
 -- The fruit stalls still standing (bots swerve for them; Studio's "To stand" lines up on one).
 function ItemService.GetActiveStands(): { CFrame }
 	local list: { CFrame } = {}

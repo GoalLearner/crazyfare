@@ -202,6 +202,7 @@ Config.Keys = {
 	Item = Enum.KeyCode.Q,
 	Honk = Enum.KeyCode.H,
 	Reset = Enum.KeyCode.R,
+	Hop = Enum.KeyCode.E,
 	PadThrottle = Enum.KeyCode.ButtonR2,
 	PadBrake = Enum.KeyCode.ButtonL2,
 	PadSteer = Enum.KeyCode.Thumbstick1,
@@ -210,6 +211,7 @@ Config.Keys = {
 	PadItem = Enum.KeyCode.ButtonX,
 	PadHonk = Enum.KeyCode.ButtonY,
 	PadReset = Enum.KeyCode.ButtonSelect,
+	PadHop = Enum.KeyCode.ButtonR1,
 }
 
 Config.Round = {
@@ -910,6 +912,21 @@ Config.Chaos = {
 		TickPitch = 1.4, -- the countdown by the cab ticks every second while they ride
 		TickPunch = 1.15, -- and bumps this much on each tick (the last seconds keep their big punch)
 	},
+	-- The hop (the owner's "Crazy Hop"; on screen just HOP): E, R1 or the HOP button pops your cab straight up, about
+	-- 8 studs with the arcade air gravity, once every Cooldown seconds. Over traffic, over a Banana or an Oil Slick
+	-- (traps only catch you within 5 studs up), onto a roof. A hop's own flight is never BIG AIR: airtime that starts
+	-- with a hop pays only past it (off a ramp or a drop it still pays). Bots hop over traps on their line.
+	Hop = {
+		Speed = 38, -- studs/s straight up
+		Cooldown = 4,
+		Buffer = 0.15, -- seconds: a press this soon before touchdown hops on landing
+		FreeAirSlack = 0.1, -- seconds added to a hop's own flight time before airtime pays
+		Sound = "Land", -- Config.Sounds.Ids key, played as you leave the ground
+		SoundPitch = 1.5,
+		BotTrapMin = 6, -- a bot hops over a trap between this many...
+		BotTrapLook = 18, -- ...and this many studs ahead...
+		BotTrapReach = 3, -- ...within its trigger radius plus this of the bot's line
+	},
 	-- Fruit stands: market stalls straddling the curb (the map's Features.FruitStands). Drive through one at MinSpeed or
 	-- more and it bursts into flying fruit; with an empty item slot you get a free item, rolled by rank like an item
 	-- box. It's back RespawnSeconds later and at every round start. Nothing solid: no crash, no passenger damage. Bots
@@ -1139,6 +1156,7 @@ Config.Coach = {
 		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, BRAKE IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
 		{ Id = "drift", Keyboard = "HOLD SPACE WHILE TURNING TO DRIFT", Touch = "HOLD DRIFT WHILE TURNING", Gamepad = "HOLD A WHILE TURNING TO DRIFT", MaxSeconds = 14 },
 		{ Id = "boost", Keyboard = "HOLD SHIFT TO BOOST", Touch = "HOLD BOOST", Gamepad = "HOLD B TO BOOST", MaxSeconds = 12 },
+		{ Id = "hop", Keyboard = "PRESS E TO HOP", Touch = "TAP HOP TO JUMP", Gamepad = "PRESS R1 TO HOP", MaxSeconds = 12 },
 		{ Id = "item", Keyboard = "PRESS Q TO USE YOUR ITEM", Touch = "TAP YOUR ITEM", Gamepad = "PRESS X TO USE YOUR ITEM", MaxSeconds = 12 },
 	} :: { { Id: string, Keyboard: string, Touch: string, Gamepad: string, MaxSeconds: number } }, -- MaxSeconds 0 = until done
 	DriftSeconds = 0.5, -- drifting this long counts as done

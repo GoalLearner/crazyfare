@@ -53,6 +53,7 @@ type Bot = {
 	dropTo: Vector3?, -- the drop-off its route leads to (a carpool's next stop moves it)
 	airY: number, -- thrown into the air (a hydrant): height above the ride height...
 	airVel: number, -- ...and its vertical speed
+	hopReadyAt: number, -- server time its hop is ready again (Config.Chaos.Hop)
 }
 
 local bots: { [Player]: Bot } = {}
@@ -564,6 +565,24 @@ local function drive(bot: Bot, entry: VehicleService.VehicleEntry, dt: number, n
 	end
 	bot.spinAngle = 0
 
+	-- The hop: over a Banana or an Oil Slick on its line, on the same cooldown as everyone's
+	local hop = Config.Chaos.Hop
+	if bot.airY <= 0 and now >= bot.hopReadyAt then
+		for _, trap in ItemService.GetTraps() do
+			local rel = flat(trap.position) - bot.rabbit
+			local ahead = rel:Dot(bot.dir)
+			if ahead >= hop.BotTrapMin and ahead <= hop.BotTrapLook and math.abs(rel:Dot(rightOf(bot.dir)) - bot.lateral) <= trap.radius + hop.BotTrapReach then
+				bot.hopReadyAt = now + hop.Cooldown
+				bot.airVel = hop.Speed
+				bot.airY = 0.01
+				if RunService:IsStudio() then
+					print(string.format("[BotService] %s hopped a trap %.0f studs ahead", bot.driver.Name, ahead))
+				end
+				break
+			end
+		end
+	end
+
 	local target = allowedSpeed(bot, entry, now, traffic, crossers)
 	if target > bot.speed then
 		bot.speed = math.min(target, bot.speed + cfg.Accel * dt)
@@ -668,6 +687,7 @@ local function addBot()
 		dropTo = nil,
 		airY = 0,
 		airVel = 0,
+		hopReadyAt = 0,
 	}
 	bots[driver] = bot
 	table.insert(order, driver)

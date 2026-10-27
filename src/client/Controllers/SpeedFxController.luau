@@ -248,6 +248,9 @@ function SpeedFxController.Init()
 		attach(State.vehicle)
 	end
 	State.Landed:Connect(onLanded)
+	State.Hopped:Connect(function()
+		onLanded(0) -- the smallest ring of dust as you leave the ground
+	end)
 	State.Dashed:Connect(onDashed)
 end
 

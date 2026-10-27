@@ -2,7 +2,7 @@
 -- Keyboard, gamepad and touch. Exposes continuous axes and fires signals for one-shot actions.
 -- Bindings live in Config.Keys. Phones (Config.Touch) drive forward by themselves, so one thumb is free for DRIFT and
 -- BOOST: BRAKE slows to a stop, holds the car there for a moment (to pick up or drop off), then reverses. Steering is
--- an analog strip on the left; the ITEM button shows the item you hold.
+-- an analog strip on the left; the ITEM button shows the item you hold; HOP greys out while it cools down.
 
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
@@ -19,10 +19,12 @@ local InputController = {}
 local onItem: Signal.Signal<nil> = Signal.new()
 local onHonk: Signal.Signal<nil> = Signal.new()
 local onReset: Signal.Signal<nil> = Signal.new()
+local onHop: Signal.Signal<nil> = Signal.new()
 local modeChanged: Signal.Signal<string> = Signal.new()
 InputController.OnItem = onItem
 InputController.OnHonk = onHonk
 InputController.OnReset = onReset
+InputController.OnHop = onHop
 InputController.ModeChanged = modeChanged -- "Keyboard" | "Gamepad" | "Touch", when the player switches
 
 local keys = { forward = false, back = false, left = false, right = false, drift = false, boost = false }
@@ -35,6 +37,7 @@ local touchSteer = 0 -- -1..1 from the steering strip
 local restSince: number? = nil -- touch: when a held BRAKE brought the car to a stop
 local mode = "Keyboard"
 local releaseChecks: { () -> () } = {} -- per frame: let go of any touch control whose finger has lifted
+local frameUpdates: { () -> () } = {} -- per frame: touch buttons that show a state (HOP's cooldown)
 
 local function readMode(): string
 	local last = UserInputService:GetLastInputType()
@@ -126,7 +129,7 @@ local function ended(input: InputObject): boolean
 end
 
 -- On-screen controls for phones and tablets: the steering strip on the left with ITEM and HONK above it, DRIFT in the
--- corner on the right with BRAKE beside it and BOOST above.
+-- corner on the right with BRAKE beside it, BOOST above DRIFT and HOP above BRAKE.
 local function buildTouchControls()
 	local UI = require(script.Parent.Parent.UI)
 	local cfg = Config.Touch
@@ -275,6 +278,17 @@ local function buildTouchControls()
 	holdFlag(button("DRIFT", -m, m, 1, big, big), "drift")
 	holdFlag(button("BRAKE", -(m + big + gap), m, 1, size, size), "back")
 	holdFlag(button("BOOST", -m, m + big + gap, 1, big, size), "boost")
+	local hop = button("HOP", -(m + big + gap), m + size + gap, 1, size, size)
+	tap(hop, onHop)
+	-- HOP fills from the bottom while it cools down, white when it's ready
+	local fill = UI.New("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = UI.White, BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = 0 }, hop) :: Frame
+	UI.Corner(math.floor(size / 2), fill)
+	table.insert(frameUpdates, function()
+		local left = State.hopReadyAt - os.clock()
+		local ready = left <= 0
+		fill.Size = UDim2.fromScale(1, if ready then 0 else 1 - math.clamp(left / Config.Chaos.Hop.Cooldown, 0, 1))
+		hop.TextColor3 = if ready then UI.White else UI.Muted
+	end)
 
 	-- The ITEM button names the item you hold, in its color
 	local shown: string? = nil
@@ -342,6 +356,10 @@ local function handle(_actionName: string, inputState: Enum.UserInputState, inpu
 		if down then
 			onReset:Fire()
 		end
+	elseif code == K.Hop or code == K.PadHop then
+		if down then
+			onHop:Fire()
+		end
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -369,7 +387,9 @@ function InputController.Init()
 		K.PadBoost,
 		K.PadItem,
 		K.PadHonk,
-		K.PadReset
+		K.PadReset,
+		K.Hop,
+		K.PadHop
 	)
 	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
 		touchBuilt = true
@@ -398,10 +418,13 @@ function InputController.Init()
 end
 
 function InputController.Start()
-	if #releaseChecks > 0 then
+	if #releaseChecks > 0 or #frameUpdates > 0 then
 		RunService.Heartbeat:Connect(function()
 			for _, check in releaseChecks do
 				check()
+			end
+			for _, update in frameUpdates do
+				update()
 			end
 		end)
 	end
