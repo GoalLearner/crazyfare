@@ -42,6 +42,32 @@ export type VehicleStats = {
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
+-- A city's set pieces (Phase D): DevBlockout builds them and the minimap draws them from this one spec, so both agree.
+-- Offsets inside a block are from the block's center; +Z is south.
+export type HumpSpec = { X: number, Z: number, Yaw: number, Height: number, Length: number, Crest: number, Width: number } -- Yaw in degrees: the hump's axis
+export type MapFeatures = {
+	Alleys: { { X: number, Z: number } }, -- blocks with a north-south lane cut straight through
+	AlleyWidth: number,
+	Hill: { X: number, ZFrom: number, ZTo: number, Height: number, Flat: number }, -- a crest on a north-south road
+	JumpBlock: { -- a lane through a block: launch ramp, a low warehouse to fly over, landing ramp
+		X: number,
+		Z: number,
+		Dir: number, -- the way you jump: 1 = south (+Z), -1 = north (-Z); the offsets below run along it from the center
+		Width: number,
+		LaunchStart: number,
+		Crest: number,
+		RoofStart: number,
+		RoofEnd: number,
+		LandEnd: number,
+		CrestHeight: number,
+		RoofHeight: number,
+	},
+	DiagonalPark: { X: number, Z: number, Width: number }, -- a park block with a path corner to corner (north-east to south-west)
+	BigHumps: { HumpSpec },
+	BoostPads: { { X: number, Z: number, Yaw: number, Length: number, Width: number } }, -- before each big jump
+	Tunnel: { X: number, ZFrom: number, ZTo: number, Height: number }, -- a covered stretch of a north-south road
+}
+
 -- A passenger personality (Config.PassengerTypes.Kinds). Multipliers of 1 change nothing.
 export type PassengerKindDef = {
 	Weight: number, -- spawn odds against the other kinds
@@ -84,6 +110,7 @@ Config.Tags = {
 	Boardwalk = "Boardwalk", -- speeds cars (Beach)
 	Water = "Water",
 	Traffic = "Traffic", -- ambient NPC cars (near-miss targets)
+	BoostPad = "BoostPad", -- a glowing strip that launches your cab (VehicleController)
 }
 
 -- Pedestrians (PedestrianService): walk the sidewalk around each block and cross the street at the corners when no
@@ -824,6 +851,8 @@ Config.Chassis = {
 	DashArmSeconds = 0.2, -- the brake tap lasts at least this long...
 	DashArmMax = 0.8, -- ...and at most this long
 	DashWindow = 0.3, -- seconds after letting go of the brake to hit the gas
+	AirGravityMult = 0.45, -- gravity on your cab while all four wheels are off the ground: jumps hang longer (arcade air)
+	PadSpeed = 120, -- a boost pad throws you to this forward speed, then it runs like a Dash (tested: 105 left the jump block's crest at 63 and landed on the roof)
 	DashSeconds = 1.2,
 	DashSpeedMult = 1.4, -- top speed while dashing (does not stack with Lemon Nitro; the bigger one wins)
 	DashAccelMult = 2.5,
@@ -833,7 +862,7 @@ Config.Chassis = {
 
 -- Speed feel (client only): boost flames, speed streaks, landing dust, drift smoke, the DASH! popup.
 Config.SpeedFx = {
-	Labels = { Dash = "DASH!" } :: { [string]: string },
+	Labels = { Dash = "DASH!", Pad = "BOOST!" } :: { [string]: string },
 	Flames = { Rate = 140, Lifetime = 0.18, Speed = 18, Size = 1.3, Spread = 12, LightRange = 12, LightBrightness = 4 },
 	Streaks = {
 		StartFrac = 0.72, -- of top speed: streaks start fading in
@@ -979,6 +1008,32 @@ Config.Map = {
 			SkylineMaxHeight = 150,
 			WindowFloorHeight = 6, -- one window band per this many studs of building
 			PropsPerCell = 2,
+			Features = {
+				Alleys = { { X = -120, Z = -120 }, { X = 120, Z = 120 } },
+				AlleyWidth = 12,
+				-- On the road beside the plaza: everyone sees it leaving the grid; at speed you get air off the top.
+				Hill = { X = 60, ZFrom = -43, ZTo = 43, Height = 8, Flat = 20 },
+				-- Over a block, straight ahead of the start grid (the plaza is the run-up): a 12-stud launch north, a warehouse
+				-- roof at 9 (come up short and you land on it), a landing ramp down to the next road.
+				-- (Tested 2026-10-27: a 12-stud climb bled 68 studs/s to 39 and only hopped onto the roof; now lower, with a boost pad.)
+				JumpBlock = { X = 0, Z = -120, Dir = -1, Width = 24, LaunchStart = -36, Crest = -14, RoofStart = -8, RoofEnd = 20, LandEnd = 40, CrestHeight = 8, RoofHeight = 6 },
+				-- A shortcut from the junction at (-60, 60) to the one at (-180, 180), with a big hump halfway.
+				DiagonalPark = { X = -120, Z = 120, Width = 14 },
+				BigHumps = {
+					{ X = -120, Z = 120, Yaw = 135, Height = 6, Length = 40, Crest = 4, Width = 12 }, -- mid-park, along the diagonal path
+					{ X = 0, Z = 300, Yaw = 90, Height = 7, Length = 44, Crest = 4, Width = 14 }, -- on the long south road (room to go round)
+				},
+				BoostPads = {
+					{ X = 0, Z = -34, Yaw = 0, Length = 14, Width = 18 }, -- the plaza's north edge: off the grid and into the jump block
+					{ X = -96, Z = 96, Yaw = 135, Length = 12, Width = 12 }, -- the park path, both sides of its hump
+					{ X = -144, Z = 144, Yaw = 135, Length = 12, Width = 12 },
+					{ X = -46, Z = 300, Yaw = 90, Length = 12, Width = 14 }, -- the south road, both sides of its hump
+					{ X = 46, Z = 300, Yaw = 90, Length = 12, Width = 14 },
+					{ X = 60, Z = -88, Yaw = 0, Length = 12, Width = 14 }, -- both ways into the hill
+					{ X = 60, Z = 88, Yaw = 0, Length = 12, Width = 14 },
+				},
+				Tunnel = { X = -180, ZFrom = -43, ZTo = 43, Height = 14 },
+			} :: MapFeatures?,
 		},
 		Gimmicks = {} :: { [string]: number },
 	},
@@ -1008,6 +1063,7 @@ Config.Map = {
 			SkylineMaxHeight = 150,
 			WindowFloorHeight = 6,
 			PropsPerCell = 2,
+			Features = nil :: MapFeatures?,
 		},
 		Gimmicks = { SandSlowMult = 0.7, BoardwalkSpeedMult = 1.1 } :: { [string]: number },
 	},

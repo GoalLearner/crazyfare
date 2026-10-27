@@ -49,7 +49,7 @@ type Exit = { dir: Vector3, weight: number }
 type Hold = { dir: Vector3, cars: { [Car]: boolean }, count: number }
 
 local MAX_HOPS = 4 -- corners one car may pass in a single frame
-local RAY_UP = 40 -- ground probe starts this far above the car
+local RAY_UP = 8 -- ground probe starts this far above the car (low, so a tunnel roof or a bridge never reads as road)
 local RAY_LENGTH = 120
 
 local cars: { Car } = {}

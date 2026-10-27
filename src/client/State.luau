@@ -75,7 +75,7 @@ local questsChanged: Signal.Signal<nil> = Signal.new()
 local boardsChanged: Signal.Signal<nil> = Signal.new()
 local notice: Signal.Signal<string> = Signal.new()
 local shake: Signal.Signal<number> = Signal.new()
-local dashed: Signal.Signal<nil> = Signal.new()
+local dashed: Signal.Signal<string> = Signal.new()
 local landed: Signal.Signal<number> = Signal.new()
 local riderSaid: Signal.Signal<string> = Signal.new()
 
@@ -91,7 +91,7 @@ State.QuestsChanged = questsChanged
 State.BoardsChanged = boardsChanged
 State.Notice = notice -- one-shot HUD messages from the server (quest done, level up, streak)
 State.Shake = shake -- camera shake strength (Config.Shake)
-State.Dashed = dashed -- the local cab just launched a Dash
+State.Dashed = dashed -- the local cab just launched: "Dash" (brake tap) or "Pad" (a boost pad)
 State.Landed = landed -- the local cab touched down after this many seconds of air
 State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's bubble over your cab, never stacked)
 

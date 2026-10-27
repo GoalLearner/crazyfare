@@ -139,3 +139,12 @@ Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10
 - [x] Owner playtest 2026-10-27 (full 3-round match vs 3 bots: bots 1-3, owner 4th with $101, gems only for the owner). His notes, fixed: one small bubble over your cab (your passenger's lines reuse the HUD shout, 1.5 s), rivals' passengers talk only within 90 studs and once per 4 s, fewer stunt lines; Dash only on a deliberate brake tap (0.2-0.8 s under 8 studs/s, gas within 0.3 s) after it fired "randomly" at pickups and when backing off walls
 - [x] Owner note 2026-10-27, "all the words blocking the screen at once, hit pedestrians and cars": driving messages moved from a huge center label to a small strip under the timer (~1 s), payout drops the TIP/STUNTS words, grade stamp smaller and above the cab (0.8 s), arrival banner smaller (1.1 s); big center text only before GO
 - [ ] Not done: bots overtaking a car parked in the middle of the road (they wait behind it), bots don't use the Pit Stop, Beach map not driven yet in Studio
+
+## Phase D — a city worth jumping (City only)
+- [x] One spec for the set pieces (`Config.Map.City.Blockout.Features`, typed `MapFeatures`): DevBlockout builds them, the minimap draws them
+- [x] Jump block (Studio-tested 2026-10-27): road-wide lane through the block north of the plaza, straight off the grid; launch ramp 8 high, warehouse roof 6, landing ramp; the first build (12-stud climb, no pad) bled 68 studs/s to 39 and only hopped onto the roof
+- [x] Boost pads before every big jump (tag `BoostPad`, plates above the surface that the wheels' rays see, no collision): launch to `Config.Chassis.PadSpeed` (120) and run as a Dash with "BOOST!"
+- [x] Hill on the road beside the plaza (x = 60), diagonal park path with a big hump, a big hump on the south road, the tunnel on x = -180 (roof CanQuery off; traffic's ground probe now starts 8 studs up)
+- [x] Arcade air: `Config.Chassis.AirGravityMult` 0.45 while airborne (client chassis)
+- [x] Alleys, park path, jump lane, humps, hill, tunnel and pads on the minimap
+- [ ] Not seen yet: the south hump and the jump block at 120 pad speed (same code as the tested pieces); Beach has no set pieces

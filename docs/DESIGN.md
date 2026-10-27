@@ -141,6 +141,16 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 ## 8. Maps
 
+### The City's set pieces (Phase D, `Config.Map.City.Blockout.Features`, built by DevBlockout and drawn on the minimap from the same spec)
+- **The jump block**, straight ahead of the start grid: a road-wide lane through the block north of the plaza. A boost pad at the plaza's edge, a launch ramp, a low warehouse to fly over (come up short and you land on its roof), a landing ramp to the next road. It works backwards as a smaller jump.
+- **The hill** on the road beside the plaza: a crest across the road; at speed the top throws you.
+- **The diagonal park**: a path corner to corner through the park block, from the junction at (-60, 60) to the one at (-180, 180), with a big hump halfway.
+- **A big hump** on the long south road.
+- **The tunnel**: the road at x = -180 runs under a lit, covered stretch. Its walls count for near misses; the roof is invisible to ground probes, so traffic, walkers, bots and passengers never end up on top.
+- **Alleys** (two blocks with a lane cut through) are on the minimap now, with the park path, the jump lane, the humps, the hill, the tunnel and the boost pads.
+- **Boost pads** (glowing plates) before every big jump launch you to 120 studs/s and run like a Dash ("BOOST!").
+- **Arcade air**: your cab feels 45% gravity while all four wheels are off the ground, so jumps hang (Roblox's 196 studs/s^2 cuts them short). Bots and traffic drive over the hill, humps and tunnel and ignore the lanes and pads.
+
 - **City** first (MVP; blocked out from Parts: ~600×600 road grid, blocks, ramps, StartGrid, 12 pickups, 12 dropoffs, 6 item boxes).
 - Later: **Beach** (sand slows, boardwalk shortcut), **Neon City** (night), **Snow Mountain** (ice drift), **Space Station**.
 - Unlock by cumulative Gems. Each map is a data-driven Config entry; map gimmicks live in Config.

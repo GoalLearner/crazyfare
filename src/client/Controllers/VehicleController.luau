@@ -49,6 +49,7 @@ local brakeHeldFor = 0 -- seconds the brake has been held while almost stopped
 local dashArmedUntil = 0 -- after letting go of an armed brake, gas before this time launches a Dash
 local dashUntil = 0
 local dashReadyAt = 0
+local padUnder = false -- a wheel touched a boost pad last frame (the launch fires on the next one)
 
 local comboEvent: RemoteEvent
 local driveState: RemoteEvent
@@ -204,6 +205,7 @@ local function step(rawDt: number)
 		steerInput = math.clamp(steerInput + (math.sin(now * 7.3) * 0.5 + math.sin(now * 13.1) * 0.5) * stats.Wobble, -1, 1)
 	end
 	local wantBoost = InputController.IsBoosting() and State.boostTank > 0 and not spinning
+	local onBoostPad = padUnder
 
 	-- Dash: brake held while almost stopped arms it; gas soon after letting go launches it.
 	if throttle < 0 and math.abs(forwardSpeed) < C.DashMaxSpeed then
@@ -215,14 +217,20 @@ local function step(rawDt: number)
 	else
 		brakeHeldFor = 0 -- rolling too fast, reversing away, or a long hold: no Dash
 	end
-	if throttle > 0 and now < dashArmedUntil and now >= dashReadyAt and math.abs(forwardSpeed) < C.DashMaxSpeed then
+	-- A launch: a kick up to `kickTo` forward, then Dash speed for DashSeconds.
+	local function launch(kickTo: number, kind: string)
 		dashArmedUntil = 0
 		dashUntil = now + C.DashSeconds
 		dashReadyAt = dashUntil + C.DashCooldown
-		local kick = math.max(0, C.DashKick - forwardSpeed)
+		local kick = math.max(0, kickTo - forwardSpeed)
 		ch.AssemblyLinearVelocity = vel + look * kick
 		vel = ch.AssemblyLinearVelocity
-		State.Dashed:Fire()
+		State.Dashed:Fire(kind)
+	end
+	if throttle > 0 and now < dashArmedUntil and now >= dashReadyAt and math.abs(forwardSpeed) < C.DashMaxSpeed then
+		launch(C.DashKick, "Dash")
+	elseif onBoostPad and forwardSpeed > 5 and forwardSpeed < C.PadSpeed and now >= dashReadyAt then
+		launch(C.PadSpeed, "Pad")
 	end
 	local dashing = now < dashUntil
 
@@ -276,6 +284,7 @@ local function step(rawDt: number)
 	local mapCfg = (Config.Map :: any)[if round and round.map then round.map else Config.Map.Current]
 	local gimmicks: { [string]: number } = if typeof(mapCfg) == "table" and mapCfg.Gimmicks then mapCfg.Gimmicks else {}
 	local surfaceMult = 1
+	local padNow = false
 
 	for _, w in wheels do
 		local origin = w.attachment.WorldPosition
@@ -286,6 +295,9 @@ local function step(rawDt: number)
 
 		if result then
 			groundedCount += 1
+			if CollectionService:HasTag(result.Instance, Config.Tags.BoostPad) then
+				padNow = true
+			end
 			if CollectionService:HasTag(result.Instance, Config.Tags.Sand) then
 				surfaceMult = math.min(surfaceMult, gimmicks.SandSlowMult or 1)
 			elseif CollectionService:HasTag(result.Instance, Config.Tags.Boardwalk) then
@@ -344,6 +356,7 @@ local function step(rawDt: number)
 	end
 
 	local grounded = groundedCount > 0
+	padUnder = padNow
 
 	-- Air: damp tumbling and level out so landings are drivable
 	if not grounded then
@@ -353,6 +366,8 @@ local function step(rawDt: number)
 		local inertia = mass * (ch.Size.X * ch.Size.X + ch.Size.Z * ch.Size.Z) / 12
 		local uprightAxis = up:Cross(Vector3.yAxis)
 		ch:ApplyAngularImpulse(uprightAxis * inertia * C.AirUprightStrength * dt)
+		-- Arcade air: lighter gravity while airborne, so jumps hang (Roblox's 196 studs/s^2 cuts every jump short)
+		ch:ApplyImpulse(Vector3.new(0, mass * g * (1 - C.AirGravityMult) * dt, 0))
 	else
 		if airTime >= C.AirtimeMinSeconds then
 			reportCombo("Airtime", airTime)

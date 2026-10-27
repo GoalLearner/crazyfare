@@ -58,6 +58,57 @@ local function build()
 	selfArrow = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(18, 18), Text = "▲", TextColor3 = UI.White, ZIndex = 6 }, map)
 end
 
+
+-- The city's set pieces (Config.MapFeatures), drawn over the roads: alleys and the park path as roads, the jump lane
+-- and humps in ramp orange, the hill a lighter road, the tunnel darker. A strip from (x0, z0) to (x1, z1), `width` studs.
+local ROAD = Color3.fromRGB(70, 70, 76)
+local RAMP = Color3.fromRGB(230, 120, 40)
+local HILL = Color3.fromRGB(105, 105, 112)
+local TUNNEL = Color3.fromRGB(34, 34, 40)
+
+local function addStrip(x0: number, z0: number, x1: number, z1: number, width: number, color: Color3, z: number)
+	local scale = SIZE / (2 * B.Half)
+	local dx, dz = x1 - x0, z1 - z0
+	local length = math.sqrt(dx * dx + dz * dz)
+	local frame = UI.Frame({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = toMap((x0 + x1) / 2, (z0 + z1) / 2),
+		Size = UDim2.fromOffset(math.max(2, math.round(length * scale)), math.max(2, math.round(width * scale))),
+		Rotation = math.deg(math.atan2(dz, dx)),
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0,
+		ZIndex = z,
+	}, map)
+	table.insert(roadStrips, frame)
+end
+
+local function drawFeatures(f: Config.MapFeatures?)
+	if not f then
+		return
+	end
+	local half = B.CellSize / 2
+	for _, alley in f.Alleys do
+		addStrip(alley.X, alley.Z - half, alley.X, alley.Z + half, f.AlleyWidth, ROAD, 1)
+	end
+	local park = f.DiagonalPark
+	addStrip(park.X + half, park.Z - half, park.X - half, park.Z + half, park.Width, ROAD, 1)
+	local jump = f.JumpBlock
+	addStrip(jump.X, jump.Z - half, jump.X, jump.Z + half, jump.Width, ROAD, 1)
+	addStrip(jump.X, jump.Z + jump.Dir * jump.LaunchStart, jump.X, jump.Z + jump.Dir * jump.LandEnd, jump.Width, RAMP, 2)
+	local hill = f.Hill
+	addStrip(hill.X, hill.ZFrom, hill.X, hill.ZTo, B.RoadWidth, HILL, 2)
+	for _, hump in f.BigHumps do
+		local axis = CFrame.Angles(0, math.rad(hump.Yaw), 0).LookVector * (hump.Length / 2)
+		addStrip(hump.X - axis.X, hump.Z - axis.Z, hump.X + axis.X, hump.Z + axis.Z, hump.Width, RAMP, 2)
+	end
+	for _, pad in f.BoostPads do
+		local axis = CFrame.Angles(0, math.rad(pad.Yaw), 0).LookVector * (pad.Length / 2)
+		addStrip(pad.X - axis.X, pad.Z - axis.Z, pad.X + axis.X, pad.Z + axis.Z, pad.Width, Color3.fromRGB(60, 230, 255), 3)
+	end
+	local tunnel = f.Tunnel
+	addStrip(tunnel.X, tunnel.ZFrom, tunnel.X, tunnel.ZTo, B.RoadWidth + 4, TUNNEL, 2)
+end
+
 local function drawRoads(mapName: string)
 	local mapCfg = (Config.Map :: any)[mapName]
 	if typeof(mapCfg) ~= "table" or not mapCfg.Blockout then
@@ -77,6 +128,7 @@ local function drawRoads(mapName: string)
 		table.insert(roadStrips, UI.Frame({ Position = UDim2.fromOffset(math.round(c - roadPx / 2), 0), Size = UDim2.fromOffset(roadPx, SIZE), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0, ZIndex = 1 }, map))
 		table.insert(roadStrips, UI.Frame({ Position = UDim2.fromOffset(0, math.round(c - roadPx / 2)), Size = UDim2.fromOffset(SIZE, roadPx), BackgroundColor3 = Color3.fromRGB(70, 70, 76), BackgroundTransparency = 0, ZIndex = 1 }, map))
 	end
+	drawFeatures(B.Features)
 end
 
 local function ensureNpcDot(id: number): Frame

@@ -714,8 +714,8 @@ function HudController.Init()
 	State.Notice:Connect(function(text: string)
 		showMessage(text, UI.Accent, 2.2)
 	end)
-	State.Dashed:Connect(function()
-		addPopup("Dash", 0) -- "DASH!" over the cab, no cash: a trick, not a paid stunt
+	State.Dashed:Connect(function(kind: string)
+		addPopup(kind, 0) -- "DASH!" / "BOOST!" over the cab, no cash: a trick, not a paid stunt
 	end)
 	State.RiderSaid:Connect(showShout) -- your passenger's lines take over the one bubble over your cab
 end

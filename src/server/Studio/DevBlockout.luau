@@ -83,7 +83,8 @@ local COLOR_POST = Color3.fromRGB(70, 72, 80)
 local COLOR_LAMP = Color3.fromRGB(255, 240, 190)
 
 local PARK_CELLS: { [string]: boolean } = { ["-120,120"] = true, ["240,-240"] = true, ["-240,0"] = true }
-local ALLEY_CELLS: { [string]: boolean } = { ["-120,-120"] = true, ["120,120"] = true }
+local COLOR_TUNNEL = Color3.fromRGB(120, 116, 110)
+local COLOR_PORTAL = Color3.fromRGB(240, 190, 60)
 local LANDMARK_CELLS: { [string]: string } = { ["240,240"] = "hotel", ["-240,-240"] = "dome", ["0,-240"] = "antenna" }
 
 local function makePart(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance, tagName: string?): Part
@@ -104,6 +105,25 @@ local function makePart(name: string, size: Vector3, cframe: CFrame, color: Colo
 	return part
 end
 
+-- A solid ramp: the wedge's tall face is at its +Z end and the slope runs down to -Z (turn it to face the other way).
+local function makeWedge(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance, tagName: string?): WedgePart
+	local wedge = Instance.new("WedgePart")
+	wedge.Name = name
+	wedge.Size = size
+	wedge.CFrame = cframe
+	wedge.Color = color
+	wedge.Anchored = true
+	wedge.CanCollide = true
+	wedge.Material = Enum.Material.SmoothPlastic
+	wedge.TopSurface = Enum.SurfaceType.Smooth
+	wedge.BottomSurface = Enum.SurfaceType.Smooth
+	wedge.Parent = parent
+	if tagName then
+		CollectionService:AddTag(wedge, tagName)
+	end
+	return wedge
+end
+
 -- Decoration that neither cars nor raycasts should notice.
 local function decor(part: Part): Part
 	part.CanCollide = false
@@ -116,13 +136,35 @@ local function cellKey(cx: number, cz: number): string
 	return string.format("%d,%d", cx, cz)
 end
 
+-- The city's set pieces (Config.MapFeatures); nil on maps without them.
+local function features(ctx: Ctx): Config.MapFeatures?
+	return if ctx.theme == "city" then ctx.B.Features else nil
+end
+
+local function isAlleyCell(ctx: Ctx, cx: number, cz: number): boolean
+	local f = features(ctx)
+	if f then
+		for _, alley in f.Alleys do
+			if alley.X == cx and alley.Z == cz then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function isJumpCell(ctx: Ctx, cx: number, cz: number): boolean
+	local f = features(ctx)
+	return f ~= nil and f.JumpBlock.X == cx and f.JumpBlock.Z == cz
+end
+
 local function isOuterCell(ctx: Ctx, cx: number, cz: number): boolean
 	local centers = ctx.B.CellCenters
 	local edge = math.max(math.abs(centers[1]), math.abs(centers[#centers]))
 	return math.abs(cx) == edge or math.abs(cz) == edge
 end
 
--- What a block holds: "plaza" | "sand" | "park" | a landmark kind | "alley" | "buildings". buildCells builds from this
+-- What a block holds: "plaza" | "sand" | "park" | a landmark kind | "alley" | "jump" | "buildings". buildCells builds from this
 -- and drop-off naming reads it, so both always agree.
 local function cellKind(ctx: Ctx, cx: number, cz: number): string
 	local key = cellKey(cx, cz)
@@ -134,8 +176,10 @@ local function cellKind(ctx: Ctx, cx: number, cz: number): string
 		return "park"
 	elseif ctx.theme == "city" and LANDMARK_CELLS[key] then
 		return LANDMARK_CELLS[key]
-	elseif ctx.theme == "city" and ALLEY_CELLS[key] then
+	elseif isAlleyCell(ctx, cx, cz) then
 		return "alley"
+	elseif isJumpCell(ctx, cx, cz) then
+		return "jump"
 	end
 	return "buildings"
 end
@@ -223,10 +267,14 @@ local function buildPalm(parent: Folder, rng: Random, tx: number, tz: number)
 	end
 end
 
-local function buildTrees(ctx: Ctx, parent: Folder, cx: number, cz: number)
+local function buildTrees(ctx: Ctx, parent: Folder, cx: number, cz: number, clearDiagonal: number?)
 	for _ = 1, 5 do
 		local tx = cx + ctx.rng:NextNumber(-30, 30)
 		local tz = cz + ctx.rng:NextNumber(-30, 30)
+		-- distance from the north-east to south-west diagonal through the block's center
+		if clearDiagonal and math.abs((tx - cx) + (tz - cz)) * math.sqrt(0.5) < clearDiagonal then
+			continue
+		end
 		if ctx.theme == "beach" then
 			buildPalm(parent, ctx.rng, tx, tz)
 		else
@@ -375,10 +423,61 @@ end
 -- Alley cell: two buildings with a narrow road between them, so you can cut straight through the block.
 local function buildAlley(ctx: Ctx, parent: Folder, cx: number, cz: number)
 	local inner = ctx.B.CellSize - 2 * ctx.B.Sidewalk
-	local alley = makePart("Alley", Vector3.new(12, 0.6, ctx.B.CellSize + 2), CFrame.new(cx, 0.3, cz), COLOR_ROAD, parent, Tags.Road)
+	local f = features(ctx)
+	local alley = makePart("Alley", Vector3.new(if f then f.AlleyWidth else 12, 0.6, ctx.B.CellSize + 2), CFrame.new(cx, 0.3, cz), COLOR_ROAD, parent, Tags.Road)
 	alley.Material = Enum.Material.Asphalt
 	buildBuildingLot(ctx, parent, { x = cx - 22, z = cz, w = 30, d = inner - 10 }, cx, cz, 1)
 	buildBuildingLot(ctx, parent, { x = cx + 22, z = cz, w = 30, d = inner - 10 }, cx, cz, 2)
+end
+
+-- The jump block: a road-wide lane through the block. A launch ramp up to the crest, a short drop to a low warehouse
+-- roof, a landing ramp down to the far road. Fast, you fly over the warehouse; slow, you land on its roof. The far side
+-- works backwards too (a smaller jump).
+local function buildJumpBlock(ctx: Ctx, parent: Folder, cx: number, cz: number)
+	local f = features(ctx)
+	if not f then
+		return
+	end
+	local spec = f.JumpBlock
+	local B = ctx.B
+	local inner = B.CellSize - 2 * B.Sidewalk
+	local w = spec.Width
+	local lane = makePart("JumpLane", Vector3.new(w, 0.6, B.CellSize + 2), CFrame.new(cx, 0.3, cz), COLOR_ROAD, parent, Tags.Road)
+	lane.Material = Enum.Material.Asphalt
+	local lotWidth = (inner - w) / 2 - 2
+	local side = w / 2 + lotWidth / 2
+	buildBuildingLot(ctx, parent, { x = cx - side, z = cz, w = lotWidth, d = inner - 10 }, cx, cz, 1)
+	buildBuildingLot(ctx, parent, { x = cx + side, z = cz, w = lotWidth, d = inner - 10 }, cx, cz, 2)
+	local base = 0.6
+	local facing = if spec.Dir > 0 then 0 else math.pi -- a wedge's tall end faces +Z unturned
+	local function along(a: number, b: number): (number, number)
+		return b - a, cz + spec.Dir * (a + b) / 2
+	end
+	local launchLen, launchZ = along(spec.LaunchStart, spec.Crest)
+	makeWedge("JumpLaunch", Vector3.new(w, spec.CrestHeight, launchLen), CFrame.new(cx, base + spec.CrestHeight / 2, launchZ) * CFrame.Angles(0, facing, 0), COLOR_RAMP, parent, Tags.Ramp)
+	local backLen, backZ = along(spec.Crest, spec.RoofStart)
+	makePart("JumpBack", Vector3.new(w, spec.RoofHeight, backLen), CFrame.new(cx, base + spec.RoofHeight / 2, backZ), COLOR_RAMP, parent, Tags.Ramp)
+	local drop = spec.CrestHeight - spec.RoofHeight
+	makeWedge("JumpBackSlope", Vector3.new(w, drop, backLen), CFrame.new(cx, base + spec.RoofHeight + drop / 2, backZ) * CFrame.Angles(0, facing + math.pi, 0), COLOR_RAMP, parent, Tags.Ramp)
+	local roofLen, roofZ = along(spec.RoofStart, spec.RoofEnd)
+	local warehouse = makePart("Warehouse", Vector3.new(w, spec.RoofHeight, roofLen), CFrame.new(cx, base + spec.RoofHeight / 2, roofZ), Color3.fromRGB(125, 112, 100), parent, Tags.Building)
+	warehouse.Material = Enum.Material.Brick
+	local landLen, landZ = along(spec.RoofEnd, spec.LandEnd)
+	makeWedge("JumpLand", Vector3.new(w, spec.RoofHeight, landLen), CFrame.new(cx, base + spec.RoofHeight / 2, landZ) * CFrame.Angles(0, facing + math.pi, 0), COLOR_RAMP, parent, Tags.Ramp)
+end
+
+-- The diagonal park: a path corner to corner, from the junction north-east of the block to the one south-west of it.
+local function buildDiagonalPath(ctx: Ctx, parent: Folder, cx: number, cz: number)
+	local f = features(ctx)
+	if not f then
+		return
+	end
+	local half = ctx.B.CellSize / 2
+	local dir = Vector3.new(-1, 0, 1).Unit
+	local a = Vector3.new(cx + half, 0.3, cz - half) - dir * 6 -- a little way into each junction
+	local b = Vector3.new(cx - half, 0.3, cz + half) + dir * 6
+	local path = makePart("ParkPath", Vector3.new(f.DiagonalPark.Width, 0.6, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), COLOR_ROAD, parent, Tags.Road)
+	path.Material = Enum.Material.Asphalt
 end
 
 -- Landmarks: one-of-a-kind shapes you can steer by from across the map.
@@ -469,6 +568,21 @@ local function buildProps(ctx: Ctx, parent: Folder, cx: number, cz: number)
 	end
 end
 
+-- No curb stops where a set piece is in the way: the jump block's lane mouths, the walls of the tunnel.
+local function spotAllowed(ctx: Ctx, position: Vector3, kind: string, cx: number): boolean
+	if kind == "jump" and math.abs(position.X - cx) < 1 then
+		return false
+	end
+	local f = features(ctx)
+	if f then
+		local t = f.Tunnel
+		if math.abs(position.X - t.X) < ctx.B.RoadWidth / 2 + 6 and position.Z > t.ZFrom - 4 and position.Z < t.ZTo + 4 then
+			return false
+		end
+	end
+	return true
+end
+
 local function buildCells(ctx: Ctx): { Spot }
 	local B = ctx.B
 	local cells = Instance.new("Folder")
@@ -497,21 +611,34 @@ local function buildCells(ctx: Ctx): { Spot }
 					buildPalm(cells, ctx.rng, cx + ctx.rng:NextNumber(-36, 36), cz + ctx.rng:NextNumber(-36, 36))
 				end
 			elseif kind == "park" then
-				buildTrees(ctx, cells, cx, cz)
+				local f = features(ctx)
+				local diagonal = f ~= nil and f.DiagonalPark.X == cx and f.DiagonalPark.Z == cz
+				buildTrees(ctx, cells, cx, cz, if f and diagonal then f.DiagonalPark.Width / 2 + 4.5 else nil)
+				if diagonal then
+					buildDiagonalPath(ctx, cells, cx, cz)
+				end
 			elseif LANDMARK_CELLS[key] and kind == LANDMARK_CELLS[key] then
 				buildLandmark(ctx, cells, kind, cx, cz)
 			elseif kind == "alley" then
 				buildAlley(ctx, cells, cx, cz)
+			elseif kind == "jump" then
+				buildJumpBlock(ctx, cells, cx, cz)
 			else
 				buildBuildings(ctx, cells, cx, cz)
 			end
 			if not isPlaza then
 				buildProps(ctx, cells, cx, cz)
 				local e = B.CellSize / 2 - 3
-				table.insert(spots, { position = Vector3.new(cx + e, 0.5, cz), look = Vector3.new(1, 0, 0) })
-				table.insert(spots, { position = Vector3.new(cx - e, 0.5, cz), look = Vector3.new(-1, 0, 0) })
-				table.insert(spots, { position = Vector3.new(cx, 0.5, cz + e), look = Vector3.new(0, 0, 1) })
-				table.insert(spots, { position = Vector3.new(cx, 0.5, cz - e), look = Vector3.new(0, 0, -1) })
+				for _, spot in {
+					{ position = Vector3.new(cx + e, 0.5, cz), look = Vector3.new(1, 0, 0) },
+					{ position = Vector3.new(cx - e, 0.5, cz), look = Vector3.new(-1, 0, 0) },
+					{ position = Vector3.new(cx, 0.5, cz + e), look = Vector3.new(0, 0, 1) },
+					{ position = Vector3.new(cx, 0.5, cz - e), look = Vector3.new(0, 0, -1) },
+				} do
+					if spotAllowed(ctx, spot.position, kind, cx) then
+						table.insert(spots, spot)
+					end
+				end
 			end
 		end
 	end
@@ -701,6 +828,79 @@ local function buildRamps(ctx: Ctx)
 	hump("RampEast", -120, -180, -math.pi / 2)
 end
 
+-- The hill: a crest across a north-south road (solid wedges up and down, a flat top). At speed the top throws you.
+local function buildHill(ctx: Ctx, f: Config.MapFeatures)
+	local spec = f.Hill
+	local B = ctx.B
+	local folder = Instance.new("Folder")
+	folder.Name = "Hill"
+	folder.Parent = ctx.map
+	local slope = (spec.ZTo - spec.ZFrom - spec.Flat) / 2
+	local y = 0.2 + spec.Height / 2
+	local up = makeWedge("HillUp", Vector3.new(B.RoadWidth, spec.Height, slope), CFrame.new(spec.X, y, spec.ZFrom + slope / 2), COLOR_ROAD, folder, Tags.Road)
+	local top = makePart("HillTop", Vector3.new(B.RoadWidth, spec.Height, spec.Flat), CFrame.new(spec.X, y, (spec.ZFrom + spec.ZTo) / 2), COLOR_ROAD, folder, Tags.Road)
+	local down = makeWedge("HillDown", Vector3.new(B.RoadWidth, spec.Height, slope), CFrame.new(spec.X, y, spec.ZTo - slope / 2) * CFrame.Angles(0, math.pi, 0), COLOR_ROAD, folder, Tags.Road)
+	for _, part in { up, top, down } :: { BasePart } do
+		part.Material = Enum.Material.Asphalt
+	end
+	decor(makePart("HillLine", Vector3.new(0.6, 0.05, spec.Flat), CFrame.new(spec.X, 0.2 + spec.Height + 0.03, (spec.ZFrom + spec.ZTo) / 2), COLOR_LINE, folder))
+end
+
+-- A big hump: a wedge up, a flat crest, a wedge down, along its axis. Works both ways and has no face to hit.
+local function buildBigHump(ctx: Ctx, spec: Config.HumpSpec, index: number)
+	local slope = (spec.Length - spec.Crest) / 2
+	local frame = CFrame.new(spec.X, 0.2 + spec.Height / 2, spec.Z) * CFrame.Angles(0, math.rad(spec.Yaw), 0)
+	local size = Vector3.new(spec.Width, spec.Height, slope)
+	makeWedge("BigHump" .. index .. "Up", size, frame * CFrame.new(0, 0, -(spec.Crest + slope) / 2), COLOR_RAMP, ctx.map, Tags.Ramp)
+	makePart("BigHump" .. index .. "Crest", Vector3.new(spec.Width, spec.Height, spec.Crest), frame, COLOR_RAMP, ctx.map, Tags.Ramp)
+	makeWedge("BigHump" .. index .. "Down", size, frame * CFrame.new(0, 0, (spec.Crest + slope) / 2) * CFrame.Angles(0, math.pi, 0), COLOR_RAMP, ctx.map, Tags.Ramp)
+end
+
+-- Boost pads: glowing plates just above anything they lie on (road 0.2, plaza 0.5, park path 0.6), so the wheels' rays
+-- always land on them; they don't collide, so there's no lip to hit.
+local function buildBoostPads(ctx: Ctx, f: Config.MapFeatures)
+	for i, pad in f.BoostPads do
+		local frame = CFrame.new(pad.X, 0.4, pad.Z) * CFrame.Angles(0, math.rad(pad.Yaw), 0)
+		local strip = makePart("BoostPad" .. i, Vector3.new(pad.Width, 0.5, pad.Length), frame, Color3.fromRGB(60, 230, 255), ctx.map, Tags.BoostPad)
+		strip.Material = Enum.Material.Neon
+		strip.Transparency = 0.25
+		strip.CanCollide = false
+		strip.CanTouch = false
+		for k = -1, 1 do
+			local chevron = decor(makePart("BoostChevron", Vector3.new(pad.Width * 0.6, 0.05, 1), frame * CFrame.new(0, 0.27, k * pad.Length / 3), Color3.fromRGB(255, 255, 255), ctx.map))
+			chevron.Material = Enum.Material.Neon
+		end
+	end
+end
+
+-- The tunnel: walls along the road edges and a roof over a stretch of road, lit inside. The roof is invisible to ground
+-- probes (traffic, walkers, bots and NPC placement all look straight through it to the road).
+local function buildTunnel(ctx: Ctx, f: Config.MapFeatures)
+	local spec = f.Tunnel
+	local B = ctx.B
+	local folder = Instance.new("Folder")
+	folder.Name = "Tunnel"
+	folder.Parent = ctx.map
+	local length = spec.ZTo - spec.ZFrom
+	local zc = (spec.ZFrom + spec.ZTo) / 2
+	local inner = B.RoadWidth / 2 - 0.5
+	for _, sideSign in { -1, 1 } do
+		local wall = makePart("TunnelWall", Vector3.new(1, spec.Height, length), CFrame.new(spec.X + sideSign * inner, spec.Height / 2, zc), COLOR_TUNNEL, folder, Tags.Wall)
+		wall.Material = Enum.Material.Concrete
+	end
+	local roof = makePart("TunnelRoof", Vector3.new(B.RoadWidth, 1.5, length), CFrame.new(spec.X, spec.Height + 0.75, zc), COLOR_TUNNEL, folder)
+	roof.Material = Enum.Material.Concrete
+	roof.CanQuery = false
+	for z = spec.ZFrom + 6, spec.ZTo - 6, 12 do
+		local lamp = decor(makePart("TunnelLight", Vector3.new(3, 0.3, 1.2), CFrame.new(spec.X, spec.Height - 0.2, z), COLOR_LAMP, folder))
+		lamp.Material = Enum.Material.Neon
+	end
+	for _, z in { spec.ZFrom, spec.ZTo } do
+		local portal = decor(makePart("TunnelPortal", Vector3.new(B.RoadWidth + 2, 2, 1.6), CFrame.new(spec.X, spec.Height + 1, z), COLOR_PORTAL, folder))
+		portal.Material = Enum.Material.Neon
+	end
+end
+
 -- Invisible barrier at the playable edge; the ground and skyline carry on behind it.
 local function buildWalls(ctx: Ctx)
 	local B = ctx.B
@@ -806,6 +1006,15 @@ function DevBlockout.Generate(mapName: string?): Folder
 	buildPoints(ctx, spots)
 	buildItemBoxes(ctx)
 	buildRamps(ctx)
+	local f = features(ctx)
+	if f then
+		buildHill(ctx, f)
+		for i, hump in f.BigHumps do
+			buildBigHump(ctx, hump, i)
+		end
+		buildTunnel(ctx, f)
+		buildBoostPads(ctx, f)
+	end
 	buildWalls(ctx)
 	buildHorizon(ctx)
 	if ctx.theme == "city" then
