@@ -12,6 +12,9 @@ if (-not (Test-Path $defs)) {
     Invoke-WebRequest "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.36.0/scripts/globalTypes.d.luau" -OutFile $defs
 }
 
+Write-Host "== fix models"
+& (Join-Path $PSScriptRoot "fix-models.ps1")
+
 Write-Host "== rojo sourcemap"
 rojo sourcemap default.project.json -o sourcemap.json
 if ($LASTEXITCODE -ne 0) { throw "rojo sourcemap failed" }

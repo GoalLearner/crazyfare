@@ -4,7 +4,9 @@
     "$className": "DataModel",
     "ReplicatedStorage": {
       "Shared": { "$path": "src/shared" },
-      "Packages": { "$path": "Packages" }
+      "Packages": { "$path": "Packages" },
+      "VehicleTemplates": { "$path": "models/VehicleTemplates.rbxmx" },
+      "ItemModels": { "$path": "models/ItemModels.rbxmx" }
     },
     "ServerScriptService": {
       "Server": { "$path": "src/server" },
