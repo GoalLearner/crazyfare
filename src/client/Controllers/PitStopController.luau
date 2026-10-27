@@ -1,7 +1,8 @@
 --!strict
 -- The Pit Stop panel between rounds: the cards the server offered, their prices, your cash, and a countdown.
 -- Buying sends PitStopBuy; the server answers with a fresh offer that marks the card bought. Tapping a BOUGHT card hands
--- it back for a full refund (PitStopBuy with undo) until the round starts.
+-- it back for a full refund (PitStopBuy with undo) until the round starts. READY (PitStopReady) says you're done: once
+-- every player is ready the server cuts the countdown to Config.PitStop.ReadySeconds.
 -- A GARAGE tab hosts the garage inside the same panel, so cars, upgrades and paint can change between rounds.
 
 local RunService = game:GetService("RunService")
@@ -23,6 +24,9 @@ local timerLabel: TextLabel
 local footer: TextLabel
 local cardRow: Frame
 local reopenButton: TextButton
+local readyButton: TextButton
+local readied = false -- you tapped READY this Pit Stop
+local readyRemote: RemoteEvent
 local tabButtons: { [string]: TextButton } = {}
 local tab = "cards" -- "cards" | "garage"
 local collapsed = false
@@ -32,10 +36,12 @@ local buyRemote: RemoteEvent
 local CARD_WIDTH = 118
 local CARD_HEIGHT = 170
 local HEADER_HEIGHT = 84 -- tab row, then the cash / countdown row
+local READY_HEIGHT = 38
+local READY_GAP = 12 -- between the cards and READY
 local TAB_WIDTH = 120
 local TAB_HEIGHT = 34
 local CARDS_WIDTH = math.max(Config.PitStop.CardsOffered * (CARD_WIDTH + 10) + 50, 420)
-local CARDS_SIZE = UDim2.fromOffset(CARDS_WIDTH, CARD_HEIGHT + 130)
+local CARDS_SIZE = UDim2.fromOffset(CARDS_WIDTH, CARD_HEIGHT + 130 + READY_HEIGHT + READY_GAP)
 local GARAGE_SIZE = UDim2.fromOffset(GarageController.ContentSize.X, HEADER_HEIGHT + GarageController.ContentSize.Y + 16)
 
 local function styleTab(button: TextButton, active: boolean)
@@ -56,6 +62,7 @@ local function applyTab()
 	cardRow.Visible = not garage
 	cashLabel.Visible = not garage
 	footer.Visible = not garage
+	readyButton.Visible = not garage
 	panel.Size = if garage then GARAGE_SIZE else CARDS_SIZE
 	if garage then
 		GarageController.Mount(panel, UDim2.fromOffset(0, HEADER_HEIGHT))
@@ -67,6 +74,20 @@ end
 local function setTab(name: string)
 	tab = name
 	applyTab()
+end
+
+-- READY; once tapped, WAITING with how many are ready (tap again to take it back).
+local function styleReady()
+	local round = State.round
+	local count = if round and round.ready then round.ready else 0
+	local of = if round and round.readyOf then round.readyOf else 1
+	if readied then
+		readyButton.Text = string.format("WAITING %d/%d", math.max(count, 1), of)
+		readyButton.BackgroundColor3 = Color3.fromRGB(40, 70, 48)
+	else
+		readyButton.Text = if count > 0 then string.format("READY  %d/%d", count, of) else "READY"
+		readyButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+	end
 end
 
 local function build()
@@ -137,6 +158,22 @@ local function build()
 	cashLabel = UI.Label({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, panel)
 	timerLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, panel)
 	footer = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -40, 0, 18), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = string.format("Boosts last one round. %d%% of unspent cash carries into the next round.", math.round(Config.PitStop.CarryFrac * 100)) }, panel)
+	readyButton = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 88 + CARD_HEIGHT + READY_GAP),
+		Size = UDim2.fromOffset(220, READY_HEIGHT),
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 18,
+		TextColor3 = UI.White,
+		Text = "READY",
+	}, panel) :: TextButton
+	UI.Corner(8, readyButton)
+	readyButton.Activated:Connect(function()
+		readied = not readied
+		readyRemote:FireServer(readied)
+		styleReady()
+	end)
 	cardRow = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 88), Size = UDim2.new(1, -40, 0, CARD_HEIGHT), BackgroundTransparency = 1 }, panel)
 	UI.New("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
@@ -198,10 +235,12 @@ local function refresh()
 	if offer and inPitStop then
 		if not wasInPitStop then
 			collapsed = false
+			readied = false
 			tab = "cards" -- every Pit Stop opens on the cards
 		end
 		cashLabel.Text = string.format("%s  ·  %d pick%s left", UI.Money(offer.cash), offer.buysLeft, if offer.buysLeft == 1 then "" else "s")
 		renderCards(offer)
+		styleReady()
 		applyTab()
 		panel.Visible = not collapsed
 		reopenButton.Visible = collapsed
@@ -218,6 +257,7 @@ end
 
 function PitStopController.Init()
 	buyRemote = Remotes.Get("PitStopBuy")
+	readyRemote = Remotes.Get("PitStopReady")
 	build()
 	State.PitStopChanged:Connect(refresh)
 	State.RoundChanged:Connect(refresh)
@@ -230,7 +270,10 @@ function PitStopController.Start()
 		end
 		local offer = State.pitStop
 		if offer then
-			timerLabel.Text = "Round starts in " .. math.max(0, math.ceil(offer.endsAt - workspace:GetServerTimeNow()))
+			-- the round's clock wins: it is the one READY shortens
+			local round = State.round
+			local endsAt = if round and round.phase == "PitStop" and round.endsAt > 0 then round.endsAt else offer.endsAt
+			timerLabel.Text = "Round starts in " .. math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow()))
 		end
 	end)
 end

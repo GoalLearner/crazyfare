@@ -215,7 +215,15 @@ local function setBeacon(fare: State.FareInfo?)
 	part.CanCollide = false
 	part.CanQuery = false
 	part.CanTouch = false
-	part.Parent = workspace -- no name on top: it read over the timer (the fare card and the rooftop sign carry it)
+	part.Parent = workspace
+	local tag = Config.Hud.BeaconLabel
+	local gui = UI.New("BillboardGui", {
+		Size = UDim2.fromOffset(tag.Width, tag.Height),
+		StudsOffset = Vector3.new(0, h / 2 + tag.Lift, 0),
+		AlwaysOnTop = true,
+		MaxDistance = tag.MaxDistance,
+	}, part)
+	UI.Label({ Size = UDim2.fromScale(1, 1), Text = if fare.destinationName ~= "" then fare.destinationName else "DROP HERE", TextColor3 = color }, gui)
 	beacon = part
 end
 
@@ -296,14 +304,15 @@ local function updateArrow()
 		local look = Vector3.new(ch.CFrame.LookVector.X, 0, ch.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.01 then look.Unit else dir
 		local angle = math.deg(math.atan2(look:Cross(dir).Y, look:Dot(dir)))
-		-- the arrow shows the way; words only when it's not enough (no distance: owner 2026-10-27, too many words)
+		-- distance always; a word only when the arrow isn't enough (owner 2026-10-27: no LEFT/RIGHT, keep the distance)
 		local word = ""
 		if dist <= Config.Fares.DeliverRadius then
 			word = "STOP"
 		elseif math.abs(angle) >= Config.Hud.Arrow.TurnAroundDegrees then
 			word = "TURN AROUND"
 		end
-		arrowLabel.Text = word
+		local studs = string.format("%d", math.round(dist))
+		arrowLabel.Text = if word == "" then studs else word .. "\n" .. studs
 	end
 end
 

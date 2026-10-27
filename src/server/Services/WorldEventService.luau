@@ -8,8 +8,9 @@
 --   Parade: a line of floats rolls along one road, solid to players; bots and traffic stop for them.
 --   HydrantBurst: every curb hydrant (Config.MapFeatures.Hydrants) jets water into its lane; a car in a jet is thrown
 --     up (a player's own car through ItemEvent "Launched", a bot through BotService.Launch).
---   MoneyTruck: an armored truck parks in a random junction and spills coins worth MinDollars..MaxDollars each; driving
---     through one banks it (players and bots). Bots and traffic stop for the truck.
+--   MoneyTruck: an armored truck parks on the sidewalk along a random block (clear of stops, stalls and set pieces, never
+--     in a lane: owner 2026-10-27) and spills coins worth MinDollars..MaxDollars each across the road beside it; driving
+--     through one banks it (players and bots).
 
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
@@ -103,7 +104,7 @@ local function label(parent: BasePart, text: string, color: Color3, sizePx: numb
 	t.Parent = gui
 end
 
--- Parade floats and the money truck, for bots (with clearance) and traffic.
+-- Parade floats, for bots (with clearance) and traffic. (The money truck parks off the road.)
 local function pushBlockers()
 	local forBots: { Blocker } = {}
 	local forTraffic: { { position: Vector3, velocity: Vector3 } } = {}
@@ -116,12 +117,6 @@ local function pushBlockers()
 			table.insert(forBots, { position = pos, velocity = dir * cfg.Speed, clearance = cfg.Size.Z / 2 + Config.Bots.CarClearance })
 			table.insert(forTraffic, { position = pos, velocity = dir * cfg.Speed })
 		end
-	end
-	local at = eventAt
-	if def and def.Id == "MoneyTruck" and at then
-		local cfg = Config.Chaos.Events.MoneyTruck
-		table.insert(forBots, { position = at, velocity = Vector3.zero, clearance = cfg.Size.X / 2 + Config.Bots.CarClearance })
-		table.insert(forTraffic, { position = at, velocity = Vector3.zero })
 	end
 	BotService.SetBlockers(forBots)
 	TrafficService.SetBlockers(forTraffic)
@@ -290,20 +285,98 @@ end
 
 -- Money truck -----------------------------------------------------------------------------------------------------
 
+-- A stretch of road and the sidewalk beside it: `road` is a point on the road's center line, `along` runs with the road,
+-- `across` points from the road center to the truck's curb.
+type TruckSpot = { road: Vector3, along: Vector3, across: Vector3 }
+
+-- Flat distance from `pos` to the nearest point of a part's or model's box.
+local function distanceTo(inst: Instance, pos: Vector3): number
+	local cf: CFrame
+	local size: Vector3
+	if inst:IsA("BasePart") then
+		cf, size = inst.CFrame, inst.Size
+	elseif inst:IsA("Model") then
+		cf, size = inst:GetBoundingBox()
+	else
+		return math.huge
+	end
+	local p = cf:PointToObjectSpace(pos)
+	local half = size / 2
+	local nearest = cf:PointToWorldSpace(Vector3.new(math.clamp(p.X, -half.X, half.X), math.clamp(p.Y, -half.Y, half.Y), math.clamp(p.Z, -half.Z, half.Z)))
+	return flat(pos - nearest).Magnitude
+end
+
+-- The truck's place: on the sidewalk of an inner road, part way along a block, on bare pavement and Clearance from
+-- stops, stalls, hydrants, item boxes, ramps, boost pads and the start pads, so it never blocks a lane or a set piece.
+local function findTruckSpot(): TruckSpot
+	local cfg = Config.Chaos.Events.MoneyTruck
+	local B = MapService.GetBlockout()
+	local coords = B.RoadCoords
+	local tags = Config.Tags
+	local avoid: { Instance } = {}
+	for _, tagName in { tags.PickupPoint, tags.DropoffPoint, tags.FruitStand, tags.Hydrant, tags.ItemBox, tags.Ramp, tags.BoostPad, tags.StartPad, tags.Drawbridge } do
+		for _, inst in CollectionService:GetTagged(tagName) do
+			table.insert(avoid, inst)
+		end
+	end
+	local spots: { TruckSpot } = {}
+	for i = 2, #coords - 1 do -- inner roads: the outer ones run along the city wall
+		for j = 1, #coords - 1 do
+			for _, frac in cfg.BlockFractions do
+				local m = coords[j] + (coords[j + 1] - coords[j]) * frac
+				for _, side in { -1, 1 } do
+					table.insert(spots, { road = Vector3.new(coords[i], 0, m), along = Vector3.zAxis, across = Vector3.xAxis * side })
+					table.insert(spots, { road = Vector3.new(m, 0, coords[i]), along = Vector3.xAxis, across = Vector3.zAxis * side })
+				end
+			end
+		end
+	end
+	for i = #spots, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		spots[i], spots[j] = spots[j], spots[i]
+	end
+	local map = MapService.GetMapFolder()
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Include
+	overlap.FilterDescendantsInstances = if map then { map } else {}
+	local curb = B.RoadWidth / 2 + B.Sidewalk / 2
+	for _, spot in spots do
+		local center = spot.road + spot.across * curb
+		local clear = true
+		for _, inst in avoid do
+			if distanceTo(inst, center) < cfg.Clearance then
+				clear = false
+				break
+			end
+		end
+		if not clear then
+			continue
+		end
+		local hit = workspace:Raycast(center + Vector3.new(0, 60, 0), Vector3.new(0, -200, 0), MapService.StaticRaycastParams())
+		local ground = if hit then hit.Instance else nil
+		if not ground or not (CollectionService:HasTag(ground, tags.Sidewalk) or CollectionService:HasTag(ground, tags.Sand)) then
+			continue -- a prop, a post, a building or water is there
+		end
+		local y = (hit :: RaycastResult).Position.Y
+		local box = CFrame.lookAt(Vector3.new(center.X, y + 0.6 + cfg.Size.Y / 2, center.Z), Vector3.new(center.X, y + 0.6 + cfg.Size.Y / 2, center.Z) + spot.along)
+		if #workspace:GetPartBoundsInBox(box, cfg.Size + Vector3.new(0, 0, cfg.Margin * 2), overlap) == 0 then
+			return spot
+		end
+	end
+	return spots[1] -- nowhere clear (never on the City): any curb beats a lane
+end
+
 local function startMoneyTruck()
 	local cfg = Config.Chaos.Events.MoneyTruck
-	local coords = MapService.GetBlockout().RoadCoords
-	local inner: { number } = {}
-	for i = 2, #coords - 1 do
-		table.insert(inner, coords[i])
-	end
-	local cx, cz = inner[rng:NextInteger(1, #inner)], inner[rng:NextInteger(1, #inner)]
-	local center = Vector3.new(cx, 0, cz)
+	local B = MapService.GetBlockout()
+	local spot = findTruckSpot()
+	local center = spot.road + spot.across * (B.RoadWidth / 2 + B.Sidewalk / 2)
 	eventAt = center
-	local y = groundAt(cx, cz)
+	local y = groundAt(center.X, center.Z)
 	local model = Instance.new("Model")
 	model.Name = "MoneyTruck"
-	local body = part("TruckBody", cfg.Size, CFrame.new(cx, y + cfg.Size.Y / 2 + 0.6, cz) * CFrame.Angles(0, math.rad(rng:NextInteger(0, 3) * 90), 0), Color3.fromRGB(70, 90, 80), model, true)
+	local level = Vector3.new(center.X, y + cfg.Size.Y / 2 + 0.6, center.Z)
+	local body = part("TruckBody", cfg.Size, CFrame.lookAt(level, level + spot.along), Color3.fromRGB(70, 90, 80), model, true)
 	body.Material = Enum.Material.DiamondPlate
 	model.PrimaryPart = body
 	local stripe = part("TruckStripe", Vector3.new(cfg.Size.X + 0.1, 1, cfg.Size.Z * 0.7), body.CFrame * CFrame.new(0, 0.5, 0), Color3.fromRGB(250, 205, 50), model, false)
@@ -312,10 +385,11 @@ local function startMoneyTruck()
 	model.Parent = folder
 	truck = model
 	table.clear(coins)
+	-- spilled across the road beside it, both lanes, up and down the block
+	local reach = B.RoadWidth / 2 - cfg.LaneMargin
 	for _ = 1, cfg.Pickups do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local r = rng:NextNumber(cfg.ScatterMin, cfg.ScatterMax)
-		local at = center + Vector3.new(math.cos(angle), 0, math.sin(angle)) * r
+		local at = spot.road + spot.along * rng:NextNumber(-cfg.ScatterAlong, cfg.ScatterAlong) + spot.across * rng:NextNumber(-reach, reach)
 		local cents = Money.Cents(rng:NextInteger(cfg.MinDollars, cfg.MaxDollars))
 		local coin = part("Coin", Vector3.new(0.5, 2.8, 2.8), CFrame.new(at.X, groundAt(at.X, at.Z) + 1.8, at.Z) * CFrame.Angles(0, angle, 0), Config.Golden.Color, folder, false)
 		coin.Shape = Enum.PartType.Cylinder

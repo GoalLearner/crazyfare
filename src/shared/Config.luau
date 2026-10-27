@@ -428,6 +428,7 @@ Config.Bots = {
 -- Pit Stop: between rounds, spend this round's cash on next-round-only boosts. Unspent cash carries forward.
 Config.PitStop = {
 	Seconds = 30,
+	ReadySeconds = 3, -- once every player taps READY, the Pit Stop ends this soon (owner 2026-10-27)
 	CardsOffered = 5, -- Pit Stop Plus (Phase 6) makes this 6
 	MaxBuys = 2, -- cards one player can buy per Pit Stop; the rich still have to choose
 	-- Price = Share x the NEXT round's quota (round 2 = $100, round 3 = $125), so cards keep pace with the money and
@@ -898,8 +899,12 @@ Config.Chaos = {
 			Pickups = 10,
 			MinDollars = 2,
 			MaxDollars = 5,
-			ScatterMin = 8, -- studs from the truck
-			ScatterMax = 16,
+			-- It parks on the sidewalk, never in a lane (owner 2026-10-27: it sat in the middle of a junction).
+			BlockFractions = { 0.3, 0.5, 0.7 }, -- where along a block it may park
+			Clearance = 24, -- studs from stops, stalls, hydrants, item boxes, ramps, boost pads and start pads
+			Margin = 2, -- studs of bare pavement it needs ahead and behind
+			ScatterAlong = 16, -- coins land up to this far along the road either side of it
+			LaneMargin = 2, -- and across both lanes, this far inside the curbs
 			PickupRadius = 4.5,
 			Size = Vector3.new(7, 6, 13), -- the truck's body
 		},
@@ -1328,6 +1333,7 @@ Config.Net = {
 		ResetVehicle = 2,
 		ClientReady = 1,
 		PitStopBuy = 6,
+		PitStopReady = 4,
 		GarageAction = 5,
 		RematchVote = 2,
 		CoachDone = 1,
@@ -1355,7 +1361,8 @@ Config.Hud = {
 	CrashMessageSeconds = 0.7, -- "-20 HP" after a crash
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
-	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face. Its only words: STOP in the ring, TURN AROUND past this angle
+	BeaconLabel = { Width = 160, Height = 40, Lift = 4, MaxDistance = 2000 }, -- the destination's name on top of the beam (px, studs above the top, studs)
+	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face. It shows the distance, plus STOP in the ring or TURN AROUND past this angle
 	-- Slot-machine money counters (TOTAL top-left, FARE on the fare card): every digit is a reel that rolls up
 	CounterRollSeconds = 0.9, -- a counter covers any gap in about this long
 	CounterMinRate = 250, -- cents per second at the slowest, so a small tip still visibly rolls
@@ -1469,14 +1476,11 @@ Config.Map = {
 					{ X = -120, Z = 120, Yaw = 135, Height = 6, Length = 40, Crest = 4, Width = 12 }, -- mid-park, along the diagonal path
 					{ X = 0, Z = 300, Yaw = 90, Height = 7, Length = 44, Crest = 4, Width = 14 }, -- on the long south road (room to go round)
 				},
+				-- One pad in front of each big jump, from one side (owner 2026-10-27: too many boosts; was 7, the hill had two).
 				BoostPads = {
 					{ X = 0, Z = -34, Yaw = 0, Length = 14, Width = 18 }, -- the plaza's north edge: off the grid and into the jump block
-					{ X = -96, Z = 96, Yaw = 135, Length = 12, Width = 12 }, -- the park path, both sides of its hump
-					{ X = -144, Z = 144, Yaw = 135, Length = 12, Width = 12 },
-					{ X = -46, Z = 300, Yaw = 90, Length = 12, Width = 14 }, -- the south road, both sides of its hump
-					{ X = 46, Z = 300, Yaw = 90, Length = 12, Width = 14 },
-					{ X = 60, Z = -88, Yaw = 0, Length = 12, Width = 14 }, -- both ways into the hill
-					{ X = 60, Z = 88, Yaw = 0, Length = 12, Width = 14 },
+					{ X = -96, Z = 96, Yaw = 135, Length = 12, Width = 12 }, -- the park path, from the plaza side into its hump
+					{ X = -46, Z = 300, Yaw = 90, Length = 12, Width = 14 }, -- the south road, eastbound into its hump
 				},
 				Tunnel = { X = -180, ZFrom = -43, ZTo = 43, Height = 14 },
 				-- The east road's mirror of the tunnel: two leaves meeting mid-block that rise into a jump in the event.

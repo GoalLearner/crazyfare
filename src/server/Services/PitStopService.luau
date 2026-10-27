@@ -94,6 +94,14 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 	end
 end
 
+-- The Pit Stop closes earlier (everyone tapped READY): offers carry the new countdown.
+function PitStopService.SetEndsAt(closesAt: number)
+	endsAt = closesAt
+	for player in offers do
+		sendOffer(player)
+	end
+end
+
 function PitStopService.Close()
 	open = false
 end

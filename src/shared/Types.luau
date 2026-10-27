@@ -74,6 +74,8 @@ export type RoundStatePayload = {
 	map: string?, -- current map name
 	votes: number?, -- rematch votes so far (MatchEnd)
 	voters: number?, -- players present
+	ready: number?, -- Pit Stop: players who tapped READY
+	readyOf: number?, -- Pit Stop: players present (bots never count)
 	mode: string?, -- "Race" | "Arcade"
 	timeBonus: number?, -- Arcade: seconds just added to the clock
 	frenzy: boolean?, -- the last Config.Chaos.Frenzy.Seconds of a race round

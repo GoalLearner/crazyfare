@@ -42,6 +42,7 @@ local phaseEndsAt = 0
 local results: { Types.PodiumEntry }? = nil
 local waitingSince: number? = nil
 local rematchVotes: { [Player]: boolean } = {}
+local readyPlayers: { [Player]: boolean } = {} -- Pit Stop: who tapped READY
 local matchCount = 0
 local roundState: RemoteEvent
 local mode = "Race" -- "Race" | "Arcade"
@@ -64,6 +65,16 @@ local function voteCount(): number
 	return n
 end
 
+local function readyCount(): number
+	local n = 0
+	for player in readyPlayers do
+		if player.Parent then
+			n += 1
+		end
+	end
+	return n
+end
+
 function RoundService.GetPayload(): Types.RoundStatePayload
 	local event, eventEnds, eventPlace = WorldEventService.GetActive()
 	return {
@@ -76,6 +87,8 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		map = MapService.GetCurrentMap(),
 		votes = if phase == "MatchEnd" then voteCount() else nil,
 		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
+		ready = if phase == "PitStop" then readyCount() else nil,
+		readyOf = if phase == "PitStop" then #Players:GetPlayers() else nil,
 		mode = mode,
 		frenzy = if frenzy then true else nil,
 		event = event,
@@ -271,8 +284,23 @@ end
 
 local function beginPitStop()
 	local closesAt = now() + Config.PitStop.Seconds
+	table.clear(readyPlayers)
 	PitStopService.Open(roundIndex, closesAt)
 	setPhase("PitStop", Config.PitStop.Seconds)
+end
+
+-- Someone tapped READY, took it back or left: once everyone here is ready (bots never wait) the Pit Stop clock drops to
+-- ReadySeconds (never up), and everyone sees the count.
+local function readyChanged()
+	if phase ~= "PitStop" then
+		return
+	end
+	local humans = #Players:GetPlayers()
+	if humans > 0 and readyCount() >= humans and phaseEndsAt - now() > Config.PitStop.ReadySeconds then
+		phaseEndsAt = now() + Config.PitStop.ReadySeconds
+		PitStopService.SetEndsAt(phaseEndsAt)
+	end
+	broadcast()
 end
 
 local function beginWaiting()
@@ -422,11 +450,32 @@ function RoundService.Init()
 		end
 	end)
 
+	-- PitStopReady(ready): tap READY (or tap again to take it back) during the Pit Stop.
+	Remotes.Get("PitStopReady").OnServerEvent:Connect(function(player: Player, ready: any)
+		if not RateLimiter.Allow(player, "PitStopReady", Config.Net.RateLimits.PitStopReady) then
+			return
+		end
+		if typeof(ready) ~= "boolean" or phase ~= "PitStop" then
+			return
+		end
+		if ready then
+			readyPlayers[player] = true
+		else
+			readyPlayers[player] = nil
+		end
+		readyChanged()
+	end)
+
 	Players.PlayerRemoving:Connect(function(player: Player)
 		rematchVotes[player] = nil
+		readyPlayers[player] = nil
 		task.defer(function()
-			if #Players:GetPlayers() == 0 and phase ~= "Waiting" then
-				beginWaiting()
+			if #Players:GetPlayers() == 0 then
+				if phase ~= "Waiting" then
+					beginWaiting()
+				end
+			else
+				readyChanged() -- the one still shopping may have left
 			end
 		end)
 	end)

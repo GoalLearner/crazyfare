@@ -23,6 +23,7 @@ local EVENT_NAMES = {
 	"ResetVehicle", -- ()
 	"ClientReady", -- () client booted; server replies with RoundState + VehicleAssigned
 	"PitStopBuy", -- (cardId: string, undo: boolean?) undo hands a bought card back for a refund
+	"PitStopReady", -- (ready: boolean) READY in the Pit Stop; all players ready ends it in Config.PitStop.ReadySeconds
 	"RematchVote", -- ()
 	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
 	"RequestLeaderboards", -- ()
