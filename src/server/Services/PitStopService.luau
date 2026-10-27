@@ -1,6 +1,6 @@
 --!strict
--- Pit Stop: between rounds every player gets CardsOffered random boost cards priced by round (last place gets a
--- pity discount), buys them with round cash, and the boosts apply to the next round only.
+-- Pit Stop: between rounds every player gets CardsOffered random boost cards priced as a share of the next round's
+-- quota (last place gets a pity discount), buys them with round cash, and the boosts apply to the next round only.
 -- Boosts are exposed as player attributes "Pit_<CardId>" = Card.Value so both server systems and the owning client
 -- can read them without another remote. StartItem is granted directly.
 
@@ -61,8 +61,8 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 	open = true
 	endsAt = closesAt
 	table.clear(offers)
-	local scales = Config.PitStop.PriceScale
-	local scale = scales[math.min(roundIndex, #scales)] or 1
+	local quotas = Config.Round.Quotas
+	local nextQuota = quotas[math.min(roundIndex + 1, #quotas)]
 	local ranks = FareService.GetRanks()
 	local playerCount = #Players:GetPlayers()
 	for _, player in Players:GetPlayers() do
@@ -82,7 +82,7 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 				id = id,
 				name = def.Name,
 				effect = def.Effect,
-				price = math.max(1, math.round(def.Price * scale * discount)),
+				price = math.max(1, math.round(def.Share * nextQuota * discount)),
 				bought = false,
 			})
 		end

@@ -42,7 +42,7 @@ export type VehicleStats = {
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
-export type PitStopCardDef = { Name: string, Effect: string, Price: number, Value: number }
+export type PitStopCardDef = { Name: string, Effect: string, Share: number, Value: number } -- Share: price as a fraction of the next round's quota
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
 export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string? }
 export type GamePassDef = { Id: number, Label: string, Effect: string }
@@ -138,15 +138,16 @@ Config.PitStop = {
 	Seconds = 30,
 	CardsOffered = 5, -- Pit Stop Plus (Phase 6) makes this 6
 	MaxBuys = 2, -- cards one player can buy per Pit Stop; the rich still have to choose
-	PriceScale = { 1, 1.4 }, -- multiplier after round 1, after round 2
+	-- Price = Share x the NEXT round's quota (round 2 = $45, round 3 = $60), so cards keep pace with the money and
+	-- two picks cost about a whole round of banked cash. Unspent cash is quota progress, so buying is a real trade.
 	PityDiscount = 0.3, -- last place pays this much less
 	Cards = {
-		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Price = 11, Value = 1.08 },
-		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Price = 9, Value = 1.5 },
-		StartItem = { Name = "Start Item", Effect = "Start the round holding an item", Price = 7, Value = 1 },
-		ArmoredSeats = { Name = "Armored Seats", Effect = "Passengers take 25% less damage", Price = 11, Value = 0.75 },
-		TipJar = { Name = "Tip Jar", Effect = "Tips +25%", Price = 13, Value = 1.25 },
-		ExtraWiper = { Name = "Extra Wiper", Effect = "Splats clear twice as fast", Price = 6, Value = 0.5 },
+		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Share = 0.38, Value = 1.08 },
+		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Share = 0.32, Value = 1.5 },
+		StartItem = { Name = "Start Item", Effect = "Start the round holding an item", Share = 0.26, Value = 1 },
+		ArmoredSeats = { Name = "Armored Seats", Effect = "Passengers take 25% less damage", Share = 0.38, Value = 0.75 },
+		TipJar = { Name = "Tip Jar", Effect = "Tips +25%", Share = 0.44, Value = 1.25 },
+		ExtraWiper = { Name = "Extra Wiper", Effect = "Splats clear twice as fast", Share = 0.22, Value = 0.5 },
 	} :: { [string]: PitStopCardDef },
 }
 
