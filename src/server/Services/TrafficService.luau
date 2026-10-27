@@ -247,8 +247,21 @@ local function updateSpeed(car: Car, dt: number): boolean
 	local junction = car.junction
 	if junction then
 		local toCenter = (junction - car.rabbit):Dot(car.dir)
-		if toCenter > 0 and toCenter < cfg.JunctionApproach + car.extra and not mayEnter(car, junction) then
-			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine - car.extra, 0)))
+		if toCenter > 0 and toCenter < cfg.JunctionApproach + car.extra then
+			-- a racer's car (or an event obstacle) inside the intersection: wait at the line until it's clear
+			local racerInside = false
+			if toCenter > cfg.StopLine + car.extra - 1 then
+				for _, other in playerCars do
+					local rel = other.position - junction
+					if math.abs(rel.X) < cfg.JunctionOccupiedHalf and math.abs(rel.Z) < cfg.JunctionOccupiedHalf then
+						racerInside = true
+						break
+					end
+				end
+			end
+			if racerInside or not mayEnter(car, junction) then
+				target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine - car.extra, 0)))
+			end
 		end
 	end
 	-- Someone crossing in its lane ahead: stop short of them.
@@ -272,6 +285,23 @@ local function updateSpeed(car: Car, dt: number): boolean
 			if allowed < target then
 				target = allowed
 				heldByPlayer = true
+			end
+		end
+	end
+	-- Turning: a car just around the corner (parked at the curb past the junction, waiting at its exit) counts too.
+	if car.nextDir ~= car.dir and car.nextDir ~= -car.dir then
+		local toCorner = (car.cornerAt - car.rabbit):Dot(car.dir)
+		if toCorner > 0 and toCorner < cfg.PlayerStopDistance then
+			for _, other in playerCars do
+				local rel = other.position - car.cornerAt
+				local beyond = rel:Dot(car.nextDir)
+				if beyond > -laneHalf and beyond < cfg.PlayerStopDistance - toCorner and math.abs(across(rel, car.nextDir)) < laneHalf then
+					local allowed = math.sqrt(2 * cfg.Brake * math.max(toCorner + beyond - cfg.PlayerStopGap - car.extra, 0))
+					if allowed < target then
+						target = allowed
+						heldByPlayer = true
+					end
+				end
 			end
 		end
 	end
@@ -529,13 +559,16 @@ function TrafficService.Start()
 			end
 			local heldByPlayer = updateSpeed(car, dt)
 			-- Held up by a player car (stopped for one, or its body pushed back by one): wait, so the cars queued behind
-			-- wait too; after a while, respawn elsewhere.
+			-- wait too; after a while, respawn elsewhere. The queue behind a held car counts the same wait, so the whole
+			-- line clears at once instead of one car per BlockedRespawn.
+			local leader = leaderOf(car)
+			local queued = car.speed < 1 and leader ~= nil and leader.blockedFor > 0
 			local lag = (car.rabbit - Vector3.new(car.body.Position.X, 0, car.body.Position.Z)):Dot(car.dir)
 			local pushedBack = lag > Config.Traffic.BlockedLag
 			if pushedBack then
 				car.speed = 0
 			end
-			if pushedBack or (heldByPlayer and car.speed < 1) then
+			if pushedBack or (heldByPlayer and car.speed < 1) or queued then
 				car.blockedFor += dt
 				if car.blockedFor > Config.Traffic.BlockedRespawn then
 					release(car)

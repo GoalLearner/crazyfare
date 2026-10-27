@@ -187,7 +187,7 @@ local function endArcade()
 	end
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
-	VehicleService.SetReleased(false)
+	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	local run = FareService.GetResults(true)
 	ProgressionService.AwardArcade(run)
 	for _, entry in run do
@@ -244,7 +244,7 @@ local function endRound()
 	end
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
-	VehicleService.SetReleased(false)
+	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	PitStopService.ClearBoosts()
 	results = FareService.GetResults(roundIndex >= Config.Round.RoundsPerMatch) -- the last round shows the match total
 	if roundIndex < Config.Round.RoundsPerMatch then
@@ -276,7 +276,7 @@ local function beginWaiting()
 	results = nil
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
-	VehicleService.SetReleased(false)
+	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	PitStopService.Close()
 	BotService.RemoveAll()
 	setPhase("Waiting", 0)

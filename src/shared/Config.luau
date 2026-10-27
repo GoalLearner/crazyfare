@@ -477,7 +477,8 @@ Config.Traffic = {
 	Responsiveness = 25,
 	ResetDistance = 40, -- knocked this far from its lane point, it snaps back
 	BlockedLag = 6, -- body this far behind its lane point (a player car in the way): the car waits, and so does the queue behind it
-	BlockedRespawn = 8, -- seconds blocked before the car respawns elsewhere so the lane clears
+	BlockedRespawn = 5, -- seconds blocked (or queued behind a blocked car) before it respawns elsewhere so the lane clears
+	JunctionOccupiedHalf = 13, -- a racer's car within this of an intersection's center: traffic waits at the line
 	Colors = {
 		Color3.fromRGB(235, 235, 235),
 		Color3.fromRGB(170, 175, 185),

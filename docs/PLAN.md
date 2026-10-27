@@ -192,3 +192,10 @@ Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10
 - [x] By itself: round 2 started a Parade 66 s after GO ("[WorldEventService] Parade for 30 s")
 - [ ] Not seen yet: a player car crashing into a float, bots and traffic queuing behind the parade, a bot grabbing coins
 - [ ] X5 Passenger requests; then carpool, ticking fare, fruit stands, Crazy Hop, weather
+
+## Traffic jams (owner note 2026-10-27, "make sure NPC drivers don't crash and cause these traffic jams")
+- [x] Cause: when a round ended every racer's car froze where it stood, often in a lane, for the podium and the 30 s Pit Stop, while traffic kept driving into the queue behind it; each queued car waited its own 8 s before giving up, and a traffic van shoved into a frozen cab ended up across both lanes
+- [x] Racers go back to their grid pads on the plaza the moment play stops (round end, match end, Arcade end, waiting), so nothing sits in a lane between rounds (`VehicleService.ResetAllToGrid` instead of freezing in place)
+- [x] A car queued behind a held-up car counts the same wait, so the whole line respawns elsewhere together; `Config.Traffic.BlockedRespawn` 8 to 5 s
+- [x] Traffic waits at the stop line while any racer's car (or an event obstacle) is inside the intersection (`JunctionOccupiedHalf` 13), and when turning it looks past the corner for a car parked just around it
+- [x] Studio-tested 2026-10-27: my cab parked across a lane on the runway for 24 s never had more than 2 traffic cars near it and never more than 1 stopped; at round end all four cars (mine and three bots) were on their grid pads, frozen, during the podium
