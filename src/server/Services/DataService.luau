@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local ProfileStore = require(ServerScriptService.ServerPackages.ProfileStore) :: any
@@ -28,6 +29,10 @@ export type ProfileData = {
 	Sessions: number,
 	StarterPackBought: boolean,
 	TotalGemsEarned: number,
+	BestLicense: number,
+	ArcadeBest: number,
+	ArcadeBestLicense: number,
+	CoachDone: boolean,
 }
 
 local DataService = {}
@@ -92,6 +97,10 @@ function DataService.Sync(player: Player)
 		showStarterPack = extras.showStarterPack,
 		xpToNext = Config.Progression.LevelBaseXp + (d.Level - 1) * Config.Progression.LevelStepXp,
 		xpIntoLevel = d.Xp,
+		bestLicense = d.BestLicense,
+		arcadeBest = d.ArcadeBest,
+		arcadeBestLicense = d.ArcadeBestLicense,
+		coachDone = d.CoachDone,
 	}
 	syncEvent:FireClient(player, payload)
 end
@@ -275,6 +284,16 @@ function DataService.Init()
 		local profile = profiles[player]
 		if profile then
 			profile:EndSession()
+		end
+	end)
+	Remotes.Get("CoachDone").OnServerEvent:Connect(function(player: Player)
+		if not RateLimiter.Allow(player, "CoachDone", Config.Net.RateLimits.CoachDone) then
+			return
+		end
+		local d = data(player)
+		if d and not d.CoachDone then
+			d.CoachDone = true
+			DataService.Sync(player)
 		end
 	end)
 	Remotes.Get("ClientReady").OnServerEvent:Connect(function(player: Player)

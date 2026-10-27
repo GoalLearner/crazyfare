@@ -53,6 +53,8 @@ export type PodiumEntry = {
 	xp: number?,
 	levelUp: boolean?,
 	bot: boolean?, -- an AI rival taxi
+	license: string?, -- match end / Arcade end, people only: the grade this match earned (Config.License.Grades)
+	newBest: boolean?, -- that grade beats their best (Arcade: the run beats their best run)
 }
 
 export type RoundStatePayload = {
@@ -65,6 +67,8 @@ export type RoundStatePayload = {
 	map: string?, -- current map name
 	votes: number?, -- rematch votes so far (MatchEnd)
 	voters: number?, -- players present
+	mode: string?, -- "Race" | "Arcade"
+	timeBonus: number?, -- Arcade: seconds just added to the clock
 }
 
 export type ProfilePayload = {
@@ -81,6 +85,10 @@ export type ProfilePayload = {
 	showStarterPack: boolean, -- first sessions only, until bought
 	xpToNext: number, -- XP needed to reach the next level
 	xpIntoLevel: number, -- XP earned since the current level began
+	bestLicense: number, -- index into Config.License.Grades (0 = none yet)
+	arcadeBest: number, -- cents
+	arcadeBestLicense: number,
+	coachDone: boolean,
 }
 
 export type QuestEntry = { id: string, text: string, goal: number, progress: number, reward: number, done: boolean }
@@ -99,6 +107,7 @@ export type LeaderboardPayload = {
 	friends: { BoardEntry },
 	bestTip: { BoardEntry },
 	knockouts: { BoardEntry },
+	arcade: { BoardEntry }, -- best Arcade run (cents)
 	weekResetsIn: number,
 }
 

@@ -1,9 +1,10 @@
 --!strict
 -- The HUD: rolling TOTAL + quota, round timer, fare card with a rolling FARE, stunt popups and combo, boost tank, item
 -- slot, speed, center messages, coin burst + grade stamp on delivery, "TAKE ME TO ...!" over the cab, the destination
--- banner on arrival, the fare countdown by the cab, podium with gems and the rematch vote.
+-- banner on arrival, the fare countdown by the cab, podium with gems, your license plate and the rematch vote.
 -- Reads State; the only thing it sends is RematchVote.
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -75,10 +76,17 @@ local message: TextLabel
 local subMessage: TextLabel
 local messageUntil = 0
 local lastCountdownShown = -1
+local lastPhase = "" -- round broadcasts repeat a phase (Arcade time bonuses); GO and READ THE BOARD show once
+local timeBonusLabel: TextLabel
+local timeBonusUntil = 0
 
 local podium: Frame
 local podiumRows: Frame
 local podiumFooter: TextLabel
+local plate: Frame
+local plateGrade: TextLabel
+local plateStroke: UIStroke
+local plateBest: TextLabel
 local podiumTitle: TextLabel
 local rematchButton: TextButton
 local gemsLabel: TextLabel
@@ -127,6 +135,15 @@ local HOT = Color3.fromRGB(255, 150, 40)
 local BLAZING = Color3.fromRGB(255, 70, 190)
 local CASH_HEX = "#78F082"
 local MAX_POPUPS = 5
+
+-- The element's own UIScale (made once), for punches that repeat on the same element.
+local function scaleOf(gui: GuiObject): UIScale
+	local existing = gui:FindFirstChildOfClass("UIScale")
+	if existing then
+		return existing
+	end
+	return UI.New("UIScale", {}, gui) :: UIScale
+end
 
 local function punch(scale: UIScale, from: number)
 	scale.Scale = from
@@ -343,6 +360,8 @@ local function build()
 	-- Timer + phase (top-center)
 	timerLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 20), Size = UDim2.fromOffset(160, 44), Text = "4:00" }, screen)
 	phaseLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 66), Size = UDim2.fromOffset(360, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, screen)
+	-- Arcade: "+6 SEC" beside the clock when time is added
+	timeBonusLabel = UI.Label({ AnchorPoint = Vector2.new(0, 0), Position = UDim2.new(0.5, 84, 0, 28), Size = UDim2.fromOffset(110, 28), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "", Visible = false }, screen)
 
 	-- Destination arrow (under the timer)
 	arrow = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 92), Size = UDim2.fromOffset(44, 44), Text = "▲", TextColor3 = UI.Accent, Visible = false }, screen)
@@ -428,6 +447,38 @@ local function build()
 		rematchButton.Text = "READY"
 		rematchButton.BackgroundColor3 = Color3.fromRGB(40, 70, 48)
 	end)
+
+	-- Your license for the match: a plate beside the podium
+	plate = UI.Frame({ AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(1, 16, 0.5, 0), Size = UDim2.fromOffset(170, 104), BackgroundColor3 = Color3.fromRGB(245, 245, 240), BackgroundTransparency = 0, Visible = false }, podium)
+	UI.Corner(12, plate)
+	plateStroke = UI.Stroke(UI.White, 5, plate)
+	plateStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	UI.Label({ Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, 16), Text = Config.License.Title, TextColor3 = Color3.fromRGB(60, 60, 70), Font = UI.FontMedium }, plate)
+	plateGrade = UI.Label({ Position = UDim2.fromOffset(10, 22), Size = UDim2.new(1, -20, 0, 54), Text = "", TextStrokeTransparency = 0.6 }, plate)
+	plateBest = UI.Label({ Position = UDim2.fromOffset(0, 78), Size = UDim2.new(1, 0, 0, 18), Text = "", TextColor3 = Color3.fromRGB(230, 60, 140), Font = UI.FontMedium }, plate)
+end
+
+-- The plate shows your grade in its color; "NEW BEST!" when it beats your best.
+local function showPlate(results: { Types.PodiumEntry })
+	local mine: Types.PodiumEntry? = nil
+	for _, entry in results do
+		if entry.id == Players.LocalPlayer.UserId then
+			mine = entry
+		end
+	end
+	local license = if mine then mine.license else nil
+	if not mine or not license then
+		plate.Visible = false
+		return
+	end
+	local index = table.find(Config.License.Grades, license) or 1
+	local color = Config.License.Colors[index]
+	plateGrade.Text = license
+	plateGrade.TextColor3 = color
+	plateStroke.Color = color
+	plateBest.Text = if mine.newBest then Config.License.NewBest else ""
+	plate.Visible = true
+	punch(scaleOf(plate), 1.5)
 end
 
 local function fillPodium(results: { Types.PodiumEntry })
@@ -451,17 +502,35 @@ end
 
 local function onRound(payload: Types.RoundStatePayload)
 	local isMatchEnd = payload.phase == "MatchEnd"
+	local arcade = payload.mode == "Arcade"
+	local bonus = payload.timeBonus
+	if bonus and bonus > 0 then
+		timeBonusLabel.Text = string.format(Config.Arcade.TimeBonus, bonus)
+		timeBonusLabel.Visible = true
+		timeBonusUntil = os.clock() + Config.Hud.MessageSeconds
+		punch(scaleOf(timeBonusLabel), 1.4)
+	end
+	local phaseChanged = payload.phase ~= lastPhase
+	lastPhase = payload.phase
 	if (payload.phase == "RoundEnd" or isMatchEnd) and payload.results then
 		fillPodium(payload.results)
-		podiumTitle.Text = if isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
+		podiumTitle.Text = if arcade and isMatchEnd then Config.Arcade.Title elseif isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
 		rematchButton.Visible = isMatchEnd
+		if isMatchEnd then
+			showPlate(payload.results)
+		else
+			plate.Visible = false
+		end
 		if isMatchEnd and rematchButton.Text == "READY" and (payload.votes or 0) == 0 then
-			rematchButton.Text = "REMATCH"
+			rematchButton.Text = if arcade then Config.Arcade.PlayAgain else "REMATCH"
 			rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+		end
+		if isMatchEnd and phaseChanged then
+			rematchButton.Text = if arcade then Config.Arcade.PlayAgain else "REMATCH"
 		end
 		podium.Visible = true
 		local winner = payload.results[1]
-		if winner and isMatchEnd then
+		if winner and isMatchEnd and phaseChanged and not arcade then
 			showMessage(string.upper(winner.name) .. " WINS", UI.Warn, 3, nil, true)
 		end
 	else
@@ -470,6 +539,9 @@ local function onRound(payload: Types.RoundStatePayload)
 	if payload.phase == "PreCountdown" and payload.round == 1 then
 		rematchButton.Text = "REMATCH"
 		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+	end
+	if not phaseChanged then
+		return
 	end
 	if payload.phase == "PreCountdown" then
 		showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds, nil, true)
@@ -568,26 +640,40 @@ local function update(dt: number)
 	RollingCounter.SetTarget(totalCounter, State.cash)
 	stepCounter(totalCounter, dt, 1)
 	local quota = if round then round.quota else Money.Cents(Config.Round.Quotas[1])
-	UI.SetBar(quotaBar, if quota > 0 then RollingCounter.GetValue(totalCounter) / quota else 0)
-	quotaLabel.Text = "QUOTA " .. UI.Money(quota)
+	local arcade = round ~= nil and round.mode == "Arcade"
+	local startClock = if arcade then Config.Arcade.StartSeconds else Config.Round.CapSeconds
+	if arcade then -- no quota: the bar goes, your best run shows instead
+		local profile = State.profile
+		local best = if profile then profile.arcadeBest else 0
+		quotaBar.back.Visible = false
+		quotaLabel.Text = if best > 0 then "BEST " .. UI.Money(best) else ""
+	else
+		quotaBar.back.Visible = true
+		UI.SetBar(quotaBar, if quota > 0 then RollingCounter.GetValue(totalCounter) / quota else 0)
+		quotaLabel.Text = "QUOTA " .. UI.Money(quota)
+	end
+	if timeBonusLabel.Visible and os.clock() >= timeBonusUntil then
+		timeBonusLabel.Visible = false
+	end
 
 	-- Timer / phase text
 	if round and phase == "Playing" then
 		timerLabel.Text = UI.FormatTime(round.endsAt - now)
-		timerLabel.TextColor3 = if round.endsAt - now < 30 then UI.Danger else UI.White
+		timerLabel.TextColor3 = if round.endsAt - now < (if arcade then Config.Arcade.DangerSeconds else 30) then UI.Danger else UI.White
 		phaseLabel.Text = ""
 	elseif round and phase == "Countdown" then
 		local remaining = round.endsAt - now
 		local n = math.ceil(remaining)
-		timerLabel.Text = UI.FormatTime(Config.Round.CapSeconds)
+		timerLabel.Text = UI.FormatTime(startClock)
 		phaseLabel.Text = ""
 		if n ~= lastCountdownShown and n >= 1 then
 			lastCountdownShown = n
 			showMessage(tostring(n), UI.White, 1.1, nil, true)
 		end
 	elseif phase == "PreCountdown" then
-		timerLabel.Text = UI.FormatTime(Config.Round.CapSeconds)
-		phaseLabel.Text = "ROUND " .. (if round then round.round else 1) .. "  ·  FIRST TO " .. UI.Money(quota)
+		timerLabel.Text = UI.FormatTime(startClock)
+		timerLabel.TextColor3 = UI.White
+		phaseLabel.Text = if arcade then Config.Arcade.Phase else "ROUND " .. (if round then round.round else 1) .. "  ·  FIRST TO " .. UI.Money(quota)
 	elseif phase == "RoundEnd" and round then
 		timerLabel.Text = ""
 		phaseLabel.Text = ""
@@ -598,7 +684,8 @@ local function update(dt: number)
 	elseif phase == "MatchEnd" and round then
 		timerLabel.Text = ""
 		phaseLabel.Text = ""
-		podiumFooter.Text = string.format("Rematch %d/%d  ·  next match in %d", round.votes or 0, round.voters or 0, math.max(0, math.ceil(round.endsAt - now)))
+		local left = math.max(0, math.ceil(round.endsAt - now))
+		podiumFooter.Text = if arcade then string.format("Next run in %d", left) else string.format("Rematch %d/%d  ·  next match in %d", round.votes or 0, round.voters or 0, left)
 	else
 		timerLabel.Text = ""
 		phaseLabel.Text = "WAITING FOR PLAYERS"

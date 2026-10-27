@@ -73,7 +73,7 @@ local function renderBoard(parent: Frame, title: string, entries: { Types.BoardE
 	local me = game:GetService("Players").LocalPlayer.UserId
 	for i = 1, BOARD_ROWS do
 		local entry = entries[i]
-		local y = 20 + (i - 1) * 18
+		local y = 20 + (i - 1) * 16
 		local isMe = entry ~= nil and entry.id == me
 		UI.Label({ Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, -60, 0, 16), Text = if entry then string.format("%d  %s", i, entry.name) else string.format("%d  -", i), TextColor3 = if isMe then UI.Warn else UI.White, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 13 }, parent)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, y), Size = UDim2.fromOffset(60, 16), Text = if entry then (if money then UI.Money(entry.value) else tostring(entry.value)) else "", TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 13 }, parent)
@@ -85,6 +85,7 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	local friends = boardsFrame:FindFirstChild("Friends")
 	local tip = boardsFrame:FindFirstChild("BestTip")
 	local ko = boardsFrame:FindFirstChild("Knockouts")
+	local arcade = boardsFrame:FindFirstChild("Arcade")
 	if weekly and weekly:IsA("Frame") then
 		renderBoard(weekly, "THIS WEEK · GEMS", boards.weekly, false)
 	end
@@ -96,6 +97,9 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	end
 	if ko and ko:IsA("Frame") then
 		renderBoard(ko, "MOST KNOCKED OUT", boards.knockouts, false)
+	end
+	if arcade and arcade:IsA("Frame") then
+		renderBoard(arcade, "BEST ARCADE RUN", boards.arcade or {}, true)
 	end
 end
 
@@ -174,13 +178,14 @@ local function build()
 	local slots: { { name: string, x: number, y: number } } = {
 		{ name = "Weekly", x = 0, y = 0 },
 		{ name = "Friends", x = 176, y = 0 },
-		{ name = "BestTip", x = 0, y = 130 },
-		{ name = "Knockouts", x = 176, y = 130 },
+		{ name = "BestTip", x = 0, y = 106 },
+		{ name = "Knockouts", x = 176, y = 106 },
+		{ name = "Arcade", x = 0, y = 212 },
 	}
 	for _, slot in slots do
-		UI.Frame({ Name = slot.name, Position = UDim2.fromOffset(slot.x, slot.y), Size = UDim2.fromOffset(170, 120), BackgroundTransparency = 1 }, boardsFrame)
+		UI.Frame({ Name = slot.name, Position = UDim2.fromOffset(slot.x, slot.y), Size = UDim2.fromOffset(170, 104), BackgroundTransparency = 1 }, boardsFrame)
 	end
-	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(0, 264), Size = UDim2.new(1, 0, 0, 30), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
+	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(176, 232), Size = UDim2.fromOffset(170, 40), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
 end
 
 local function onRound(payload: Types.RoundStatePayload)

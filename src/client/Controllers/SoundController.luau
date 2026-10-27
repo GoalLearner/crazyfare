@@ -1,9 +1,12 @@
 --!strict
 -- Every sound in the game, keyed by Config.Sounds.Ids. An id of 0 means "no asset yet" and plays nothing, so the
 -- hooks are wired now and come alive the moment the owner pastes asset ids into Config.
+-- Music rotates through Config.Sounds.Playlist; callout stings (combo, Golden Fare, new best, win) dip it briefly.
 
 local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -18,8 +21,11 @@ local engine: Sound? = nil
 local drift: Sound? = nil
 local boostLoop: Sound? = nil
 local music: Sound? = nil
+local stings: { [string]: Sound } = {}
+local track = 0 -- index into Config.Sounds.Playlist
 local lastPhase = ""
 local wasBoosting = false
+local lastBeep = -1
 
 local function make(name: string, id: number, looped: boolean, volume: number): Sound?
 	if id <= 0 then
@@ -56,11 +62,42 @@ function SoundController.PlayOneShot(name: string, pitch: number?)
 	end)
 end
 
+-- The next track in the playlist, once through; when it ends the one after starts.
+local function playNextTrack()
+	local list = Config.Sounds.Playlist
+	local sound = music
+	if #list == 0 or not sound then
+		return
+	end
+	track = track % #list + 1
+	sound.SoundId = "rbxassetid://" .. tostring(list[track])
+	sound.TimePosition = 0
+	sound:Play()
+end
+
+-- A callout sting over the music, which dips under it and comes back.
+local function sting(name: string)
+	local sound = stings[name]
+	if not sound then
+		return
+	end
+	sound:Play()
+	local m = music
+	if m then
+		local full = Config.Sounds.MusicVolume
+		m.Volume = full * Config.Sounds.MusicDuck
+		TweenService:Create(m, TweenInfo.new(Config.Sounds.MusicDuckSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Volume = full }):Play()
+	end
+end
+
 local function onFare(payload: Types.FareEventPayload)
 	if payload.kind == "Stunt" then
 		if (payload.amount or 0) > 0 then
 			-- one coin per paid stunt; pitch climbs with the chain
 			SoundController.PlayOneShot("Coin", 1 + math.max(0, (payload.chain or 1) - 1) * Config.Stunts.CoinPitchPerChain)
+		end
+		if table.find(Config.Sounds.ComboStingChains, payload.chain or 0) then
+			sting("Combo")
 		end
 	elseif payload.kind == "Claimed" then
 		play("Pickup")
@@ -77,7 +114,8 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Hurt" and payload.source == "crash" then
 		play("Crash")
 	elseif payload.kind == "Golden" then
-		-- a shimmer of coins: three quick pings climbing
+		-- a shimmer of coins: three quick pings climbing, under the chime
+		sting("Golden")
 		for i = 0, 2 do
 			task.delay(i * 0.09, SoundController.PlayOneShot, "Coin", 1.3 + i * 0.15)
 		end
@@ -97,12 +135,31 @@ local function onRound(payload: Types.RoundStatePayload)
 		return
 	end
 	lastPhase = payload.phase
+	lastBeep = -1
 	if payload.phase == "Countdown" then
 		play("Countdown")
 	elseif payload.phase == "Playing" then
 		play("Go")
-	elseif payload.phase == "RoundEnd" or payload.phase == "MatchEnd" then
+	elseif payload.phase == "RoundEnd" then
 		play("RoundEnd")
+	elseif payload.phase == "MatchEnd" then
+		-- your own result picks the sting: a new best, a win (beating someone), or the plain fanfare
+		local results: { Types.PodiumEntry } = payload.results or {}
+		local me = Players.LocalPlayer.UserId
+		local mine: Types.PodiumEntry? = nil
+		for _, entry in results do
+			if entry.id == me then
+				mine = entry
+			end
+		end
+		local first = results[1]
+		if mine and mine.newBest then
+			sting("NewBest")
+		elseif first and first.id == me and #results > 1 and payload.mode ~= "Arcade" then
+			sting("Win")
+		else
+			play("RoundEnd")
+		end
 	end
 end
 
@@ -119,7 +176,7 @@ function SoundController.Init()
 	local ids = Config.Sounds.Ids
 	local volume = Config.Sounds.Volume
 	for name, id in ids do
-		if name ~= "Engine" and name ~= "Drift" and name ~= "BoostLoop" and name ~= "Music" then
+		if name ~= "Engine" and name ~= "Drift" and name ~= "BoostLoop" then
 			local sound = make(name, id, false, volume)
 			if sound then
 				sounds[name] = sound
@@ -141,9 +198,19 @@ function SoundController.Init()
 		boostLoop.PlaybackRegion = NumberRange.new(region[1], region[2])
 		boostLoop.PlaybackSpeed = Config.Sounds.BoostLoopPitch
 	end
-	music = make("Music", ids.Music, true, Config.Sounds.MusicVolume)
-	if music then
-		music:Play()
+	for name, id in Config.Sounds.Stings do
+		local sound = make("Sting" .. name, id, false, Config.Sounds.StingVolume)
+		if sound then
+			stings[name] = sound
+		end
+	end
+	local playlist = Config.Sounds.Playlist
+	if #playlist > 0 then
+		local sound = make("Music", playlist[1], false, Config.Sounds.MusicVolume) :: Sound
+		music = sound
+		track = math.random(1, #playlist) - 1
+		sound.Ended:Connect(playNextTrack)
+		playNextTrack()
 	end
 
 	State.FareEvent:Connect(onFare)
@@ -179,6 +246,17 @@ function SoundController.Start()
 			SoundController.PlayOneShot("Boost", if State.dashing then 1.2 else 1)
 		end
 		wasBoosting = boosting
+		-- the last seconds of the clock tick down out loud
+		local round = State.round
+		if round and State.GetPhase() == "Playing" and round.endsAt > 0 then
+			local n = math.ceil(round.endsAt - workspace:GetServerTimeNow())
+			if n >= 1 and n <= Config.Sounds.FinalBeeps and n ~= lastBeep then
+				lastBeep = n
+				SoundController.PlayOneShot("Countdown", Config.Sounds.FinalBeepPitch)
+			elseif n > Config.Sounds.FinalBeeps then
+				lastBeep = -1
+			end
+		end
 		local loop = boostLoop
 		if loop then
 			if boosting and not loop.IsPlaying then

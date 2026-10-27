@@ -770,8 +770,28 @@ Config.Sounds = {
 		Countdown = 9114640708, -- Graphic Beeps 6
 		Go = 9113072516, -- Air Horn Various Lengths And Pitches 3
 		RoundEnd = 1844584907, -- Glamour Fanfare 7 (APM, Milan Pilar)
-		Music = 1841068132, -- Keep on Moving (APM, KPM Main Series), 63 s loop
 	} :: { [string]: number },
+	-- Music: these play in turn, each once through, starting from a random one. APM tracks from the Creator Store
+	-- (licensed for every experience), picked 2026-10-27 by search; swap any for the owner's own uploads.
+	Playlist = {
+		1841068132, -- Keep on Moving (APM, KPM Main Series), 63 s
+		1845330177, -- Skater Punk (APM, Chris Goulstone), 236 s
+		9043204604, -- Rock'n'Rolla Surf (APM, Franck Fossey), 111 s
+		1837235810, -- Wild Cat Scratch (APM, Mark Alberts), 107 s
+	} :: { number },
+	-- Callout stings: short hits over the music (which dips under them).
+	Stings = {
+		Combo = 1846901697, -- Stab OL (APM), 3 s brass stab: the chain reaches a number in ComboStingChains
+		Golden = 9116394545, -- Magic Glows Soft Clusters Of Chiming Hits 1 (Pro Sound Effects), 1 s: a Golden Fare boards
+		NewBest = 9120686092, -- Whistle Ta Da 2 (Pro Sound Effects), 2 s: the license plate says NEW BEST
+		Win = 9120974911, -- Wrestling Crowd 1 (Pro Sound Effects), 5 s: you won the match
+	} :: { [string]: number },
+	StingVolume = 0.6,
+	ComboStingChains = { 5, 10 } :: { number },
+	MusicDuck = 0.35, -- the music drops to this share of its volume under a sting
+	MusicDuckSeconds = 1.6,
+	FinalBeeps = 5, -- the countdown beep ticks through the last seconds of the clock (rounds and Arcade)
+	FinalBeepPitch = 1.25,
 	PassengerLines = { -- spoken as text bubbles already; ids here add voice when available
 		Board = 0,
 		Angry = 0,
@@ -812,7 +832,64 @@ Config.Data = {
 		Sessions = 0,
 		StarterPackBought = false,
 		TotalGemsEarned = 0,
+		BestLicense = 0, -- best match license so far (index into Config.License.Grades; 0 = none yet)
+		ArcadeBest = 0, -- best Arcade run (cents)
+		ArcadeBestLicense = 0,
+		CoachDone = false, -- the first-match coach prompts have all been shown
 	},
+}
+
+-- Solo Arcade: your own server where the clock is everything. Start with StartSeconds; every pickup adds time by trip
+-- length and every arrival by its grade (capped at MaxClock); the run ends at 0. No bots, no quota, no Pit Stop, the
+-- City with its set pieces. Graded by its total (Config.License.Arcade); your best run is saved and on the board.
+-- Live servers send you to a reserved server of your own; in Studio the server you're in switches.
+Config.Arcade = {
+	Map = "City",
+	StartSeconds = 50,
+	MaxClock = 99,
+	PickupSeconds = { Green = 6, Yellow = 9, Red = 12 } :: { [string]: number },
+	GradeSeconds = { Speedy = 5, OnTime = 2, Slow = 0 } :: { [string]: number },
+	EndSeconds = 12, -- the results stay up this long, then the next run starts by itself (or PLAY AGAIN)
+	DangerSeconds = 10, -- the clock turns red
+	TimeBonus = "+%d SEC",
+	Title = "TIME'S UP!",
+	PlayAgain = "PLAY AGAIN",
+	Button = "ARCADE", -- in the menu between matches
+	LeaveButton = "RACE",
+	Phase = "ARCADE  ·  BEAT YOUR BEST",
+}
+
+-- First-match coach: one short prompt at a time in the strip under the timer, until each is done (or has had its
+-- time), once per account. Words per input: keyboard / touch / gamepad.
+Config.Coach = {
+	Steps = {
+		{ Id = "pickup", Keyboard = "STOP NEXT TO A $ TO PICK UP", Touch = "STOP NEXT TO A $ TO PICK UP", Gamepad = "STOP NEXT TO A $ TO PICK UP", MaxSeconds = 0 },
+		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, STOP IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
+		{ Id = "drift", Keyboard = "HOLD SPACE WHILE TURNING TO DRIFT", Touch = "HOLD DRIFT WHILE TURNING", Gamepad = "HOLD A WHILE TURNING TO DRIFT", MaxSeconds = 14 },
+		{ Id = "boost", Keyboard = "HOLD SHIFT TO BOOST", Touch = "HOLD BOOST", Gamepad = "HOLD B TO BOOST", MaxSeconds = 12 },
+		{ Id = "item", Keyboard = "PRESS Q TO USE YOUR ITEM", Touch = "TAP THE ITEM BUTTON", Gamepad = "PRESS X TO USE YOUR ITEM", MaxSeconds = 12 },
+	} :: { { Id: string, Keyboard: string, Touch: string, Gamepad: string, MaxSeconds: number } }, -- MaxSeconds 0 = until done
+	DriftSeconds = 0.5, -- drifting this long counts as done
+	BoostSeconds = 0.3,
+	BoostTankToShow = 0.5, -- the boost prompt waits for this much in the tank
+}
+
+-- Licenses: a grade for every match (from your three-round total) and every Arcade run (from its total), shown as a
+-- plate on the podium. Your best of each is saved.
+Config.License = {
+	Grades = { "D", "C", "B", "A", "S", "LEGEND" },
+	Colors = {
+		Color3.fromRGB(150, 150, 160),
+		Color3.fromRGB(110, 200, 90),
+		Color3.fromRGB(70, 150, 240),
+		Color3.fromRGB(170, 90, 240),
+		Color3.fromRGB(250, 200, 40),
+		Color3.fromRGB(255, 80, 180),
+	},
+	Race = { 0, 90, 160, 230, 300, 380 }, -- dollars over a match for each grade (the three quotas add up to 300)
+	Arcade = { 0, 40, 90, 150, 220, 300 }, -- dollars in one Arcade run for each grade
+	Title = "CRAZYFARE",
+	NewBest = "NEW BEST!",
 }
 
 -- One raycast chassis drives every vehicle; these shape how the stats above feel.
@@ -902,6 +979,8 @@ Config.Net = {
 		PitStopBuy = 6,
 		GarageAction = 5,
 		RematchVote = 2,
+		CoachDone = 1,
+		ArcadeRequest = 2,
 		RequestLeaderboards = 1,
 		ShopAction = 4,
 		Debug = 10,

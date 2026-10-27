@@ -54,6 +54,61 @@ function ProgressionService.AwardMatch(results: { Types.PodiumEntry })
 	end
 end
 
+-- The grade a total earns against a threshold list (Config.License.Race / .Arcade): an index into Grades.
+function ProgressionService.LicenseIndex(cents: number, thresholds: { number }): number
+	local index = 1
+	for i, dollars in thresholds do
+		if cents >= dollars * 100 then
+			index = i
+		end
+	end
+	return index
+end
+
+-- Match end: each person's license for the match goes into their podium entry; a better one than ever is saved.
+function ProgressionService.AwardLicense(results: { Types.PodiumEntry })
+	for _, entry in results do
+		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)
+		local d = if player then DataService.Get(player) else nil
+		if not player or not d then
+			continue
+		end
+		local index = ProgressionService.LicenseIndex(entry.cash, Config.License.Race)
+		entry.license = Config.License.Grades[index]
+		if index > d.BestLicense then
+			entry.newBest = d.BestLicense > 0 -- the very first license isn't a "new best"
+			d.BestLicense = index
+			DataService.Sync(player)
+		end
+	end
+end
+
+-- Arcade end: the run's grade into the entry; a run better than ever is saved (and flagged), and so is a better grade.
+function ProgressionService.AwardArcade(results: { Types.PodiumEntry })
+	for _, entry in results do
+		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)
+		local d = if player then DataService.Get(player) else nil
+		if not player or not d then
+			continue
+		end
+		local index = ProgressionService.LicenseIndex(entry.cash, Config.License.Arcade)
+		entry.license = Config.License.Grades[index]
+		local changed = false
+		if entry.cash > d.ArcadeBest then
+			entry.newBest = d.ArcadeBest > 0
+			d.ArcadeBest = entry.cash
+			changed = true
+		end
+		if index > d.ArcadeBestLicense then
+			d.ArcadeBestLicense = index
+			changed = true
+		end
+		if changed then
+			DataService.Sync(player)
+		end
+	end
+end
+
 local function utcDay(): number
 	return math.floor(os.time() / 86400)
 end

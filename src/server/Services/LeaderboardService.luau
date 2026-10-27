@@ -184,6 +184,7 @@ function LeaderboardService.Send(player: Player)
 		friends = friendsFor(player),
 		bestTip = getBoard("bestTip", "CF_BestTip").top,
 		knockouts = getBoard("knockouts", "CF_Knockouts").top,
+		arcade = getBoard("arcade", "CF_ArcadeBest").top,
 		weekResetsIn = secondsToWeekReset(),
 	}
 	syncEvent:FireClient(player, payload)
@@ -201,6 +202,12 @@ function LeaderboardService.ReportTip(player: Player, tip: number)
 	end
 end
 
+function LeaderboardService.ReportArcade(player: Player, cents: number)
+	if cents > 0 and not Racers.IsBot(player) then
+		submit(getBoard("arcade", "CF_ArcadeBest"), player, cents, "max")
+	end
+end
+
 function LeaderboardService.AddKnockout(player: Player)
 	if Racers.IsBot(player) then
 		return
@@ -212,6 +219,7 @@ local function refreshAll()
 	refreshBoard(weeklyBoard())
 	refreshBoard(getBoard("bestTip", "CF_BestTip"))
 	refreshBoard(getBoard("knockouts", "CF_Knockouts"))
+	refreshBoard(getBoard("arcade", "CF_ArcadeBest"))
 	applyTrails()
 	for _, player in Players:GetPlayers() do
 		LeaderboardService.Send(player)

@@ -27,6 +27,8 @@ local EVENT_NAMES = {
 	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
 	"RequestLeaderboards", -- ()
 	"ShopAction", -- (action: "Refresh" | "DismissStarter")
+	"CoachDone", -- () the first-match coach prompts have all been shown
+	"ArcadeRequest", -- (action: "start" | "leave") solo Arcade: go there, or back to racing
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

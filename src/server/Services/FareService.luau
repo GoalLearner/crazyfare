@@ -26,6 +26,10 @@ local FareService = {}
 local onQuotaReached: Signal.Signal<Player> = Signal.new()
 FareService.OnQuotaReached = onQuotaReached
 local onDelivered: Signal.Signal<Player, string, number> = Signal.new()
+local onClaimed: Signal.Signal<Player, string> = Signal.new()
+local onGraded: Signal.Signal<Player, string> = Signal.new()
+FareService.OnClaimed = onClaimed -- (player, tier) a passenger got in
+FareService.OnGraded = onGraded -- (player, grade "Speedy" | "OnTime" | "Slow") a delivery's grade
 FareService.OnDelivered = onDelivered -- (player, tier, tip shown)
 
 local fares: { [Player]: Types.Fare } = {}
@@ -93,6 +97,11 @@ end
 -- `dollars` straight from Config.Round.Quotas.
 function FareService.SetQuota(dollars: number)
 	quota = Money.Cents(dollars)
+end
+
+-- Arcade: no quota to reach (the clock ends the run).
+function FareService.DisableQuota()
+	quota = math.huge
 end
 
 function FareService.SetEnabled(value: boolean)
@@ -250,6 +259,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 	local npcPosition = npc.position
 	PassengerService.Board(npc, player)
 	fares[player] = fare
+	onClaimed:Fire(player, npc.tier)
 	fire(player, {
 		kind = "Claimed",
 		npcId = npc.id,
@@ -353,6 +363,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	})
 	FareService.AddCash(player, payout)
 	onDelivered:Fire(player, fare.tier, tipShown + stunts)
+	onGraded:Fire(player, grade)
 
 	task.delay(Config.Fares.RespawnDelay, function()
 		if enabled then

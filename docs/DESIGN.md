@@ -15,7 +15,15 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - Round start: all players spawn on the **StartGrid**. NPCs are already standing across the map so players can read the board during the **3-2-1 countdown** (a short "read the board" beat precedes it). Then free-for-all.
 - Round end: first player to earn the **quota this round** (round 1 $75, round 2 $100, round 3 $125) or a **3-minute cap** (highest earnings that round win). The match winner is whoever earned the most over all three rounds. Money is shown with cents.
 - Between rounds: a **30 s Pit Stop** (section 7).
-- Match end: podium, placements, Gem payout, rematch vote.
+- Match end: podium, placements, Gem payout, rematch vote, and your **license plate**: a grade from your three-round total (D, C, B, A, S, LEGEND; `Config.License.Race`) in the grade's color. Your best is saved; beating it says NEW BEST!
+
+### Solo Arcade (Crazy Taxi's clock rules, owner call 2026-10-26)
+- An ARCADE button between matches. Live, it sends you to a reserved server of your own that runs Arcade for good (RACE sends you back); in Studio the current server switches.
+- One run on the clock: start with 50 s; a pickup adds time by trip length (6 / 9 / 12 s), an arrival by its grade (SPEEDY 5 s, ON TIME 2 s), capped at 99 s on the clock. The run ends at 0. No bots, no quota, no Pit Stop; the City with its set pieces; items still drop.
+- Its own grade from the run's total (`Config.License.Arcade`), your best run saved and shown where the quota usually is, a BEST ARCADE RUN board, and the next run starts by itself (or PLAY AGAIN).
+
+### First match coach
+- Once per account, during play: one short prompt at a time in a pill under the timer (never over the road): pick up, deliver, drift, boost, use an item. Each disappears when done (or after its time), in the words of the input you're using.
 
 ### AI rival taxis (bots)
 - With too few people, **bots fill the match to 4 drivers** (`Config.Bots.FillTo`). They give their seats up as real players join, at the next round. A live server starts a match with one person when bots are on; with nobody left the bots go home.
@@ -160,7 +168,9 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - Player level (XP per match), badge by name.
 - Garage shows locked vehicles greyed with prices: goals always visible.
 - Daily quests (3) + weekly quest (1) + login streak, all paying Gems.
-- Leaderboards: weekly (resets Monday), friends, Biggest Tip Ever, Most Passengers Knocked Out. Weekly top 10 gets an exclusive trail.
+- Leaderboards: weekly (resets Monday), friends, Biggest Tip Ever, Most Passengers Knocked Out, Best Arcade Run. Weekly top 10 gets an exclusive trail.
+- Personal bests: best match license and best Arcade run (and its grade), saved on the profile.
+- Sound: four licensed tracks play in turn; short stings mark the moments (combo 5 and 10, Golden Fare, a new best, a win) with the music dipping under them; the last 5 seconds of any clock tick out loud.
 - Seasons later (new map + pass + limited event every 6–8 weeks). No ranked MMR.
 
 ## 10. Monetization
