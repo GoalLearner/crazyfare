@@ -179,14 +179,12 @@ Config.Combo = {
 }
 
 Config.Passenger = {
-	RegenPerSecond = 2,
-	RegenDelay = 3, -- seconds after damage before regen resumes
-	RegenMinSpeed = 5, -- must be driving
+	-- No regen: passenger HP only goes down during a ride, so every crash and hit sticks (owner, 2026-10-26).
 	CrashDeltaThreshold = 30, -- horizontal speed (studs/s) lost inside CrashWindow that starts to hurt
 	CrashWindow = 0.12, -- seconds of speed history the crash watch looks back over: a wall stops the car inside ~0.05 s on the server, while full braking (BrakeAccel) loses under 10 studs/s here even with bursty replication (0.25 s let a hard brake read as a crash)
 	CrashSettle = 0.1, -- seconds the watch keeps measuring once a hit starts, so the whole stop counts (the server sees it over ~3 frames)
-	CrashDamagePerStud = 0.6,
-	CrashDamageMax = 35,
+	CrashDamagePerStud = 1.2, -- HP per stud/s lost beyond the threshold: ~34 at 58 lost, cap at ~80 lost
+	CrashDamageMax = 60, -- a full-speed wall hit bails a short fare outright
 	DamageCooldown = 1, -- no second damage inside this window (any source)
 	BoostEndGrace = 0.5, -- crash watch ignores the speed bleed right after a nitro ends
 	SelfHitCost = 15, -- using an attack item while loaded

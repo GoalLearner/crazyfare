@@ -1,8 +1,7 @@
 --!strict
--- NPC passengers: spawning by tier weighting, boarding, HP (damage, regen, crashes), bailing and walking back,
+-- NPC passengers: spawning by tier weighting, boarding, HP (damage and crashes; no regen), bailing and walking back,
 -- delivery thanks. FareService owns the money side and listens to OnBailed.
 
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -588,24 +587,6 @@ function PassengerService.Init()
 	end)
 end
 
-function PassengerService.Start()
-	-- Regen while driving clean.
-	RunService.Heartbeat:Connect(function(dt: number)
-		local now = workspace:GetServerTimeNow()
-		for player, npc in loadedByPlayer do
-			if npc.hp >= npc.maxHp then
-				continue
-			end
-			local last = lastDamageAt[player]
-			if last and now - last < Config.Passenger.RegenDelay then
-				continue
-			end
-			if VehicleService.GetSpeed(player) < Config.Passenger.RegenMinSpeed then
-				continue
-			end
-			npc.hp = math.min(npc.maxHp, npc.hp + Config.Passenger.RegenPerSecond * dt)
-		end
-	end)
-end
+function PassengerService.Start() end
 
 return PassengerService

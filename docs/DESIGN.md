@@ -44,8 +44,8 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ## 3. Passenger HP and PvP
 
 - Passengers board with HP by tier (60/80/100).
-- **Damage:** item hits and wall crashes. Crashes are measured server-side from the replicated velocity delta (over 30 studs/s in a tick hurts; the harder the hit, the more it costs, capped).
-- **Regen:** clean driving (no damage for 3 s, car moving) regens slowly.
+- **Damage:** item hits and wall crashes. Crashes are measured server-side as speed lost in a fraction of a second (over 30 studs/s hurts; the harder the hit, the more it costs, up to 60, so a full-speed wall hit bails a short fare).
+- **No regen:** HP only goes down during a ride, so every crash and hit sticks.
 - Using an **attack** item (Tomato) while loaded costs your own passenger 15 HP.
 - **At 0 HP the passenger bails:** door tween, angry text bubble, walks to the nearest PickupPoint and becomes available again with the **same destination**. The victim loses the fare and the combo. The attacker gets a **Hunter Bonus = 40% of the lost fare's value** (Phase 2).
 
