@@ -28,6 +28,7 @@ export type VehicleEntry = {
 	spinUntil: number, -- server time; crash detection ignores spinouts
 	crashImmuneUntil: number,
 	speedHistory: { { t: number, speed: number } }, -- recent horizontal speeds for the crash watch
+	impact: { peak: number, low: number, settleAt: number }?, -- a hit in progress; measured until settleAt so the whole stop counts
 	lastPosition: Vector3, -- last position that passed speed sanity
 	strikes: number, -- consecutive frames that failed it
 }
@@ -254,6 +255,7 @@ function VehicleService.Spawn(player: Player)
 		spinUntil = 0,
 		crashImmuneUntil = 0,
 		speedHistory = {},
+		impact = nil,
 		lastPosition = chassis.Position,
 		strikes = 0,
 	}
@@ -394,6 +396,7 @@ function VehicleService.Start()
 			if entry.chassis.Anchored then
 				entry.lastVelocity = Vector3.zero
 				table.clear(entry.speedHistory)
+				entry.impact = nil
 				entry.lastPosition = entry.chassis.Position
 				entry.strikes = 0
 				continue
@@ -412,13 +415,21 @@ function VehicleService.Start()
 			end
 			local drop = peak - speed
 			local boostEnding = now >= entry.boostUntil and now - entry.boostUntil < Config.Passenger.BoostEndGrace
-			if drop >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
-				if RunService:IsStudio() then
-					print(string.format("[VehicleService] crash: %s lost %.0f studs/s", player.Name, drop))
+			local impact = entry.impact
+			if impact then
+				impact.low = math.min(impact.low, speed)
+				if now >= impact.settleAt then
+					entry.impact = nil
+					local lost = impact.peak - impact.low
+					if RunService:IsStudio() then
+						print(string.format("[VehicleService] crash: %s lost %.0f studs/s", player.Name, lost))
+					end
+					onCrash:Fire(player, lost)
+					table.clear(history)
+					table.insert(history, { t = now, speed = speed })
 				end
-				onCrash:Fire(player, drop)
-				table.clear(history)
-				table.insert(history, { t = now, speed = speed })
+			elseif drop >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
+				entry.impact = { peak = peak, low = speed, settleAt = now + Config.Passenger.CrashSettle }
 			end
 
 			local pos = entry.chassis.Position
