@@ -36,6 +36,7 @@ local ordered: { Controller } = {
 	require(Controllers.BountyController),
 	require(Controllers.EffectsController),
 	require(Controllers.FruitStandController),
+	require(Controllers.WeatherController),
 	require(Controllers.SpeedFxController),
 	require(Controllers.RiderController),
 	require(Controllers.CoachController),

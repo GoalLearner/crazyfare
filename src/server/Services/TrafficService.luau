@@ -62,6 +62,7 @@ local surging = false -- Rush Hour: replacements for lost surge cars are surge c
 local folder: Folder
 local groundParams: RaycastParams
 local rng = Random.new()
+local speedMult = 1 -- the round's weather (WeatherService)
 
 local function rightOf(dir: Vector3): Vector3
 	return Vector3.new(-dir.Z, 0, dir.X)
@@ -231,7 +232,7 @@ end
 -- True when a player car is what holds it back.
 local function updateSpeed(car: Car, dt: number): boolean
 	local cfg = Config.Traffic
-	local target = car.cruise
+	local target = car.cruise * speedMult
 	local leader, gap = leaderOf(car)
 	if leader then
 		local bumperToBumper = (car.size.Z + leader.size.Z) / 2
@@ -505,6 +506,11 @@ function TrafficService.EndSurge()
 end
 
 -- World-event obstacles in the road (positions and velocities, flat): traffic stops short of them like a player car.
+-- The round's weather: every car cruises at this share of its speed (fog and snow slow them).
+function TrafficService.SetSpeedMult(mult: number)
+	speedMult = mult
+end
+
 function TrafficService.SetBlockers(list: { { position: Vector3, velocity: Vector3 } })
 	blockers = list
 end

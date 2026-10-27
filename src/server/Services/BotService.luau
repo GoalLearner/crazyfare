@@ -61,6 +61,7 @@ local order: { Player } = {} -- oldest first; the newest leaves first
 local rng = Random.new()
 local groundParams: RaycastParams? = nil
 local blockers: { { position: Vector3, velocity: Vector3, clearance: number } } = {} -- world-event obstacles
+local speedMult = 1 -- the round's weather (WeatherService)
 
 local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
@@ -413,7 +414,7 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 	local cfg = Config.Bots
 	local brake = cfg.Brake
 	local boost = if now < entry.boostUntil then Config.Items.LemonNitro.SpeedMult else 1
-	local limit = cfg.CruiseSpeed * bot.skill * boost
+	local limit = cfg.CruiseSpeed * bot.skill * boost * speedMult
 	if #bot.route == 0 then
 		return 0
 	end
@@ -425,7 +426,8 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 		local turn = (afterPoint - nextPoint)
 		if turn.Magnitude > 0.01 and turn.Unit:Dot(bot.dir) < 0.85 then
 			local d = (nextPoint - bot.rabbit).Magnitude
-			limit = math.min(limit, math.sqrt(cfg.CornerSpeed * cfg.CornerSpeed + 2 * brake * d))
+			local corner = cfg.CornerSpeed * speedMult
+			limit = math.min(limit, math.sqrt(corner * corner + 2 * brake * d))
 		end
 	end
 	-- cars (players, other bots) and people in the road ahead, measured from the line the bot is actually on (so two
@@ -747,6 +749,11 @@ function BotService.Launch(driver: Player, speed: number)
 		bot.airVel = math.max(bot.airVel, speed)
 		bot.airY = math.max(bot.airY, 0.01)
 	end
+end
+
+-- The round's weather: bots drive at this share of their speed, corners included (WeatherService).
+function BotService.SetSpeedMult(mult: number)
+	speedMult = mult
 end
 
 function BotService.Rebalance()

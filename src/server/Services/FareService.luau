@@ -41,6 +41,8 @@ local delivered: { [Player]: number } = {}
 local bestTip: { [Player]: number } = {}
 local enabled = false
 local payMult = 1 -- Frenzy doubles delivery payouts
+local weatherMult = 1 -- the round's weather: Night pays more
+local weatherLine: string? = nil
 local forcedRequest: { [Player]: string } = {} -- Studio debug: the next passenger asks for this
 local leader: Player? = nil -- this round's cash leader, wearing the bounty crown
 local announced: Player? = nil -- the leader the last NEW LEADER banner named
@@ -135,6 +137,12 @@ end
 -- Frenzy: every delivery pays this many times over (1 the rest of the time).
 function FareService.SetPayMult(mult: number)
 	payMult = mult
+end
+
+-- The round's weather: every delivery times `mult`, with `line` under the payout (WeatherService).
+function FareService.SetWeatherPay(mult: number, line: string?)
+	weatherMult = mult
+	weatherLine = line
 end
 
 -- The bounty: this round's cash leader, or nil before anyone has MinCash (and in a race of one).
@@ -538,6 +546,13 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		payout = math.round(payout * payMult)
 		local line = Config.Chaos.Frenzy.PayLine
 		bonus = if bonus then bonus .. "  ·  " .. line else line
+	end
+	if weatherMult ~= 1 then
+		payout = math.round(payout * weatherMult)
+		local line = weatherLine
+		if line then
+			bonus = if bonus then bonus .. "  ·  " .. line else line
+		end
 	end
 	local grades = Config.Grades
 	local grade = if not allowTip then "Slow" elseif timeFrac >= grades.SpeedyFrac then "Speedy" elseif timeFrac >= grades.OnTimeFrac then "OnTime" else "Slow"

@@ -108,6 +108,15 @@ local function requestDef(id: string?): { Id: string, Stunt: string, Goal: numbe
 	return nil
 end
 
+local function weatherDef(id: string?): Config.WeatherDef?
+	for _, def in Config.Chaos.Weather.List do
+		if def.Id == id then
+			return def
+		end
+	end
+	return nil
+end
+
 local function eventDef(id: string?): { Id: string, Name: string, Sub: string, Weight: number, Maps: { [string]: boolean }? }?
 	for _, def in Config.Chaos.Events.List do
 		if def.Id == id then
@@ -628,7 +637,13 @@ local function onRound(payload: Types.RoundStatePayload)
 		return
 	end
 	if payload.phase == "PreCountdown" then
-		showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds, nil, true)
+		-- the round's weather takes the banner when there is any
+		local weather = weatherDef(payload.weather)
+		if weather and weather.Name ~= "" then
+			showMessage(weather.Name, weather.Color, Config.Round.PreCountdownSeconds, weather.Sub, true)
+		else
+			showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds, nil, true)
+		end
 		lastCountdownShown = -1
 	elseif payload.phase == "Playing" then
 		showMessage("GO!", UI.Cash, 0.9, nil, true)

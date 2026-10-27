@@ -28,6 +28,7 @@ local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 local BotService = require(script.Parent.BotService)
 local WorldEventService = require(script.Parent.WorldEventService)
+local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
 
 local MapService = require(script.Parent.MapService)
@@ -80,6 +81,7 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		event = event,
 		eventEndsAt = if event then eventEnds else nil,
 		eventAt = eventPlace,
+		weather = WeatherService.Get(),
 	}
 end
 
@@ -144,6 +146,7 @@ local function beginRoundSetup()
 	VehicleService.ResetAllToGrid()
 	PitStopService.ApplyBoosts()
 	PassengerService.EnsureCount(FareService.TargetNpcCount())
+	WeatherService.Roll()
 	setPhase("PreCountdown", Config.Round.PreCountdownSeconds)
 end
 
@@ -158,6 +161,7 @@ local function beginArcadeRun()
 	ItemService.SetEnabled(false)
 	FareService.ResetMatch()
 	FareService.DisableQuota()
+	WeatherService.Set("Clear")
 	ComboService.ResetAll()
 	ItemService.ClearAll()
 	PassengerService.ClearAll()
@@ -279,6 +283,7 @@ local function beginWaiting()
 	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	PitStopService.Close()
 	BotService.RemoveAll()
+	WeatherService.Set("Clear")
 	setPhase("Waiting", 0)
 end
 
@@ -296,6 +301,9 @@ end
 
 function RoundService.Init()
 	roundState = Remotes.Get("RoundState")
+	WeatherService.OnChanged:Connect(function()
+		broadcast()
+	end)
 
 	WorldEventService.OnChanged:Connect(function()
 		broadcast()

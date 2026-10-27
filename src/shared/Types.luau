@@ -80,6 +80,7 @@ export type RoundStatePayload = {
 	event: string?, -- the world event running (Config.Chaos.Events.List Id)
 	eventEndsAt: number?, -- server time it ends
 	eventAt: Vector3?, -- where it is, when it has one place (the money truck)
+	weather: string?, -- this round's weather (Config.Chaos.Weather.List Id)
 }
 
 export type ProfilePayload = {

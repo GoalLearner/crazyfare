@@ -14,6 +14,7 @@ local ItemService = require(script.Parent.ItemService)
 local DataService = require(script.Parent.DataService)
 local VehicleService = require(script.Parent.VehicleService)
 local MapService = require(script.Parent.MapService)
+local WeatherService = require(script.Parent.WeatherService)
 
 local DebugService = {}
 
@@ -211,6 +212,10 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local current = workspace:GetAttribute(Config.Events.DebugAttribute)
 		local index = if typeof(current) == "string" then table.find(ids, current) or 0 else 0
 		workspace:SetAttribute(Config.Events.DebugAttribute, ids[index + 1]) -- past the last: nil, no event
+	end,
+	-- The next weather in Config.Chaos.Weather.List, right now (Clear after the last).
+	NextWeather = function()
+		WeatherService.DebugNext()
 	end,
 	-- Cycles the garage so every imported vehicle mesh can be checked in one test: grants the next car if needed, swaps now.
 	NextVehicle = function(player)

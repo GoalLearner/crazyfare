@@ -123,6 +123,18 @@ local function attach(model: Model?)
 	refreshFilters(model)
 end
 
+-- This round's weather (its grip, top speed and drift boost), or nil between rounds.
+local function weatherNow(): Config.WeatherDef?
+	local round = State.round
+	local id = if round then round.weather else nil
+	for _, def in Config.Chaos.Weather.List do
+		if def.Id == id then
+			return def
+		end
+	end
+	return nil
+end
+
 local function reportCombo(kind: string, value: number)
 	comboEvent:FireServer({ kind = kind, value = value })
 end
@@ -272,7 +284,8 @@ local function step(rawDt: number)
 	local bigTank = localPlayer:GetAttribute("Pit_BigTank")
 	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1) * (if typeof(upBoost) == "number" then upBoost else 1)
 	State.boostTankMax = tankMax
-	local topSpeed = stats.TopSpeed * speedMult
+	local weather = weatherNow()
+	local topSpeed = stats.TopSpeed * speedMult * (if weather then weather.TopSpeedMult else 1)
 	local accel = stats.Accel * accelMult
 
 	-- Steering: less at speed, more while drifting
@@ -330,7 +343,7 @@ local function step(rawDt: number)
 			local sideVel = pointVel:Dot(rightFlat)
 			local fwdVel = pointVel:Dot(fwdFlat)
 
-			local gripRate = stats.Handling * handlingMult
+			local gripRate = stats.Handling * handlingMult * (if weather then weather.GripMult else 1)
 			if handbrake and not w.isFront then
 				gripRate *= stats.DriftGrip
 			end
@@ -456,7 +469,7 @@ local function step(rawDt: number)
 	local drifting = grounded and handbrake and speed > C.DriftMinSpeed and rearSide > C.DriftMinSide
 	if drifting then
 		driftAccumulator += dt
-		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * dt)
+		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * (if weather then weather.DriftBoostMult else 1) * dt)
 		if driftAccumulator >= Config.Stunts.UnitSeconds then
 			reportCombo("Drift", driftAccumulator)
 			driftAccumulator = 0

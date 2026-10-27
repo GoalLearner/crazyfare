@@ -42,6 +42,49 @@ export type VehicleStats = {
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
+-- Per-round weather (Config.Chaos.Weather.List). -1 on ClockTime / FogDensity / Haze keeps the map's own sky.
+export type WeatherDef = {
+	Id: string,
+	Name: string, -- the banner at the round's start ("" for Clear: no banner)
+	Sub: string,
+	Weight: number,
+	Maps: { [string]: boolean }?, -- nil = any map
+	Color: Color3, -- the banner's color
+	Particle: string, -- Config.Chaos.Weather.Particles key ("" = nothing falls)
+	ClockTime: number,
+	Brightness: number, -- times the place's own
+	FogDensity: number, -- Atmosphere.Density
+	Haze: number,
+	Tint: Color3, -- the WeatherTint color correction
+	Saturation: number,
+	GripMult: number, -- your cab's tire grip (Handling) on these roads
+	TopSpeedMult: number,
+	DriftBoostMult: number, -- boost tank filled per second of drifting
+	PayMult: number, -- every delivery's payout
+	PayLine: string, -- under the payout when PayMult isn't 1
+	TrafficSpeedMult: number,
+	BotSpeedMult: number,
+}
+
+-- What falls in a weather (rain, snow): a particle box riding above the camera (WeatherController).
+export type WeatherParticles = {
+	Texture: string,
+	Color: Color3,
+	Transparency: number,
+	Size: number,
+	Squash: number, -- below 0 stretches each particle along its fall
+	Rate: number, -- per second (kept low: most players are on phones)
+	Lifetime: number,
+	SpeedMin: number,
+	SpeedMax: number,
+	Drift: Vector3, -- acceleration: wind
+	Spin: number, -- degrees/s
+	Streaks: boolean, -- turned along the fall (rain) instead of facing the camera (snow)
+	Area: number, -- studs across the box they fall from
+	Height: number, -- studs above the camera
+	Ahead: number, -- studs ahead of the camera, where you're looking
+}
+
 -- A city's set pieces (Phase D): DevBlockout builds them and the minimap draws them from this one spec, so both agree.
 -- Offsets inside a block are from the block's center; +Z is south.
 export type HumpSpec = { X: number, Z: number, Yaw: number, Height: number, Length: number, Crest: number, Width: number } -- Yaw in degrees: the hump's axis
@@ -926,6 +969,22 @@ Config.Chaos = {
 		BotTrapMin = 6, -- a bot hops over a trap between this many...
 		BotTrapLook = 18, -- ...and this many studs ahead...
 		BotTrapReach = 3, -- ...within its trigger radius plus this of the bot's line
+	},
+	-- Weather: every race round rolls one by Weight among those its map allows (Arcade and the gaps between matches stay
+	-- Clear). The server sets the sky for everyone (WeatherService); the grip and speed rules work on players
+	-- (VehicleController), traffic and bots alike. The banner replaces READ THE BOARD while the round gets ready.
+	Weather = {
+		List = {
+			{ Id = "Clear", Name = "", Sub = "", Weight = 4, Color = Color3.new(1, 1, 1), Particle = "", ClockTime = -1, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 1, BotSpeedMult = 1 },
+			{ Id = "Rain", Name = "RAIN!", Sub = "SLICK ROADS. DRIFTS FILL BOOST FAST", Weight = 2, Color = Color3.fromRGB(120, 180, 255), Particle = "Rain", ClockTime = -1, Brightness = 0.6, FogDensity = 0.42, Haze = 1.5, Tint = Color3.fromRGB(205, 215, 230), Saturation = -0.3, GripMult = 0.75, TopSpeedMult = 1, DriftBoostMult = 1.6, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.9, BotSpeedMult = 0.92 },
+			{ Id = "Fog", Name = "FOG!", Sub = "CAN'T SEE A THING. FOLLOW THE ARROW", Weight = 1, Color = Color3.fromRGB(200, 205, 215), Particle = "", ClockTime = -1, Brightness = 0.85, FogDensity = 0.7, Haze = 2.5, Tint = Color3.fromRGB(235, 235, 240), Saturation = -0.35, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.85, BotSpeedMult = 0.9 },
+			{ Id = "Night", Name = "NIGHT SHIFT!", Sub = "NIGHT RATES: FARES x1.25", Weight = 1, Color = Color3.fromRGB(170, 140, 255), Particle = "", ClockTime = 0, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1.25, PayLine = "NIGHT RATES x1.25", TrafficSpeedMult = 1, BotSpeedMult = 1 },
+			{ Id = "Snow", Name = "SNOW!", Sub = "ICY ROADS. EASY ON THE TURNS", Weight = 1, Maps = { City = true }, Color = Color3.fromRGB(220, 240, 255), Particle = "Snow", ClockTime = -1, Brightness = 1.1, FogDensity = 0.4, Haze = 1, Tint = Color3.fromRGB(225, 235, 255), Saturation = -0.25, GripMult = 0.6, TopSpeedMult = 0.92, DriftBoostMult = 1.2, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.8, BotSpeedMult = 0.85 },
+		} :: { WeatherDef },
+		Particles = {
+			Rain = { Texture = "rbxasset://textures/particles/smoke_main.dds", Color = Color3.fromRGB(205, 220, 240), Transparency = 0.15, Size = 0.8, Squash = -3, Rate = 500, Lifetime = 0.7, SpeedMin = 90, SpeedMax = 110, Drift = Vector3.zero, Spin = 0, Streaks = true, Area = 60, Height = 28, Ahead = 28 },
+			Snow = { Texture = "rbxasset://textures/particles/smoke_main.dds", Color = Color3.new(1, 1, 1), Transparency = 0.05, Size = 0.6, Squash = 0, Rate = 160, Lifetime = 5, SpeedMin = 6, SpeedMax = 10, Drift = Vector3.new(2, -1, 1), Spin = 60, Streaks = false, Area = 90, Height = 25, Ahead = 25 },
+		} :: { [string]: WeatherParticles },
 	},
 	-- Fruit stands: market stalls straddling the curb (the map's Features.FruitStands). Drive through one at MinSpeed or
 	-- more and it bursts into flying fruit; with an empty item slot you get a free item, rolled by rank like an item
