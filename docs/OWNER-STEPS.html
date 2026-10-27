@@ -26,19 +26,32 @@
 <body>
 <main>
   <h1>CrazyFare: the parts only you can do</h1>
-  <p class="lead">All six phases are built. These are the dashboard, upload and publish steps that need your Roblox account. Each one is a number pasted into <code>src\shared\Config.luau</code>; the game works without them, it just hides the feature until the id exists.</p>
+  <p class="lead">All six phases are built and the game is published (private). These are the steps that need your Roblox account.</p>
 
-  <h2>1. Publish the place and turn on saving</h2>
+  <h2>1. Publish the place <span style="color:var(--cash)">· done 10/26</span></h2>
   <div class="card">
-    <ol>
-      <li>In Studio: <strong>File → Publish to Roblox</strong>. Pick a name (CrazyFare), set it private for now.</li>
-      <li><strong>Home → Game Settings → Security</strong>: turn on <strong>Enable Studio Access to API Services</strong>. Until this is on, Gems, vehicles and leaderboards reset every time you stop a test (they use an in-memory store in Studio).</li>
-      <li><strong>Game Settings → Places → your place → Max Players: 6</strong>.</li>
-      <li>Before the first public test, set <code>Round.MinPlayers = 2</code> in Config so a round doesn't start for a lone player.</li>
-    </ol>
+    <p>Published as <strong>CrazyFare</strong>, private, owned by you.</p>
+    <ul>
+      <li>Game page: <a href="https://www.roblox.com/games/75634679424787/CrazyFare">roblox.com/games/75634679424787</a></li>
+      <li>Creator Hub: <a href="https://create.roblox.com/dashboard/creations/experiences/10773213053/overview">experience 10773213053</a></li>
+    </ul>
+    <p>Changes I make reach the live game only when it's published again: Studio, <strong>File → Publish to Roblox</strong> (Alt+P). Or ask me.</p>
+    <p class="muted">Live servers save Gems and garage on their own. Studio tests reset them unless you turn on File → Experience Settings → Security → Enable Studio Access to API Services. Before going public, set max players to 6 in Creator Hub → Configure → Places.</p>
   </div>
 
-  <h2>2. Create the products and passes</h2>
+  <h2>2. Get three friends into a test</h2>
+  <div class="card">
+    <ol>
+      <li>Be Roblox friends with them.</li>
+      <li>Open the Creator Hub link above → <strong>Publish settings → Manage Audience</strong> → <strong>Manage access</strong> (top right) → <strong>Public</strong> tab → turn on <strong>Friends</strong> → <strong>Save Changes</strong>. Roblox may first ask for an age check and one question from the maturity questionnaire; your account must be at least 2 days old.</li>
+      <li>Send them the game page link. They press Play.</li>
+      <li>To land in the same server: you join first, then they join you from your profile's Join button. With only friends allowed, pressing Play close together usually works too.</li>
+    </ol>
+    <p>A match starts once two of you are in. Anyone who joins later drops into the round in progress; after the match, everyone presses Rematch and the next one starts together.</p>
+    <p class="muted">What the test is for: is it fun with 4? How do the cars feel? Are fares and tips worth chasing? Tell me what you notice.</p>
+  </div>
+
+  <h2>3. Create the products and passes</h2>
   <p>Creator Dashboard → your experience → <strong>Monetization</strong>. Create each item, copy its id, paste it into the matching line in <code>Config.Monetization</code>. Anything left at 0 shows as COMING SOON in the shop.</p>
   <table>
     <tr><th>Create</th><th>Type</th><th>Suggested price</th><th>Config line</th></tr>
@@ -53,32 +66,16 @@
   </table>
   <p class="muted">Private servers and Premium Payouts are switches in the dashboard, not code: <strong>Access → Private Servers</strong> and they're on by default for Premium engagement.</p>
 
-  <h2>3. Upload sounds</h2>
-  <p>Creator Dashboard → <strong>Development Items → Audio → Upload</strong>. Each upload gives an id; paste it into <code>Config.Sounds.Ids</code>. Every hook is already wired; a 0 stays silent.</p>
-  <table>
-    <tr><th>Sound</th><th>What it's for</th><th>Length</th></tr>
-    <tr><td class="k">Honk</td><td>H key</td><td>0.5 s</td></tr>
-    <tr><td class="k">HonkVip</td><td>H key for VIP owners</td><td>1 s, sillier</td></tr>
-    <tr><td class="k">Engine</td><td>loop, pitch follows speed</td><td>2–4 s seamless loop</td></tr>
-    <tr><td class="k">Drift</td><td>loop while sliding</td><td>1–2 s loop</td></tr>
-    <tr><td class="k">Boost</td><td>nitro or tank boost starts</td><td>1 s</td></tr>
-    <tr><td class="k">Pickup / Deliver / Bail</td><td>fare moments</td><td>0.5–1 s each</td></tr>
-    <tr><td class="k">Splat / Spinout</td><td>getting hit</td><td>0.5 s each</td></tr>
-    <tr><td class="k">Countdown / Go / RoundEnd</td><td>round moments</td><td>short stings</td></tr>
-    <tr><td class="k">Music</td><td>background loop</td><td>60–90 s loop</td></tr>
-    <tr><td class="k">PassengerLines.Board / Angry / Thanks</td><td>passenger voice over the text bubble</td><td>1–2 s each, a few takes later</td></tr>
-  </table>
-  <p class="muted">Use the Creator Store's free audio or your own; licensed music is out, per the design rule.</p>
+  <h2>4. Sounds <span style="color:var(--cash)">· done 10/26</span></h2>
+  <p>Every slot plays a free, Roblox-licensed Creator Store clip, including the crash. To swap one, give me a new id for that slot in <code>Config.Sounds.Ids</code>. Passenger voice lines stay text bubbles for now.</p>
 
-  <h2>4. Art, when you're ready</h2>
+  <h2>5. Art</h2>
   <div class="card">
-    <p>The game runs on parts on purpose. When you want real models, the order that pays off fastest: the Yellow Cab (on screen every second), then the six items (the banana is a placeholder), then the five other vehicles, then landmark buildings. Any model works if it keeps the contract in <code>VehicleBuilder.luau</code>: a <code>Chassis</code> part, four wheel attachments, and the named parts.</p>
+    <p>Done: all four car meshes and the banana and tomato. Still built from parts: Lemon Nitro, Oil Slick, Shield, Seatbelt, the Shopping Cart and the Horse. Buildings are optional (see IMPORT-ART.html).</p>
   </div>
 
-  <h2>5. Rebuilding after you paste ids</h2>
-<pre>cd C:\dev\crazyfare
-.\scripts\check.ps1</pre>
-  <p>That typechecks, lints and rebuilds <code>build\CrazyFare.rbxl</code>. Or ask me to do it.</p>
+  <h2>6. After you paste ids</h2>
+  <p>Send them to me. I run the checks, sync them into Studio and publish again.</p>
 
   <h2 class="danger">Never</h2>
   <ul>
