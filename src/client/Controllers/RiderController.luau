@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local State = require(script.Parent.Parent.State)
 
 local RiderController = {}
 
@@ -125,7 +126,7 @@ local function build(figure: Figure, car: Model, chassis: BasePart, kind: string
 	-- Speech bubble: white, rounded, black text, over the head
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "RiderBubble"
-	gui.Size = UDim2.fromOffset(230, 44)
+	gui.Size = UDim2.fromOffset(170, 30)
 	gui.StudsOffset = Vector3.new(0, cfg.HeadSize / 2 + 2, 0)
 	gui.AlwaysOnTop = true
 	gui.MaxDistance = cfg.BubbleDistance
@@ -135,7 +136,7 @@ local function build(figure: Figure, car: Model, chassis: BasePart, kind: string
 	local back = Instance.new("Frame")
 	back.Size = UDim2.fromScale(1, 1)
 	back.BackgroundColor3 = Color3.new(1, 1, 1)
-	back.BackgroundTransparency = 0.05
+	back.BackgroundTransparency = 0.15
 	back.Parent = gui
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 14)
@@ -206,7 +207,11 @@ local function update(car: Model)
 		current.lineId = lineId
 		local line = car:GetAttribute("RiderLine")
 		if typeof(line) == "string" and car:GetAttribute("RiderLineHide") ~= localPlayer.UserId then
-			showLine(current, line)
+			if car:GetAttribute("OwnerUserId") == localPlayer.UserId then
+				State.RiderSaid:Fire(line) -- your own passenger talks in the HUD's bubble: one bubble over your cab, never two
+			else
+				showLine(current, line)
+			end
 		end
 	end
 end

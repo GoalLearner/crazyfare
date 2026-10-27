@@ -64,7 +64,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ### Where to
 - Every drop-off has a **name**, given out when the map is built: a drop-off on a landmark or park block takes its name (THE STADIUM, HOTEL ZEPHYR, RADIO TOWER, CITY PARK), the rest take the map's list in order (City: THE BURGER JOINT, THE MALL, THE HOSPITAL... Beach: THE PIER, THE SURF SHOP...). Storefront decoration never reuses a destination's name.
 - **Rooftop signs** float over every drop-off; the current destination's sign grows and lights up in the fare's tier color.
-- On boarding the passenger shouts **"TAKE ME TO THE STADIUM!"** in a speech bubble over the cab. The fare card leads with the destination name; the tall beam carries it too.
+- On boarding the passenger shouts **"TAKE ME TO THE STADIUM!"** in a small speech bubble over the cab (1.5 s). Their later lines use the same bubble, so there is only ever one over your cab; rivals' passengers talk only when you're within 90 studs, at most once every 4 s. The fare card leads with the destination name; the tall beam carries it too.
 - A **glowing ring** on the ground marks the zone you must stop inside (the delivery radius), with a pulsing disc.
 - The fare's **countdown** floats big beside the cab: white, then yellow at 10 s, then red with a tick every second at 5 s.
 - Pulling up within 70 studs slides the destination's **name banner** across the screen.
@@ -73,7 +73,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - Drifting and near-misses also fill a small **boost tank** (capacity = the vehicle's `BoostTank` stat). Hold Shift to spend it for speed. LemonNitro is separate: an instant 3 s burst.
 
 ### Dash and speed feel
-- **Dash:** hold brake while almost stopped (under 15 studs/s), let go and hit the gas within a third of a second: the cab launches (an instant kick to 35, then x1.4 top speed and x2.5 acceleration for 1.2 s, 1 s cooldown). "DASH!" pops over the cab. A trick for leaving a pickup fast, not a paid stunt. It does not stack with Lemon Nitro (the bigger push wins).
+- **Dash:** from a near-standstill (under 8 studs/s), tap the brake (0.2-0.8 s) and hit the gas within 0.3 s: the cab launches (an instant kick to 35, then x1.4 top speed and x2.5 acceleration for 1.2 s, 1 s cooldown). "DASH!" pops over the cab. A deliberate trick for leaving a pickup fast, not a paid stunt; holding the brake longer is reversing and never dashes (it used to fire by accident when stopping at pickups or backing off walls). It does not stack with Lemon Nitro (the bigger push wins).
 - Any boost (Shift, Lemon Nitro, Dash) lights **exhaust flames** with an orange glow, a whoosh as it lights and a rocket roar while it lasts; the camera widens.
 - Near top speed (and while boosting) **speed streaks** race out from the middle of the screen.
 - Landing after airtime throws a **ring of dust puffs** and a thump; drifting coughs **tire smoke** puffs from the rear wheels. Dust and smoke are cartoon puffs (balls that swell and fade) so they read on pale roads and match the blocky city.

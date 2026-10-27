@@ -77,6 +77,7 @@ local notice: Signal.Signal<string> = Signal.new()
 local shake: Signal.Signal<number> = Signal.new()
 local dashed: Signal.Signal<nil> = Signal.new()
 local landed: Signal.Signal<number> = Signal.new()
+local riderSaid: Signal.Signal<string> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -92,6 +93,7 @@ State.Notice = notice -- one-shot HUD messages from the server (quest done, leve
 State.Shake = shake -- camera shake strength (Config.Shake)
 State.Dashed = dashed -- the local cab just launched a Dash
 State.Landed = landed -- the local cab touched down after this many seconds of air
+State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's bubble over your cab, never stacked)
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

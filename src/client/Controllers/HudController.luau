@@ -365,7 +365,7 @@ local function build()
 	stampLabel = UI.Label({ Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 1, -12), TextStrokeTransparency = 0.2 }, stampRoot)
 
 	-- The passenger's shout: a speech bubble that rides above the cab
-	shoutRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(400, 46), BackgroundColor3 = UI.White, BackgroundTransparency = 0.04, Visible = false }, screen)
+	shoutRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(290, 34), BackgroundColor3 = UI.White, BackgroundTransparency = 0.15, Visible = false }, screen)
 	UI.Corner(14, shoutRoot)
 	shoutScale = UI.New("UIScale", {}, shoutRoot) :: UIScale
 	shoutLabel = UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.new(1, -24, 1, -10), TextColor3 = UI.Black, TextStrokeTransparency = 1 }, shoutRoot)
@@ -716,6 +716,7 @@ function HudController.Init()
 	State.Dashed:Connect(function()
 		addPopup("Dash", 0) -- "DASH!" over the cab, no cash: a trick, not a paid stunt
 	end)
+	State.RiderSaid:Connect(showShout) -- your passenger's lines take over the one bubble over your cab
 end
 
 function HudController.Start()

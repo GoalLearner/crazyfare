@@ -208,11 +208,12 @@ local function step(rawDt: number)
 	-- Dash: brake held while almost stopped arms it; gas soon after letting go launches it.
 	if throttle < 0 and math.abs(forwardSpeed) < C.DashMaxSpeed then
 		brakeHeldFor += dt
-	elseif brakeHeldFor >= C.DashArmSeconds then
+	elseif throttle >= 0 and brakeHeldFor >= C.DashArmSeconds and brakeHeldFor <= C.DashArmMax then
+		-- a short brake tap at a standstill, just let go: gas now launches
 		brakeHeldFor = 0
 		dashArmedUntil = now + C.DashWindow
 	else
-		brakeHeldFor = 0
+		brakeHeldFor = 0 -- rolling too fast, reversing away, or a long hold: no Dash
 	end
 	if throttle > 0 and now < dashArmedUntil and now >= dashReadyAt and math.abs(forwardSpeed) < C.DashMaxSpeed then
 		dashArmedUntil = 0
