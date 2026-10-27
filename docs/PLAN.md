@@ -108,6 +108,7 @@ Verification
 - [x] Beach map (sand cells slow to 70%, boardwalk ring at 110%, water, palms) as a Config map entry; maps rotate per match; UnlockGems recorded for private-server choice later
 - [x] City decoration pass: streetlights, traffic lights, storefront signs with invented names, hotel / arena / antenna landmarks
 - [x] Ambient traffic: 10 civilian cars at spread-out speeds (18-50) in right-hand lanes, following slower cars, random turns; one direction through an intersection at a time; a hit is a crash (at least a small one), a near miss feeds combo and boost
+- [x] Pedestrians: 16 walkers on the block sidewalks, crossing at corners when clear (run if a car bears down); traffic stops for them and for walking-back passengers; a player car that clips one makes its passenger walk out (cartoon hop + yell, mild violence)
 - [ ] Real meshes (cab first, then the six items: the parts banana is a placeholder, owner's words 2026-10-26)
 - [x] Layout pass v1: landmarks on three corners, two alley shortcuts through blocks (more loops when real art lands)
 - [x] Sound hooks for every moment (ids 0 until the owner uploads audio), camera shake on splat / spinout / crash, passenger voice line hooks, music loop

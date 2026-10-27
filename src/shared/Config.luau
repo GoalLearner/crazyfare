@@ -73,6 +73,51 @@ Config.Tags = {
 	Traffic = "Traffic", -- ambient NPC cars (near-miss targets)
 }
 
+-- Pedestrians (PedestrianService): walk the sidewalk around each block and cross the street at the corners when no
+-- car is coming. Hit one and your passenger walks out. The reaction is a cartoon hop, spin and yell, never a knockdown
+-- or injury, which keeps the game in Roblox's "mild violence" band.
+Config.Pedestrians = {
+	Count = 16, -- per map
+	WalkSpeed = 5, -- studs/s
+	RunMult = 2.4, -- crossing with a car bearing down
+	RingInset = 5.5, -- walking line in from the block edge (inside the waiting passengers, clear of the buildings)
+	WalkWeight = 1, -- odds at a corner: keep walking around the block vs cross the street
+	CrossWeight = 1.5,
+	SafeDistance = 60, -- a car closer than this and heading for the crosswalk: wait at the curb
+	ClearDistance = 14, -- any car this close to the middle of the crosswalk: wait
+	PanicDistance = 28, -- mid-crossing, a car this close heading at them: run
+	MaxWait = 12, -- seconds at a curb before walking on around the block instead
+	SpawnSpacing = 10,
+	SpawnTries = 30,
+	HitRadius = 1.2, -- body half-width added to the car's box
+	HitMinSpeed = 6, -- a car slower than this just nudges past
+	HitImmuneSeconds = 2,
+	HopHeight = 5,
+	HopSeconds = 0.7,
+	BubbleSeconds = 1.8,
+	BillboardDistance = 160,
+	HitLines = { "HEY!!", "WATCH IT!", "EYES ON THE ROAD!", "I HAD THE WALK SIGN!", "NOT COOL!" },
+	SkinColors = {
+		Color3.fromRGB(240, 205, 175),
+		Color3.fromRGB(210, 160, 120),
+		Color3.fromRGB(160, 110, 75),
+		Color3.fromRGB(105, 70, 50),
+	},
+	ShirtColors = {
+		Color3.fromRGB(220, 90, 90),
+		Color3.fromRGB(90, 140, 220),
+		Color3.fromRGB(240, 240, 240),
+		Color3.fromRGB(150, 100, 200),
+		Color3.fromRGB(240, 160, 60),
+		Color3.fromRGB(70, 160, 140),
+	},
+	PantsColors = {
+		Color3.fromRGB(50, 60, 90),
+		Color3.fromRGB(40, 40, 45),
+		Color3.fromRGB(120, 100, 80),
+	},
+}
+
 -- Physics collision groups. Traffic hits player cars only: not the map, not other traffic.
 Config.CollisionGroups = {
 	Default = "Default", -- Roblox's built-in group (the map)
@@ -197,9 +242,11 @@ Config.Traffic = {
 	Brake = 40, -- studs/s^2 when closing on a slower car ahead
 	FollowGap = 24, -- inside this gap (lane point to lane point) a car matches the car ahead; at a body length it stops
 	MinImpactSpeed = 15, -- closing speed into a traffic car that counts as a crash (at least a small one); below is a nudge
-	JunctionApproach = 55, -- inside this distance of the next intersection's center a car claims it, or stops to wait its turn
+	JunctionApproach = 60, -- inside this distance of the next intersection's center a car claims it, or stops to wait its turn
 	JunctionClear = 24, -- a car holds the intersection until its lane point is this far past the center
-	StopLine = 19, -- a waiting car stops with its lane point this far from the center, clear of the crossing lanes
+	StopLine = 25, -- a waiting car stops with its lane point this far from the center: clear of the crossing lanes and behind the crosswalk
+	PedestrianStopDistance = 45, -- someone crossing this far ahead: the car stops for them (a car at full cruise needs ~31 to stop)
+	PedestrianLaneHalf = 13, -- either side of the lane line that counts: the whole crossing, not just the car's own lane
 	LaneOffset = 6, -- lane center from the road center line
 	StraightWeight = 2, -- odds at an intersection: straight vs each possible turn
 	TurnWeight = 1,

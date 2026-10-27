@@ -17,6 +17,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local VehicleBuilder = require(ReplicatedStorage.Shared.VehicleBuilder)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
+local PedestrianService = require(script.Parent.PedestrianService)
+local PassengerService = require(script.Parent.PassengerService)
 
 local TrafficService = {}
 
@@ -48,6 +50,7 @@ local RAY_LENGTH = 120
 
 local cars: { Car } = {}
 local holds: { [string]: Hold } = {}
+local crossers: { Vector3 } = {} -- pedestrians and walking-back passengers out in the road this frame
 local folder: Folder
 local groundParams: RaycastParams
 local rng = Random.new()
@@ -236,6 +239,14 @@ local function updateSpeed(car: Car, dt: number)
 			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine, 0)))
 		end
 	end
+	-- Someone crossing in its lane ahead: stop short of them.
+	for _, crosser in crossers do
+		local rel = crosser - car.rabbit
+		local ahead = rel:Dot(car.dir)
+		if ahead > 0 and ahead < cfg.PedestrianStopDistance and math.abs(across(rel, car.dir)) < cfg.PedestrianLaneHalf then
+			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(ahead - cfg.BodySize.Z / 2 - 2, 0)))
+		end
+	end
 	if target > car.speed then
 		car.speed = math.min(target, car.speed + cfg.Accel * dt)
 	else
@@ -406,6 +417,10 @@ end
 function TrafficService.Start()
 	spawnAll()
 	RunService.Heartbeat:Connect(function(dt: number)
+		crossers = PedestrianService.GetCrossers()
+		for _, walker in PassengerService.GetWalkersInRoad() do
+			table.insert(crossers, walker)
+		end
 		local lost: { number } = {}
 		for i = #cars, 1, -1 do
 			local car = cars[i]

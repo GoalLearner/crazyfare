@@ -375,6 +375,31 @@ function PassengerService.GetAll(): { [number]: Npc }
 	return npcs
 end
 
+-- Passengers walking back who are out in the road right now (not on a block), so traffic can stop for them.
+function PassengerService.GetWalkersInRoad(): { Vector3 }
+	local B = MapService.GetBlockout()
+	local half = B.CellSize / 2
+	local list: { Vector3 } = {}
+	for _, npc in npcs do
+		if npc.state ~= 2 then
+			continue
+		end
+		local p = npc.torso.Position
+		local onBlock = false
+		for _, cx in B.CellCenters do
+			for _, cz in B.CellCenters do
+				if math.abs(p.X - cx) < half and math.abs(p.Z - cz) < half then
+					onBlock = true
+				end
+			end
+		end
+		if not onBlock then
+			table.insert(list, Vector3.new(p.X, 0, p.Z))
+		end
+	end
+	return list
+end
+
 function PassengerService.GetLoaded(player: Player): Npc?
 	return loadedByPlayer[player]
 end
