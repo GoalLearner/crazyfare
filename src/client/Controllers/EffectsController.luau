@@ -197,7 +197,7 @@ local function setBeacon(fare: State.FareInfo?)
 		setActiveDestination(0, UI.White)
 		return
 	end
-	local color = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Color
+	local color = if fare.golden then Config.Golden.Color else (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Color
 	buildRing(fare.destination, color)
 	setActiveDestination(fare.destinationIndex, color)
 	local h = Config.Hud.BeaconHeight

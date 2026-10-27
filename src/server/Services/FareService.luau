@@ -221,7 +221,9 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		npcId = npc.id,
 		expired = false,
 		tier = npc.tier,
-		base = Money.Cents(tierDef.Base),
+		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult else 1),
+		kind = npc.kind,
+		golden = npc.golden,
 		pickupIndex = npc.pickupIndex,
 		destinationIndex = destination.index,
 		destination = destination.position,
@@ -243,6 +245,8 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		destinationName = destination.name,
 		startedAt = now,
 		deadline = fare.deadline,
+		passenger = npc.kind,
+		golden = npc.golden,
 	})
 	-- Everyone else nearby and empty sees TAKEN.
 	for other, entry in VehicleService.GetAll() do
@@ -265,8 +269,10 @@ local function onStunt(player: Player, kind: string, units: number, chain: numbe
 	local fare = fares[player]
 	local amount = 0
 	if enabled and fare and not fare.expired then
-		local raw = Money.Cents(units * (cfg.Pay[kind] or 0)) * (1 + cfg.ChainBonus * (chain - 1)) * tipJarMult(player)
-		local room = math.max(0, math.round(fare.base * cfg.MaxPerFareFrac) - fare.stuntTips)
+		local kindDef = Config.PassengerTypes.Kinds[fare.kind]
+		local stuntMult = if kindDef then kindDef.StuntMult else 1 -- Thrill Seekers pay double, and their cap doubles too
+		local raw = Money.Cents(units * (cfg.Pay[kind] or 0)) * (1 + cfg.ChainBonus * (chain - 1)) * tipJarMult(player) * stuntMult
+		local room = math.max(0, math.round(fare.base * cfg.MaxPerFareFrac * stuntMult) - fare.stuntTips)
 		amount = math.min(room, math.round(raw))
 		if amount > 0 then
 			fare.stuntTips += amount
@@ -287,6 +293,23 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local chill = VecUtil.Clamp01((hpFrac - tips.HpFloor) / (1 - tips.HpFloor))
 	local tipRaw = if allowTip then fare.base * tips.MaxFrac * (tips.TimeWeight * speedy + tips.ChillWeight * chill) else 0
 	tipRaw *= tipJarMult(player)
+	-- The passenger's kind bends the tip: a Thrill Seeker who got no stunt halves it, a Nervous one who arrived without
+	-- a scratch doubles it. `bonus` tells the driver why.
+	local bonus: string? = if fare.golden then Config.Golden.PayLine else nil
+	local kindDef = Config.PassengerTypes.Kinds[fare.kind]
+	if kindDef and allowTip then
+		local mult = 1
+		if fare.stuntTips <= 0 then
+			mult *= kindDef.NoStuntTipMult
+		end
+		if npc.hp >= npc.maxHp then
+			mult *= kindDef.SmoothTipMult
+		end
+		if mult ~= 1 then
+			tipRaw *= mult
+			bonus = if bonus then bonus .. "  ·  " .. kindDef.TipLine else kindDef.TipLine
+		end
+	end
 	local tipShown = math.round(tipRaw)
 	-- Stunt cash rides in the fare (Config.Stunts.HoldUntilDelivery) and is lost with the tip on a late arrival.
 	local stunts = if allowTip then fare.stuntTips else 0
@@ -308,6 +331,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		stunts = stunts,
 		grade = grade,
 		line = if allowTip then nil else "LATE. NO TIP.",
+		bonus = bonus,
 	})
 	FareService.AddCash(player, payout)
 	onDelivered:Fire(player, fare.tier, tipShown + stunts)
@@ -408,13 +432,13 @@ function FareService.Init()
 		fire(player, { kind = "ChainBroken", chain = chain, reason = reason })
 	end)
 	PassengerService.OnDamaged:Connect(function(player: Player, amount: number, source: string)
-		local lines = Config.Passenger.CrashLines
-		fire(player, {
-			kind = "Hurt",
-			amount = math.round(amount),
-			source = source,
-			line = if source == "crash" then lines[rng:NextInteger(1, #lines)] else nil,
-		})
+		-- What the passenger yells about it comes from the rider in the cab (RiderService), where everyone sees it.
+		fire(player, { kind = "Hurt", amount = math.round(amount), source = source })
+	end)
+	PassengerService.OnGoldenSpawned:Connect(function(npc: PassengerService.Npc)
+		for _, player in Players:GetPlayers() do
+			fire(player, { kind = "Golden", npcId = npc.id, position = npc.position, tier = npc.tier })
+		end
 	end)
 	Players.PlayerAdded:Connect(function(player: Player)
 		wallet[player] = 0

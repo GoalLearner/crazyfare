@@ -1,6 +1,7 @@
 --!strict
--- NPC passengers: spawning by tier weighting, boarding, HP (damage and crashes; no regen), bailing and walking back,
--- delivery thanks. FareService owns the money side and listens to OnBailed.
+-- NPC passengers: spawning by tier weighting, personality (Config.PassengerTypes) and the rare Golden Fare, boarding,
+-- HP (damage and crashes; no regen), bailing and walking back, delivery thanks. FareService owns the money side and
+-- listens to OnBailed; RiderService puts the passenger in the cab on OnBoarded and takes them out on OnUnloaded.
 
 local TweenService = game:GetService("TweenService")
 local CollectionService = game:GetService("CollectionService")
@@ -18,6 +19,8 @@ export type Npc = {
 	model: Model,
 	torso: BasePart,
 	tier: string,
+	kind: string, -- Config.PassengerTypes.Kinds key
+	golden: boolean, -- the Golden Fare: triple pay, gold beam, everyone told
 	state: number, -- 0 available, 1 boarded, 2 walking back, 3 thanking
 	pickupIndex: number, -- point it stands at (or is walking to)
 	position: Vector3,
@@ -34,8 +37,14 @@ local PassengerService = {}
 
 local onBailed: Signal.Signal<Player, Npc, string, Player?> = Signal.new()
 local onDamaged: Signal.Signal<Player, number, string> = Signal.new()
+local onBoarded: Signal.Signal<Player, Npc> = Signal.new()
+local onUnloaded: Signal.Signal<Player, Npc> = Signal.new()
+local onGoldenSpawned: Signal.Signal<Npc> = Signal.new()
 PassengerService.OnBailed = onBailed -- (victim, npc, reason "hp" | "timeout", attacker when a rival caused it)
 PassengerService.OnDamaged = onDamaged -- (player, amount, source)
+PassengerService.OnBoarded = onBoarded -- (player, npc) the passenger got in
+PassengerService.OnUnloaded = onUnloaded -- (player, npc) the passenger got out (delivered, bailed, released)
+PassengerService.OnGoldenSpawned = onGoldenSpawned -- (npc) a Golden Fare just appeared at a curb
 
 local npcs: { [number]: Npc } = {}
 local loadedByPlayer: { [Player]: Npc } = {}
@@ -103,16 +112,50 @@ local function standCFrame(groundPos: Vector3, look: Vector3): CFrame
 	return CFrame.lookAt(pos, pos + VecUtil.FlatUnit(look))
 end
 
+-- The Golden Fare's marks: a gold ring at the feet, a tall gold pillar over the curb, sparkles and a glow.
+local function addGoldenMarks(model: Model, torso: BasePart, torsoCf: CFrame)
+	local g = Config.Golden
+	local ring = makePart("GoldenRing", Vector3.new(0.3, g.RingRadius * 2, g.RingRadius * 2), torsoCf * CFrame.new(0, -2.4, 0) * CFrame.Angles(0, 0, math.pi / 2), g.Color, model)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.35
+	weld(torso, ring)
+	local beam = makePart("GoldenBeam", Vector3.new(g.BeamHeight, g.BeamWidth, g.BeamWidth), torsoCf * CFrame.new(0, g.BeamHeight / 2 - 2.5, 0) * CFrame.Angles(0, 0, math.pi / 2), g.Color, model)
+	beam.Shape = Enum.PartType.Cylinder
+	beam.Material = Enum.Material.Neon
+	beam.Transparency = 0.55
+	beam.CastShadow = false
+	weld(torso, beam)
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Color = ColorSequence.new(g.Color)
+	sparkles.LightEmission = 1
+	sparkles.Rate = 18
+	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkles.Speed = NumberRange.new(2, 5)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Size = NumberSequence.new(0.5, 0)
+	sparkles.Parent = torso
+	local light = Instance.new("PointLight")
+	light.Color = g.Color
+	light.Range = 14
+	light.Brightness = 2
+	light.Parent = torso
+end
+
 local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, BasePart, TextLabel, TextLabel)
 	local tierDef = Config.Fares.Tiers[npc.tier]
+	local kindDef = Config.PassengerTypes.Kinds[npc.kind] or Config.PassengerTypes.Kinds.Regular
+	local badgeColor = if npc.golden then Config.Golden.Color else tierDef.Color
 	local model = Instance.new("Model")
 	model.Name = "NPC_" .. npc.id
 	model:SetAttribute("NpcId", npc.id)
 	model:SetAttribute("Tier", npc.tier)
+	model:SetAttribute("Kind", npc.kind)
+	model:SetAttribute("Golden", npc.golden)
 	CollectionService:AddTag(model, Config.Tags.Npc)
 
 	local torsoCf = standCFrame(groundPos, look)
-	local torso = makePart("Torso", Vector3.new(1.6, 1.8, 0.9), torsoCf, tierDef.Color, model)
+	local torso = makePart("Torso", Vector3.new(1.6, 1.8, 0.9), torsoCf, badgeColor, model)
 	torso.Anchored = true
 	model.PrimaryPart = torso
 
@@ -122,13 +165,18 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	for _, side in { -1, 1 } do
 		local leg = makePart("Leg", Vector3.new(0.7, 1.6, 0.7), torsoCf * CFrame.new(0.45 * side, -1.7, 0), PANTS, model)
 		weld(torso, leg)
-		local arm = makePart("Arm", Vector3.new(0.5, 1.5, 0.5), torsoCf * CFrame.new(1.05 * side, 0.1, 0), tierDef.Color, model)
+		local arm = makePart("Arm", Vector3.new(0.5, 1.5, 0.5), torsoCf * CFrame.new(1.05 * side, 0.1, 0), badgeColor, model)
 		weld(torso, arm)
 	end
+	if npc.golden then
+		addGoldenMarks(model, torso, torsoCf)
+	end
 
-	local icon = makeLabel(head, "Icon", UDim2.fromOffset(46, 46), Vector3.new(0, 1.6, 0))
-	icon.Text = "$"
-	icon.TextColor3 = tierDef.Color
+	-- The badge: tier color ring, the kind's icon inside ($, a bolt, a nervous face; a star for the Golden Fare)
+	local iconSize = if npc.golden then 60 else 46
+	local icon = makeLabel(head, "Icon", UDim2.fromOffset(iconSize, iconSize), Vector3.new(0, 1.6, 0))
+	icon.Text = if npc.golden then Config.Golden.Icon else kindDef.Icon
+	icon.TextColor3 = badgeColor
 	local iconFrame = icon.Parent :: BillboardGui
 	local ring = Instance.new("Frame")
 	ring.Size = UDim2.fromScale(1, 1)
@@ -141,7 +189,7 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	corner.Parent = ring
 	local stroke = Instance.new("UIStroke")
 	stroke.Thickness = 3
-	stroke.Color = tierDef.Color
+	stroke.Color = badgeColor
 	stroke.Parent = ring
 	icon.ZIndex = 2
 
@@ -198,7 +246,7 @@ local function unload(player: Player): Npc?
 	npc.boardedBy = nil
 	immuneUntil[player] = nil
 	lastAttacker[player] = nil
-	VehicleService.SetSilhouette(player, false)
+	onUnloaded:Fire(player, npc)
 	return npc
 end
 
@@ -255,8 +303,35 @@ local function walkTo(npc: Npc, point: MapService.Point)
 	tween:Play()
 end
 
-function PassengerService.SpawnAt(point: MapService.Point, tier: string): Npc
+local function pickKind(): string
+	local kinds = Config.PassengerTypes
+	local total = 0
+	for _, kind in kinds.Order do
+		total += kinds.Kinds[kind].Weight
+	end
+	local r = rng:NextNumber() * total
+	for _, kind in kinds.Order do
+		r -= kinds.Kinds[kind].Weight
+		if r <= 0 then
+			return kind
+		end
+	end
+	return kinds.Order[1]
+end
+
+local function goldenInPlay(): boolean
+	for _, npc in npcs do
+		if npc.golden and npc.state ~= 3 then
+			return true
+		end
+	end
+	return false
+end
+
+-- `golden` true forces a Golden Fare (debug); nil rolls Config.Golden.Chance while none is in play.
+function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?): Npc
 	local tierDef = Config.Fares.Tiers[tier]
+	local isGolden = if golden ~= nil then golden else (not goldenInPlay() and rng:NextNumber() < Config.Golden.Chance)
 	local id = nextId
 	nextId += 1
 	local groundY = MapService.GroundY(point.position, point.position.Y)
@@ -264,6 +339,8 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string): Npc
 	local npc = {
 		id = id,
 		tier = tier,
+		kind = if isGolden then "Regular" else pickKind(),
+		golden = isGolden,
 		state = 0,
 		pickupIndex = point.index,
 		position = groundPos,
@@ -278,7 +355,28 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string): Npc
 	local typed = npc :: Npc
 	npcs[id] = typed
 	npcAtPickup[point.index] = id
+	if isGolden then
+		onGoldenSpawned:Fire(typed)
+	end
 	return typed
+end
+
+-- Debug: a Golden Fare at a random free curb (nil when every curb is taken or one is already in play).
+function PassengerService.SpawnGolden(): Npc?
+	if goldenInPlay() then
+		return nil
+	end
+	local free: { MapService.Point } = {}
+	for _, point in MapService.GetPickups() do
+		if not npcAtPickup[point.index] then
+			table.insert(free, point)
+		end
+	end
+	if #free == 0 then
+		return nil
+	end
+	local point = free[rng:NextInteger(1, #free)]
+	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), true)
 end
 
 -- Which tiers are currently on the board (available or walking back).
@@ -420,7 +518,7 @@ function PassengerService.Board(npc: Npc, player: Player)
 	loadedByPlayer[player] = npc
 	lastDamageAt[player] = nil
 	npc.model.Parent = nil
-	VehicleService.SetSilhouette(player, true)
+	onBoarded:Fire(player, npc)
 end
 
 -- Seatbelt: passenger ignores all damage until this server time.
@@ -460,6 +558,10 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 	local stats = if entry then Config.Vehicles.Stats[entry.vehicleId] else nil
 	if stats and stats.PassengerDamageMult then
 		amount *= stats.PassengerDamageMult
+	end
+	if source == "crash" then
+		local kindDef = Config.PassengerTypes.Kinds[npc.kind]
+		amount *= if kindDef then kindDef.CrashMult else 1 -- Nervous passengers feel every bump
 	end
 	amount = math.min(amount, npc.hp) -- report what was actually lost (a Tomato hit is far more than any HP)
 	npc.hp = math.max(0, npc.hp - amount)
@@ -520,6 +622,10 @@ function PassengerService.Deliver(player: Player): Npc?
 	npc.position = exitPos
 	npc.state = 3
 	npc.torso.CFrame = standCFrame(exitPos, look)
+	local beam = npc.model:FindFirstChild("GoldenBeam")
+	if beam then
+		beam:Destroy() -- a delivered Golden Fare is spent: no pillar to lure rivals while it says thanks
+	end
 	npc.model.Parent = folder
 	showBubble(npc, randomLine(Config.Passenger.ThanksLines), Config.Fares.ThanksSeconds)
 	task.delay(Config.Fares.ThanksSeconds, function()
@@ -571,8 +677,8 @@ function PassengerService.ClearAll()
 	end
 	table.clear(npcs)
 	table.clear(npcAtPickup)
-	for player in loadedByPlayer do
-		VehicleService.SetSilhouette(player, false)
+	for player, npc in loadedByPlayer do
+		onUnloaded:Fire(player, npc)
 	end
 	table.clear(loadedByPlayer)
 	table.clear(lastDamageAt)
@@ -591,6 +697,8 @@ function PassengerService.Snapshot(): { Types.NpcSnap }
 				z = math.round(pos.Z * 10) / 10,
 				tier = npc.tier :: string,
 				state = npc.state,
+				kind = npc.kind,
+				golden = npc.golden,
 			})
 		end
 	end

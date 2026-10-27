@@ -45,6 +45,9 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	SpawnNpc = function()
 		PassengerService.SpawnWeighted()
 	end,
+	SpawnGolden = function()
+		PassengerService.SpawnGolden()
+	end,
 	AddGems = function(player, arg)
 		if typeof(arg) == "number" then
 			DataService.AddGems(player, math.round(arg))

@@ -62,6 +62,8 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			startedAt = payload.startedAt,
 			deadline = payload.deadline,
 			stunts = 0,
+			passenger = payload.passenger or "Regular",
+			golden = payload.golden == true,
 		}
 	elseif payload.kind == "Stunt" then
 		local fare = State.fare

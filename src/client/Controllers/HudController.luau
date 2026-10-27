@@ -88,6 +88,11 @@ local function tierColor(tier: string): Color3
 	return if def then def.Color else UI.White
 end
 
+-- A fare's color: its tier's, or gold for a Golden Fare.
+local function fareColor(fare: State.FareInfo): Color3
+	return if fare.golden then Config.Golden.Color else tierColor(fare.tier)
+end
+
 local function showMessage(text: string, color: Color3, seconds: number, sub: string?)
 	message.Text = text
 	message.TextColor3 = color
@@ -479,6 +484,9 @@ local function onFare(payload: Types.FareEventPayload)
 		if payload.line then
 			table.insert(parts, payload.line)
 		end
+		if payload.bonus then
+			table.insert(parts, payload.bonus)
+		end
 		showMessage("+" .. UI.Money(payload.payout or 0), UI.Cash, Config.Hud.PayoutPunchSeconds, if #parts > 0 then table.concat(parts, "  ·  ") else nil)
 		burstCoins(payload.payout or 0)
 		if payload.grade then
@@ -494,7 +502,10 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Hurt" and payload.source == "crash" then
-		showMessage(payload.line or "OW!", UI.Danger, Config.Hud.CrashMessageSeconds, string.format("-%d HP", payload.amount or 0))
+		showMessage(string.format("-%d HP", payload.amount or 0), UI.Danger, Config.Hud.CrashMessageSeconds) -- the rider yells the line
+	elseif payload.kind == "Golden" then
+		local g = Config.Golden
+		showMessage(g.Announce, g.Color, g.AnnounceSeconds, g.AnnounceSub)
 	elseif payload.kind == "Stunt" then
 		local before = chain
 		chain = payload.chain or chain
@@ -597,8 +608,10 @@ local function update(dt: number)
 	if fare and phase == "Playing" then
 		fareCard.Visible = true
 		fareDest.Text = if fare.destinationName ~= "" then fare.destinationName else "DROP-OFF"
-		fareDest.TextColor3 = tierColor(fare.tier)
-		fareTier.Text = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
+		fareDest.TextColor3 = fareColor(fare)
+		local tierLabel = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
+		fareTier.Text = if fare.golden then Config.Golden.Label .. " " .. tierLabel else tierLabel
+		fareTier.TextColor3 = if fare.golden then Config.Golden.Color else UI.Muted
 		RollingCounter.SetTarget(fareCounter, fare.base + fare.stunts)
 		stepCounter(fareCounter, dt, 1.25)
 		local total = math.max(0.01, fare.deadline - fare.startedAt)
@@ -606,7 +619,8 @@ local function update(dt: number)
 		UI.SetBar(fareTimer, remaining, if remaining < 0.25 then UI.Danger else UI.Warn)
 		local hpFrac = if State.maxHp > 0 then State.hp / State.maxHp else 1
 		UI.SetBar(fareHp, hpFrac, if hpFrac > 0.5 then UI.Cash else (if hpFrac > 0.25 then UI.Warn else UI.Danger))
-		fareHpLabel.Text = string.format("PASSENGER %d/%d", math.round(State.hp), State.maxHp)
+		local kindDef = Config.PassengerTypes.Kinds[fare.passenger] or Config.PassengerTypes.Kinds.Regular
+		fareHpLabel.Text = string.format("%s %d/%d", kindDef.Label, math.round(State.hp), State.maxHp)
 
 		-- Destination arrow relative to the camera heading
 		local ch = State.chassis
@@ -616,7 +630,7 @@ local function update(dt: number)
 			local dist = toDest.Magnitude
 			if not arrivalShown and fare.destinationName ~= "" and dist <= Config.Hud.ArrivalDistance then
 				arrivalShown = true
-				showArrival(fare.destinationName, tierColor(fare.tier))
+				showArrival(fare.destinationName, fareColor(fare))
 			end
 			local camLook = VecUtil.FlatUnit(camera.CFrame.LookVector)
 			local dir = VecUtil.FlatUnit(toDest, camLook)

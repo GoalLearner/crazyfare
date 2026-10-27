@@ -42,6 +42,19 @@ export type VehicleStats = {
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
 
+-- A passenger personality (Config.PassengerTypes.Kinds). Multipliers of 1 change nothing.
+export type PassengerKindDef = {
+	Weight: number, -- spawn odds against the other kinds
+	Label: string, -- fare card ("THRILL SEEKER 80/80")
+	Icon: string, -- badge over the NPC's head
+	Shirt: Color3, -- the rider's shirt in the cab
+	StuntMult: number, -- stunt cash (and the per-fare stunt cap) x this
+	CrashMult: number, -- crash damage x this
+	NoStuntTipMult: number, -- tip x this when the ride had no stunt at all
+	SmoothTipMult: number, -- tip x this when the passenger arrives without a scratch
+	TipLine: string, -- shown with the payout when one of the tip rules kicked in
+}
+
 export type PitStopCardDef = { Name: string, Effect: string, Share: number, Value: number } -- Share: price as a fraction of the next round's quota
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
 export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string? }
@@ -187,6 +200,71 @@ Config.Fares = {
 	GuaranteeEachTier = true, -- a board of 3+ always holds at least one green, one yellow and one red
 }
 
+-- Passenger personalities. Every NPC rolls one when it spawns: its badge and minimap dot show it, the rider in the cab
+-- acts it out, and its rules bend the fare.
+Config.PassengerTypes = {
+	Order = { "Regular", "ThrillSeeker", "Nervous" },
+	Kinds = {
+		Regular = { Weight = 60, Label = "PASSENGER", Icon = "$", Shirt = Color3.fromRGB(70, 130, 220), StuntMult = 1, CrashMult = 1, NoStuntTipMult = 1, SmoothTipMult = 1, TipLine = "" },
+		ThrillSeeker = { Weight = 20, Label = "THRILL SEEKER", Icon = "\u{26A1}", Shirt = Color3.fromRGB(255, 120, 30), StuntMult = 2, CrashMult = 1, NoStuntTipMult = 0.5, SmoothTipMult = 1, TipLine = "NO THRILLS  TIP HALVED" },
+		Nervous = { Weight = 20, Label = "NERVOUS", Icon = "\u{1F62C}", Shirt = Color3.fromRGB(150, 200, 230), StuntMult = 1, CrashMult = 1.5, NoStuntTipMult = 1, SmoothTipMult = 2, TipLine = "SMOOTH RIDE  TIP x2" },
+	} :: { [string]: PassengerKindDef },
+}
+
+-- The Golden Fare: a rare passenger anyone on the map can race for. A gold beam marks the curb, everyone is told, and
+-- it pays triple (base, and so the tip and the stunt cap). Only one is in play at a time.
+Config.Golden = {
+	Chance = 0.06, -- per NPC spawn while none is in play
+	PayMult = 3,
+	Color = Color3.fromRGB(255, 200, 40),
+	Icon = "\u{2605}",
+	Label = "GOLDEN",
+	PayLine = "GOLDEN x3",
+	Announce = "GOLDEN FARE!",
+	AnnounceSub = "TRIPLE PAY",
+	AnnounceSeconds = 2.4,
+	BeamHeight = 90, -- studs: the gold pillar over the curb, seen from across the map
+	BeamWidth = 3,
+	RingRadius = 5,
+	RiderSuit = Color3.fromRGB(28, 28, 34), -- the golden passenger rides in a black suit with a gold crown (gold on a yellow cab vanishes)
+}
+
+-- The rider: the passenger sits in your cab sunroof-style (head and shoulders out of the roof), dressed by their kind,
+-- and reacts out loud. Everyone sees it, so rivals can read who you are carrying.
+Config.Rider = {
+	TorsoSize = Vector3.new(1.6, 1.6, 1),
+	HeadSize = 1.3,
+	ArmSize = Vector3.new(0.5, 1.4, 0.5),
+	Sink = 0.35, -- torso center this far below the top of the car (roof sign included): chest and head ride above the roof
+	BubbleDistance = 160, -- studs: rivals farther away don't see the speech bubble
+	LineSeconds = 1.7,
+	LineCooldown = 2.2, -- a rider says at most one line per this many seconds
+	StuntLineChance = 0.55, -- chance a stunt gets a line (cheers, screams)
+	PoseSeconds = 1.1, -- arms stay up this long after a stunt or a crash
+	HurryAt = 10, -- seconds left on the fare: one "HURRY UP!" per ride
+	BoredAt = 0.45, -- share of the fare timer gone with no stunt yet: a Thrill Seeker complains once
+	Lines = {
+		Stunt = {
+			Regular = { "WHOA!", "NICE ONE!", "DO THAT AGAIN!", "OKAY, THAT WAS COOL", "YOU'RE NUTS!" },
+			ThrillSeeker = { "WOOOO!", "FASTER!!", "AGAIN! AGAIN!", "BEST. RIDE. EVER.", "YEEHAW!", "SEND IT!" },
+			Nervous = { "AAAAH!", "SLOW DOWN!", "I'M GONNA BE SICK", "HANDS ON THE WHEEL!", "MY LIFE IS FLASHING!" },
+		},
+		Crash = {
+			Regular = { "OW!", "MY NECK!", "EYES ON THE ROAD!", "WAS THAT A WALL?!", "I SPILLED MY COFFEE!" },
+			ThrillSeeker = { "HA! AGAIN!", "THAT'S GONNA BRUISE", "OOF! WORTH IT", "OW!" },
+			Nervous = { "WE'RE GONNA DIE!", "I WANT MY MOM!", "THAT'S IT, NO TIP", "MY NECK!!" },
+		},
+		Hit = {
+			Regular = { "GROSS!", "WHAT WAS THAT?!", "IS THAT A TOMATO?!", "HEY!" },
+			ThrillSeeker = { "GET THEM BACK!", "WE'RE UNDER ATTACK!", "HA! MISSED ME" },
+			Nervous = { "THEY'RE SHOOTING AT US!", "DUCK!!", "WHY ME?!" },
+		},
+		Hurry = { "HURRY UP!", "I'M LATE!", "STEP ON IT!", "TICK TOCK!", "IS THIS THE SCENIC ROUTE?" },
+		Bored = { "BOOORING!", "IS THIS A TAXI OR A HEARSE?", "DO A FLIP OR SOMETHING", "MY GRANDMA DRIVES FASTER" },
+		Golden = { "DRIVE! I'M LOADED!", "THERE'S A BIG TIP IN IT", "FIRST CLASS, PLEASE" },
+	} :: { [string]: any },
+}
+
 -- Pit Stop: between rounds, spend this round's cash on next-round-only boosts. Unspent cash carries forward.
 Config.PitStop = {
 	Seconds = 30,
@@ -324,7 +402,6 @@ Config.Passenger = {
 		"TIME'S UP, I'M OUT",
 	},
 	ThanksLines = { "THANKS!", "FIVE STARS", "YOU'RE A LEGEND", "SMOOTH." },
-	CrashLines = { "OW!", "MY NECK!", "EYES ON THE ROAD!", "WAS THAT A WALL?!", "I SPILLED MY COFFEE!" },
 }
 
 Config.Items = {

@@ -76,6 +76,11 @@ local function onFare(payload: Types.FareEventPayload)
 		play("Angry")
 	elseif payload.kind == "Hurt" and payload.source == "crash" then
 		play("Crash")
+	elseif payload.kind == "Golden" then
+		-- a shimmer of coins: three quick pings climbing
+		for i = 0, 2 do
+			task.delay(i * 0.09, SoundController.PlayOneShot, "Coin", 1.3 + i * 0.15)
+		end
 	end
 end
 

@@ -86,8 +86,27 @@ local function ensureNpcDot(id: number): Frame
 	end
 	local dot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(8, 8), BackgroundTransparency = 0, ZIndex = 3 }, map)
 	UI.Corner(4, dot)
+	UI.Stroke(UI.White, 0, dot)
 	npcDots[id] = dot
 	return dot
+end
+
+-- Passenger kinds read at a glance: regulars are round, Thrill Seekers diamonds, Nervous ones squares; the Golden Fare
+-- is a big gold dot with a white rim.
+local function styleNpcDot(dot: Frame, npc: Types.NpcSnap)
+	local corner = dot:FindFirstChildOfClass("UICorner")
+	local stroke = dot:FindFirstChildOfClass("UIStroke")
+	local size = if npc.golden then 13 else 8
+	dot.Size = UDim2.fromOffset(size, size)
+	dot.Rotation = if npc.kind == "ThrillSeeker" and not npc.golden then 45 else 0
+	if corner then
+		corner.CornerRadius = UDim.new(0, if npc.golden or npc.kind == "Regular" then size / 2 else 1)
+	end
+	if stroke then
+		stroke.Thickness = if npc.golden then 2 else 0
+	end
+	dot.BackgroundColor3 = if npc.golden then Config.Golden.Color else tierColor(npc.tier)
+	dot.ZIndex = if npc.golden then 4 else 3
 end
 
 local function ensureRival(id: number): RivalMarker
@@ -113,7 +132,7 @@ local function onSnapshot(snapshot: Types.Snapshot)
 		seenNpc[npc.id] = true
 		local dot = ensureNpcDot(npc.id)
 		dot.Position = toMap(npc.x, npc.z)
-		dot.BackgroundColor3 = tierColor(npc.tier)
+		styleNpcDot(dot, npc)
 		dot.BackgroundTransparency = if npc.state == 0 then 0 else 0.65
 	end
 	for id, dot in npcDots do

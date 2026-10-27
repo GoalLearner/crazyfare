@@ -26,6 +26,12 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - About **2 available NPCs per player** (min 4, max = number of PickupPoints). One respawns whenever a fare is delivered or bails.
 - **Pickup contest:** the first taxi to drop below 5 studs/s within 12 studs claims the NPC. The server resolves ties on its own tick (closest wins). Others nearby see **TAKEN**.
 - A taxi carries one passenger at a time.
+- **Personalities** (`Config.PassengerTypes`): each passenger rolls one, shown by the badge over their head and the shape of their minimap dot.
+  - **Regular** ($ badge, round dot).
+  - **Thrill Seeker** (lightning badge, diamond dot): stunt cash pays double (and the per-fare stunt cap doubles); no stunt all ride halves the tip.
+  - **Nervous** (grimace badge, square dot): crashes hurt 1.5x; arriving without a scratch doubles the tip ("SMOOTH RIDE").
+- **Golden Fare** (`Config.Golden`): about 1 spawn in 16 while none is in play. Gold star badge, gold ring and a tall gold pillar over the curb, a big gold minimap dot, and everyone gets "GOLDEN FARE! TRIPLE PAY". Pays 3x the base (so the tip and stunt cap triple too). First to stop for it wins, like any pickup.
+- **The rider:** your passenger rides in the cab sunroof-style, head and shoulders out of the roof, dressed by kind (the Golden passenger in a black suit and a gold crown). Arms go up on stunts and fly out on crashes. They shout in a speech bubble everyone sees: where they're headed (for rivals), cheers or screams on stunts, yelps on crashes and hits, "HURRY UP!" at 10 s, a Thrill Seeker's "BORING!" when nothing happens. Drawn on each client from attributes on the car, so it never touches the car's physics.
 
 ### Fares, timers, payout
 - Every fare has a destination (a DropoffPoint in the tier's distance band) and a timer (`TimeBase + distance / TimeSpeed`).

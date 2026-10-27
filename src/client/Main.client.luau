@@ -35,6 +35,7 @@ local ordered: { Controller } = {
 	require(Controllers.WorldTagController),
 	require(Controllers.EffectsController),
 	require(Controllers.SpeedFxController),
+	require(Controllers.RiderController),
 	require(Controllers.PitStopController),
 	require(Controllers.GarageController),
 	require(Controllers.ProgressController),

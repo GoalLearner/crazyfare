@@ -32,6 +32,8 @@ export type NpcSnap = {
 	z: number,
 	tier: string,
 	state: number,
+	kind: string, -- Config.PassengerTypes.Kinds key
+	golden: boolean,
 }
 
 export type Snapshot = {
@@ -102,6 +104,7 @@ export type PitStopCard = { id: string, name: string, effect: string, price: num
 export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number, buysLeft: number }
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
+-- | "Golden" (to everyone: a Golden Fare appeared at `position`)
 export type FareEventPayload = {
 	kind: string,
 	npcId: number?,
@@ -123,6 +126,9 @@ export type FareEventPayload = {
 	source: string?, -- "Hurt": "crash" | an item name | "debug" | ...
 	position: Vector3?,
 	line: string?,
+	passenger: string?, -- "Claimed": the passenger's kind (Config.PassengerTypes.Kinds key)
+	golden: boolean?, -- "Claimed": a Golden Fare
+	bonus: string?, -- "Delivered": what the passenger's rules did ("SMOOTH RIDE  TIP x2", "GOLDEN x3")
 }
 
 -- ItemEvent kinds: "Granted" | "Used" | "Splat" | "Spinout" | "Boost" | "HitConfirm" | "BoxTaken"
@@ -153,6 +159,8 @@ export type Fare = {
 	deadline: number,
 	distance: number,
 	stuntTips: number, -- cents of stunt cash this ride has earned so far
+	kind: string, -- the passenger's kind (Config.PassengerTypes.Kinds key)
+	golden: boolean,
 }
 
 return {}
