@@ -14,6 +14,7 @@ export type FareInfo = {
 	base: number,
 	destination: Vector3,
 	destinationIndex: number,
+	destinationName: string, -- "THE STADIUM" ("" if the map gave none)
 	startedAt: number,
 	deadline: number,
 	stunts: number, -- stunt cash riding in the fare (cents)

@@ -235,6 +235,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		base = fare.base,
 		destination = destination.position,
 		destinationIndex = destination.index,
+		destinationName = destination.name,
 		startedAt = now,
 		deadline = fare.deadline,
 	})

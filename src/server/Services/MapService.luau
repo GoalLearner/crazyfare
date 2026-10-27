@@ -15,6 +15,7 @@ export type Point = {
 	position: Vector3,
 	cframe: CFrame, -- LookVector faces the road
 	part: BasePart,
+	name: string, -- drop-offs: the destination name given out by the map build ("THE STADIUM"); "" otherwise
 }
 
 local MapService = {}
@@ -35,11 +36,13 @@ local function collectPoints(tagName: string): { Point }
 	for _, inst in CollectionService:GetTagged(tagName) do
 		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
 			local idx = inst:GetAttribute("Index")
+			local name = inst:GetAttribute("Destination")
 			table.insert(list, {
 				index = if typeof(idx) == "number" then idx else #list + 1,
 				position = inst.Position,
 				cframe = inst.CFrame,
 				part = inst,
+				name = if typeof(name) == "string" then name else "",
 			})
 		end
 	end

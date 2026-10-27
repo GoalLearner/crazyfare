@@ -46,7 +46,9 @@ local SKYLINE_PALETTE = {
 	Color3.fromRGB(62, 70, 88),
 	Color3.fromRGB(96, 100, 118),
 }
-local SIGN_NAMES = { "JOE'S DINER", "HOTEL ZEPHYR", "NOODLE BAR", "LAUNDRO", "PAWN", "CAFE LUNA", "TACO 24", "VINYL", "BIG BURGER", "GYM", "PHARMA", "ARCADE", "SUSHI GO", "BARBER", "BOOKS", "DONUT KING" }
+-- Storefront decoration. None share a destination's name (Config.Destinations), so a sign never points the wrong way.
+-- Keep 16 entries: the seeded layout draws one number per sign either way.
+local SIGN_NAMES = { "JOE'S DINER", "BAKERY", "NOODLE BAR", "LAUNDRO", "PAWN", "CAFE LUNA", "TACO 24", "VINYL", "KARAOKE", "FLOWERS", "PHARMA", "PET SHOP", "SUSHI GO", "BARBER", "BOOKS", "DONUT KING" }
 local SIGN_COLORS = {
 	Color3.fromRGB(255, 80, 120),
 	Color3.fromRGB(80, 230, 255),
@@ -118,6 +120,24 @@ local function isOuterCell(ctx: Ctx, cx: number, cz: number): boolean
 	local centers = ctx.B.CellCenters
 	local edge = math.max(math.abs(centers[1]), math.abs(centers[#centers]))
 	return math.abs(cx) == edge or math.abs(cz) == edge
+end
+
+-- What a block holds: "plaza" | "sand" | "park" | a landmark kind | "alley" | "buildings". buildCells builds from this
+-- and drop-off naming reads it, so both always agree.
+local function cellKind(ctx: Ctx, cx: number, cz: number): string
+	local key = cellKey(cx, cz)
+	if cx == 0 and cz == 0 then
+		return "plaza"
+	elseif ctx.theme == "beach" and isOuterCell(ctx, cx, cz) then
+		return "sand"
+	elseif PARK_CELLS[key] then
+		return "park"
+	elseif ctx.theme == "city" and LANDMARK_CELLS[key] then
+		return LANDMARK_CELLS[key]
+	elseif ctx.theme == "city" and ALLEY_CELLS[key] then
+		return "alley"
+	end
+	return "buildings"
 end
 
 local function buildGround(ctx: Ctx)
@@ -457,9 +477,10 @@ local function buildCells(ctx: Ctx): { Spot }
 	local spots: { Spot } = {}
 	for _, cx in B.CellCenters do
 		for _, cz in B.CellCenters do
-			local isPlaza = cx == 0 and cz == 0
+			local kind = cellKind(ctx, cx, cz)
+			local isPlaza = kind == "plaza"
 			local key = cellKey(cx, cz)
-			local sandCell = ctx.theme == "beach" and isOuterCell(ctx, cx, cz) and not isPlaza
+			local sandCell = kind == "sand"
 			local slab = makePart(
 				"Cell_" .. key,
 				Vector3.new(B.CellSize, 0.5, B.CellSize),
@@ -475,11 +496,11 @@ local function buildCells(ctx: Ctx): { Spot }
 				for _ = 1, 3 do
 					buildPalm(cells, ctx.rng, cx + ctx.rng:NextNumber(-36, 36), cz + ctx.rng:NextNumber(-36, 36))
 				end
-			elseif PARK_CELLS[key] then
+			elseif kind == "park" then
 				buildTrees(ctx, cells, cx, cz)
-			elseif ctx.theme == "city" and LANDMARK_CELLS[key] then
-				buildLandmark(ctx, cells, LANDMARK_CELLS[key], cx, cz)
-			elseif ctx.theme == "city" and ALLEY_CELLS[key] then
+			elseif LANDMARK_CELLS[key] and kind == LANDMARK_CELLS[key] then
+				buildLandmark(ctx, cells, kind, cx, cz)
+			elseif kind == "alley" then
 				buildAlley(ctx, cells, cx, cz)
 			else
 				buildBuildings(ctx, cells, cx, cz)
@@ -613,8 +634,29 @@ local function buildPoints(ctx: Ctx, spots: { Spot })
 	for i, spot in pickupSpots do
 		marker("PickupPoint", spot, i, COLOR_PICKUP, Tags.PickupPoint)
 	end
+	-- Name every drop-off: a landmark or park block lends its name, the rest take the map's list in order.
+	local dest = Config.Destinations
+	local list = dest.Names[ctx.mapName] or dest.Names.City
+	local used: { [string]: boolean } = {}
+	local nextName = 1
+	local edge = B.CellSize / 2 - 3
 	for i, spot in dropoffSpots do
 		marker("DropoffPoint", spot, i, COLOR_DROPOFF, Tags.DropoffPoint)
+		local center = spot.position - spot.look * edge
+		local kind = cellKind(ctx, math.round(center.X), math.round(center.Z))
+		local name = if kind == "park" then dest.Parks[ctx.mapName] else dest.Landmarks[kind]
+		if not name or used[name] then
+			while list[nextName] and used[list[nextName]] do
+				nextName += 1
+			end
+			name = list[nextName] or string.format("STOP %d", i)
+			nextName += 1
+		end
+		used[name] = true
+		local part = points:FindFirstChild("DropoffPoint" .. i)
+		if part then
+			part:SetAttribute("Destination", name)
+		end
 	end
 end
 

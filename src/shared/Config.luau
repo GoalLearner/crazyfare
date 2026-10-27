@@ -733,6 +733,30 @@ Config.Hud = {
 	-- Delivery grade stamp
 	StampDelay = 0.25, -- after the payout punch
 	StampSeconds = 1.3, -- on screen before it fades
+	-- Where to: the passenger's shout, the arrival banner, the countdown by the cab, the drop-off ring on the ground
+	ShoutSeconds = 2.2, -- "TAKE ME TO THE STADIUM!" over the cab
+	ArrivalDistance = 70, -- studs from the destination where its name banner slides in
+	ArrivalSeconds = 1.6,
+	CountdownWarn = 10, -- seconds left: the countdown by the cab turns yellow
+	CountdownDanger = 5, -- and red, ticking every second
+	DropRing = { Segments = 32, Width = 0.7, Thickness = 0.2, Transparency = 0.1, DiscTransparency = 0.82, PulseSeconds = 0.8 },
+}
+
+-- Drop-off names, given out when the map is built: a drop-off on a landmark or park block takes that block's name, the
+-- rest take the map's list in order. Shown on rooftop signs, the beacon, the fare card, "TAKE ME TO ...!" and on arrival.
+Config.Destinations = {
+	Landmarks = { hotel = "HOTEL ZEPHYR", dome = "THE STADIUM", antenna = "RADIO TOWER" } :: { [string]: string },
+	Parks = { City = "CITY PARK", Beach = "PALM PARK" } :: { [string]: string },
+	Names = {
+		City = { "THE BURGER JOINT", "THE MALL", "THE HOSPITAL", "THE ARCADE", "THE TRAIN STATION", "CITY HALL", "THE PIZZA PLACE", "THE GYM", "THE BOWLING ALLEY", "THE FIRE STATION", "THE MUSEUM", "POLICE HQ" },
+		Beach = { "THE PIER", "THE SURF SHOP", "THE LIGHTHOUSE", "THE BOARDWALK", "THE ICE CREAM HUT", "THE BEACH CLUB", "THE MARINA", "THE SNACK SHACK", "LIFEGUARD TOWER", "THE AQUARIUM", "VOLLEYBALL COURTS", "HOTEL SEABREEZE" },
+	} :: { [string]: { string } },
+	-- Rooftop signs over every drop-off (client-side billboards; the current destination lights up in its tier color)
+	SignHeight = 30, -- studs above the drop-off
+	SignWidth = 22, -- studs
+	SignHeightStuds = 5,
+	SignActiveScale = 1.35,
+	SignMaxDistance = 420, -- studs
 }
 
 -- Delivery grade: how much of the fare timer was left at the drop-off. The tip already pays for speed; the stamp says it out loud.

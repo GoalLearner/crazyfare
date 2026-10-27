@@ -109,6 +109,7 @@ export type FareEventPayload = {
 	base: number?,
 	destination: Vector3?,
 	destinationIndex: number?,
+	destinationName: string?, -- "Claimed": "THE STADIUM"
 	startedAt: number?,
 	deadline: number?,
 	payout: number?,

@@ -1,6 +1,7 @@
 --!strict
--- Local VFX: windshield splat + wipers (honk shortens), destination beacon, item-box spin, tomato/banana bursts,
--- boost particles, honk bubble. Nothing here affects gameplay.
+-- Local VFX: windshield splat + wipers (honk shortens), destination beacon (named) + glowing drop-off ring, rooftop name
+-- signs over every drop-off, item-box spin, tomato/banana bursts, boost particles, honk bubble. Nothing here affects
+-- gameplay.
 
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
@@ -21,6 +22,16 @@ local EffectsController = {}
 local splatScreen: ScreenGui
 local blobs: { Frame } = {}
 local beacon: Part? = nil
+local ring: Model? = nil
+
+-- Rooftop name signs, one per drop-off; the current destination's lights up in its tier color.
+type Sign = { gui: BillboardGui, frame: Frame, stroke: UIStroke, label: TextLabel, index: number }
+local signs: { [BasePart]: Sign } = {}
+local activeDestination = 0
+local activeColor = UI.White
+local SIGN_BACK = Color3.fromRGB(20, 20, 26)
+local SIGN_EDGE = Color3.fromRGB(70, 72, 84)
+local SIGN_TEXT = Color3.fromRGB(235, 235, 245)
 local boostEmitter: ParticleEmitter? = nil
 local boxBases: { [BasePart]: CFrame } = {}
 local rng = Random.new()
@@ -71,15 +82,120 @@ local function updateSplat()
 	end
 end
 
+local function styleSign(sign: Sign)
+	local dest = Config.Destinations
+	local active = sign.index == activeDestination
+	local scale = if active then dest.SignActiveScale else 1
+	sign.gui.Size = UDim2.fromScale(dest.SignWidth * scale, dest.SignHeightStuds * scale)
+	sign.label.TextColor3 = if active then activeColor else SIGN_TEXT
+	sign.stroke.Color = if active then activeColor else SIGN_EDGE
+	sign.frame.BackgroundTransparency = if active then 0 else 0.2
+end
+
+local function addSign(inst: Instance)
+	if not inst:IsA("BasePart") or signs[inst] then
+		return
+	end
+	local part = inst :: BasePart
+	local name = part:GetAttribute("Destination")
+	local index = part:GetAttribute("Index")
+	if typeof(name) ~= "string" or name == "" or typeof(index) ~= "number" then
+		-- the name can land a moment after the part; try again when it does
+		part:GetAttributeChangedSignal("Destination"):Once(function()
+			addSign(part)
+		end)
+		return
+	end
+	local dest = Config.Destinations
+	local gui = UI.New("BillboardGui", {
+		Name = "DestinationSign",
+		Adornee = part,
+		StudsOffsetWorldSpace = Vector3.new(0, dest.SignHeight, 0),
+		LightInfluence = 0,
+		MaxDistance = dest.SignMaxDistance,
+		AlwaysOnTop = false,
+	}, part) :: BillboardGui
+	local frame = UI.Frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = SIGN_BACK }, gui)
+	UI.Corner(8, frame)
+	local stroke = UI.Stroke(SIGN_EDGE, 3, frame)
+	local label = UI.Label({ Position = UDim2.fromScale(0.04, 0.1), Size = UDim2.fromScale(0.92, 0.8), Text = (string.gsub(name, "^THE ", "")) }, frame)
+	local sign: Sign = { gui = gui, frame = frame, stroke = stroke, label = label, index = index }
+	signs[part] = sign
+	styleSign(sign)
+end
+
+local function setActiveDestination(index: number, color: Color3)
+	activeDestination = index
+	activeColor = color
+	for _, sign in signs do
+		styleSign(sign)
+	end
+end
+
+-- The drop zone you have to stop in: a neon ring of segments hugging the ground at the delivery radius, and a pulsing disc.
+local function clearRing()
+	if ring then
+		ring:Destroy()
+		ring = nil
+	end
+end
+
+local function buildRing(center: Vector3, color: Color3)
+	clearRing()
+	local cfg = Config.Hud.DropRing
+	local radius = Config.Fares.DeliverRadius
+	local model = Instance.new("Model")
+	model.Name = "DropRing"
+	local map = workspace:FindFirstChild("Map")
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = if map then { map } else {}
+	local function groundY(x: number, z: number): number
+		local hit = workspace:Raycast(Vector3.new(x, center.Y + 20, z), Vector3.new(0, -60, 0), params)
+		return if hit then hit.Position.Y else center.Y
+	end
+	local function piece(size: Vector3, cf: CFrame, transparency: number): Part
+		local part = Instance.new("Part")
+		part.Size = size
+		part.CFrame = cf
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		part.Transparency = transparency
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Parent = model
+		return part
+	end
+	local segment = 2 * math.pi * radius / cfg.Segments * 1.05
+	for i = 0, cfg.Segments - 1 do
+		local a = (i + 0.5) / cfg.Segments * 2 * math.pi
+		local x, z = center.X + math.cos(a) * radius, center.Z + math.sin(a) * radius
+		local y = groundY(x, z) + cfg.Thickness / 2 + 0.05
+		piece(Vector3.new(cfg.Width, cfg.Thickness, segment), CFrame.new(x, y, z) * CFrame.Angles(0, -a, 0), cfg.Transparency)
+	end
+	local disc = piece(Vector3.new(cfg.Thickness, radius * 2, radius * 2), CFrame.new(center.X, groundY(center.X, center.Z) + 0.08, center.Z) * CFrame.Angles(0, 0, math.pi / 2), cfg.DiscTransparency)
+	disc.Shape = Enum.PartType.Cylinder
+	TweenService:Create(disc, TweenInfo.new(cfg.PulseSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = math.min(1, cfg.DiscTransparency + 0.12) }):Play()
+	model.Parent = workspace
+	ring = model
+end
+
 local function setBeacon(fare: State.FareInfo?)
 	if beacon then
 		beacon:Destroy()
 		beacon = nil
 	end
 	if not fare then
+		clearRing()
+		setActiveDestination(0, UI.White)
 		return
 	end
 	local color = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Color
+	buildRing(fare.destination, color)
+	setActiveDestination(fare.destinationIndex, color)
 	local h = Config.Hud.BeaconHeight
 	local part = Instance.new("Part")
 	part.Name = "DestinationBeacon"
@@ -99,7 +215,7 @@ local function setBeacon(fare: State.FareInfo?)
 		AlwaysOnTop = true,
 		MaxDistance = 2000,
 	}, part)
-	UI.Label({ Size = UDim2.fromScale(1, 1), Text = "DROP HERE", TextColor3 = color }, gui)
+	UI.Label({ Size = UDim2.fromScale(1, 1), Text = if fare.destinationName ~= "" then fare.destinationName else "DROP HERE", TextColor3 = color }, gui)
 	beacon = part
 end
 
@@ -276,6 +392,15 @@ end
 
 function EffectsController.Init()
 	splatScreen = UI.Screen("CrazyFareSplat", 20)
+	for _, part in CollectionService:GetTagged(Config.Tags.DropoffPoint) do
+		addSign(part)
+	end
+	CollectionService:GetInstanceAddedSignal(Config.Tags.DropoffPoint):Connect(addSign)
+	CollectionService:GetInstanceRemovedSignal(Config.Tags.DropoffPoint):Connect(function(inst: Instance)
+		if inst:IsA("BasePart") then
+			signs[inst] = nil
+		end
+	end)
 	State.ItemEvent:Connect(onItem)
 	State.FareEvent:Connect(function(payload: Types.FareEventPayload)
 		if payload.kind == "Claimed" then

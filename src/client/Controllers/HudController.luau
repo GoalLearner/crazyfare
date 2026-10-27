@@ -1,6 +1,7 @@
 --!strict
 -- The HUD: rolling TOTAL + quota, round timer, fare card with a rolling FARE, stunt popups and combo, boost tank, item
--- slot, speed, center messages, coin burst + grade stamp on delivery, podium with gems and the rematch vote.
+-- slot, speed, center messages, coin burst + grade stamp on delivery, "TAKE ME TO ...!" over the cab, the destination
+-- banner on arrival, the fare countdown by the cab, podium with gems and the rematch vote.
 -- Reads State; the only thing it sends is RematchVote.
 
 local RunService = game:GetService("RunService")
@@ -31,6 +32,7 @@ local arrow: TextLabel
 local arrowDistance: TextLabel
 
 local fareCard: Frame
+local fareDest: TextLabel
 local fareTier: TextLabel
 local fareCounter: RollingCounter.Counter
 local fareTimer: UI.Bar
@@ -44,6 +46,22 @@ local boostBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
 local itemLabel: TextLabel
+
+-- Where to: the passenger's shout over the cab, the arrival banner, the countdown by the cab
+local shoutRoot: Frame
+local shoutLabel: TextLabel
+local shoutScale: UIScale
+local shoutUntil = 0
+local arrivalRoot: Frame
+local arrivalLabel: TextLabel
+local arrivalStroke: UIStroke
+local arrivalShown = false
+local arrivalToken = 0
+local countdownLabel: TextLabel
+local countdownScale: UIScale
+local lastCountdown = -1
+local COUNTDOWN_OFFSET = Vector2.new(84, 34) -- px from the point above the cab
+local SHOUT_LIFT = 58 -- px above that point
 
 local stampRoot: Frame
 local stampLabel: TextLabel
@@ -233,6 +251,61 @@ local function showStamp(grade: string)
 	end)
 end
 
+-- "TAKE ME TO THE STADIUM!" in a speech bubble over the cab.
+local function showShout(text: string)
+	shoutLabel.Text = text
+	shoutRoot.Visible = true
+	shoutUntil = os.clock() + Config.Hud.ShoutSeconds
+	punch(shoutScale, 1.4)
+end
+
+-- The destination's name slides in from the left, holds, and slides out to the right.
+local function showArrival(name: string, color: Color3)
+	arrivalToken += 1
+	local token = arrivalToken
+	arrivalLabel.Text = name
+	arrivalLabel.TextColor3 = color
+	arrivalStroke.Color = color
+	arrivalRoot.Position = UDim2.fromScale(-0.5, 0.18)
+	arrivalRoot.Visible = true
+	TweenService:Create(arrivalRoot, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.18) }):Play()
+	task.delay(Config.Hud.ArrivalSeconds, function()
+		if token ~= arrivalToken then
+			return
+		end
+		local out = TweenService:Create(arrivalRoot, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.fromScale(1.5, 0.18) })
+		out.Completed:Once(function()
+			if token == arrivalToken then
+				arrivalRoot.Visible = false
+			end
+		end)
+		out:Play()
+	end)
+end
+
+-- Seconds left on the fare, beside the cab: yellow, then red with a tick and a punch every second.
+local function updateCountdown(fare: State.FareInfo?, playing: boolean, now: number)
+	if not fare or not playing then
+		countdownLabel.Visible = false
+		lastCountdown = -1
+		return
+	end
+	local hud = Config.Hud
+	local left = math.max(0, math.ceil(fare.deadline - now))
+	local anchor = popupAnchor()
+	countdownLabel.Position = UDim2.fromOffset(anchor.X + COUNTDOWN_OFFSET.X, anchor.Y + COUNTDOWN_OFFSET.Y)
+	countdownLabel.Text = tostring(left)
+	countdownLabel.TextColor3 = if left <= hud.CountdownDanger then UI.Danger elseif left <= hud.CountdownWarn then UI.Warn else UI.White
+	countdownLabel.Visible = true
+	if left ~= lastCountdown then
+		if lastCountdown >= 0 and left <= hud.CountdownDanger then
+			punch(countdownScale, 1.5)
+			SoundController.PlayOneShot("Tick", 0.8)
+		end
+		lastCountdown = left
+	end
+end
+
 -- Steps a counter; a tick sound per dime boundary, capped per second across both counters.
 local function stepCounter(counter: RollingCounter.Counter, dt: number, pitch: number)
 	local ticked = RollingCounter.Step(counter, dt)
@@ -262,13 +335,14 @@ local function build()
 	arrowDistance = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 138), Size = UDim2.fromOffset(120, 20), TextColor3 = UI.Accent, Font = UI.FontMedium, Text = "", Visible = false }, screen)
 
 	-- Fare card (bottom-right)
-	fareCard = UI.Frame({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(240, 118), Visible = false }, screen)
+	fareCard = UI.Frame({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(240, 142), Visible = false }, screen)
 	UI.Corner(10, fareCard)
-	fareTier = UI.Label({ Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(120, 22), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.FontMedium, Text = "SHORT" }, fareCard)
-	fareCounter = RollingCounter.new(fareCard, Config.Hud.FareHeight, UI.Cash, UDim2.new(1, -12, 0, 6), 1)
-	fareTimer = UI.Bar({ Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 12) }, UI.Warn, fareCard)
-	fareHp = UI.Bar({ Position = UDim2.fromOffset(12, 74), Size = UDim2.new(1, -24, 0, 14) }, UI.Danger, fareCard)
-	fareHpLabel = UI.Label({ Position = UDim2.fromOffset(12, 92), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "PASSENGER" }, fareCard)
+	fareDest = UI.Label({ Position = UDim2.fromOffset(12, 8), Size = UDim2.new(1, -24, 0, 22), TextXAlignment = Enum.TextXAlignment.Left, Text = "" }, fareCard)
+	fareTier = UI.Label({ Position = UDim2.fromOffset(12, 36), Size = UDim2.fromOffset(110, 20), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "SHORT" }, fareCard)
+	fareCounter = RollingCounter.new(fareCard, Config.Hud.FareHeight, UI.Cash, UDim2.new(1, -12, 0, 32), 1)
+	fareTimer = UI.Bar({ Position = UDim2.fromOffset(12, 70), Size = UDim2.new(1, -24, 0, 12) }, UI.Warn, fareCard)
+	fareHp = UI.Bar({ Position = UDim2.fromOffset(12, 98), Size = UDim2.new(1, -24, 0, 14) }, UI.Danger, fareCard)
+	fareHpLabel = UI.Label({ Position = UDim2.fromOffset(12, 116), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "PASSENGER" }, fareCard)
 
 	-- Combo + boost + speed (bottom-center)
 	local center = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(260, 90), BackgroundTransparency = 1 }, screen)
@@ -284,6 +358,23 @@ local function build()
 	stampStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stampScale = UI.New("UIScale", {}, stampRoot) :: UIScale
 	stampLabel = UI.Label({ Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 1, -12), TextStrokeTransparency = 0.2 }, stampRoot)
+
+	-- The passenger's shout: a speech bubble that rides above the cab
+	shoutRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(400, 46), BackgroundColor3 = UI.White, BackgroundTransparency = 0.04, Visible = false }, screen)
+	UI.Corner(14, shoutRoot)
+	shoutScale = UI.New("UIScale", {}, shoutRoot) :: UIScale
+	shoutLabel = UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.new(1, -24, 1, -10), TextColor3 = UI.Black, TextStrokeTransparency = 1 }, shoutRoot)
+
+	-- Arrival banner: the destination's name slides across as you pull up
+	arrivalRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(-0.5, 0.18), Size = UDim2.fromOffset(520, 62), BackgroundColor3 = UI.Black, BackgroundTransparency = 0.12, Visible = false }, screen)
+	UI.Corner(12, arrivalRoot)
+	arrivalStroke = UI.Stroke(UI.White, 4, arrivalRoot)
+	arrivalStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	arrivalLabel = UI.Label({ Position = UDim2.fromOffset(16, 6), Size = UDim2.new(1, -32, 1, -12) }, arrivalRoot)
+
+	-- The fare countdown, big, beside the cab
+	countdownLabel = UI.Label({ AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.fromOffset(70, 56), TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 0.1, Visible = false }, screen)
+	countdownScale = UI.New("UIScale", {}, countdownLabel) :: UIScale
 	boostBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 58), Size = UDim2.fromOffset(200, 8) }, UI.Accent, center)
 	speedLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 68), Size = UDim2.fromOffset(120, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "0" }, center)
 
@@ -421,8 +512,14 @@ local function onFare(payload: Types.FareEventPayload)
 		end
 	elseif payload.kind == "Claimed" then
 		RollingCounter.Snap(fareCounter, 0) -- the meter starts: it rolls up to the base fare
-		local def = Config.Fares.Tiers[payload.tier or ""]
-		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")
+		arrivalShown = false
+		local name = payload.destinationName or ""
+		if name ~= "" then
+			showShout("TAKE ME TO " .. name .. "!")
+		else
+			local def = Config.Fares.Tiers[payload.tier or ""]
+			showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")
+		end
 	end
 end
 
@@ -499,8 +596,9 @@ local function update(dt: number)
 	local fare = State.fare
 	if fare and phase == "Playing" then
 		fareCard.Visible = true
+		fareDest.Text = if fare.destinationName ~= "" then fare.destinationName else "DROP-OFF"
+		fareDest.TextColor3 = tierColor(fare.tier)
 		fareTier.Text = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
-		fareTier.TextColor3 = tierColor(fare.tier)
 		RollingCounter.SetTarget(fareCounter, fare.base + fare.stunts)
 		stepCounter(fareCounter, dt, 1.25)
 		local total = math.max(0.01, fare.deadline - fare.startedAt)
@@ -516,6 +614,10 @@ local function update(dt: number)
 		if ch and camera then
 			local toDest = VecUtil.Flat(fare.destination - ch.Position)
 			local dist = toDest.Magnitude
+			if not arrivalShown and fare.destinationName ~= "" and dist <= Config.Hud.ArrivalDistance then
+				arrivalShown = true
+				showArrival(fare.destinationName, tierColor(fare.tier))
+			end
 			local camLook = VecUtil.FlatUnit(camera.CFrame.LookVector)
 			local dir = VecUtil.FlatUnit(toDest, camLook)
 			local angle = math.atan2(camLook:Cross(dir).Y, camLook:Dot(dir))
@@ -552,6 +654,18 @@ local function update(dt: number)
 		comboBar.back.Visible = false
 	end
 	updatePopups()
+
+	-- Where to: the shout rides above the cab while it lasts; the countdown sits beside it
+	local clockNow = os.clock()
+	if shoutRoot.Visible then
+		if clockNow >= shoutUntil then
+			shoutRoot.Visible = false
+		else
+			local anchor = popupAnchor()
+			shoutRoot.Position = UDim2.fromOffset(anchor.X, anchor.Y - SHOUT_LIFT)
+		end
+	end
+	updateCountdown(State.fare, phase == "Playing", now)
 
 	-- Boost tank + speed
 	UI.SetBar(boostBar, if State.boostTankMax > 0 then State.boostTank / State.boostTankMax else 0, if State.boosting then UI.Warn else UI.Accent)

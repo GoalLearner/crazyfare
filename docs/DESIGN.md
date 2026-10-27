@@ -48,6 +48,14 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - On delivery: the payout punches in, coins burst out of the cab and fly into the TOTAL, the TOTAL waits for them and rolls up, then lands with a bump.
 - A beat later a **grade stamp** slams on: **SPEEDY!** (60%+ of the timer left), **ON TIME** (25%+), **SLOW** (less, or late). The tip already pays for speed; the stamp says it out loud.
 
+### Where to
+- Every drop-off has a **name**, given out when the map is built: a drop-off on a landmark or park block takes its name (THE STADIUM, HOTEL ZEPHYR, RADIO TOWER, CITY PARK), the rest take the map's list in order (City: THE BURGER JOINT, THE MALL, THE HOSPITAL... Beach: THE PIER, THE SURF SHOP...). Storefront decoration never reuses a destination's name.
+- **Rooftop signs** float over every drop-off; the current destination's sign grows and lights up in the fare's tier color.
+- On boarding the passenger shouts **"TAKE ME TO THE STADIUM!"** in a speech bubble over the cab. The fare card leads with the destination name; the tall beam carries it too.
+- A **glowing ring** on the ground marks the zone you must stop inside (the delivery radius), with a pulsing disc.
+- The fare's **countdown** floats big beside the cab: white, then yellow at 10 s, then red with a tick every second at 5 s.
+- Pulling up within 70 studs slides the destination's **name banner** across the screen.
+
 ### Boost tank
 - Drifting and near-misses also fill a small **boost tank** (capacity = the vehicle's `BoostTank` stat). Hold Shift to spend it for speed. LemonNitro is separate: an instant 3 s burst.
 

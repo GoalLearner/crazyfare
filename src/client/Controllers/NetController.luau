@@ -58,6 +58,7 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			base = payload.base or 0,
 			destination = payload.destination,
 			destinationIndex = payload.destinationIndex or 0,
+			destinationName = payload.destinationName or "",
 			startedAt = payload.startedAt,
 			deadline = payload.deadline,
 			stunts = 0,
