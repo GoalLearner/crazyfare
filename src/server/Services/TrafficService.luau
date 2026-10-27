@@ -2,17 +2,21 @@
 -- Ambient traffic: Config.Traffic.Count server-owned cars cruising the road grid in right-hand lanes and turning at
 -- intersections. They are obstacles, not opponents: player cars collide with them (a hit is a crash like any wall,
 -- slipping past one is a near miss), while they ignore the map and each other (collision groups) and follow the
--- ground over bumps. Each car chases a "rabbit" point that moves along its lane at cruise speed, through
--- AlignPosition and AlignOrientation, so clients see smooth physics replication instead of choppy CFrame steps.
+-- ground over bumps. Cars queue behind slower cars in their lane and take turns at intersections (one approach
+-- direction at a time), so they never drive through each other. Each car chases a "rabbit" point that moves along
+-- its lane at its own speed, through AlignPosition and AlignOrientation, so clients see smooth physics replication
+-- instead of choppy CFrame steps.
 
 local CollectionService = game:GetService("CollectionService")
 local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local VehicleBuilder = require(ReplicatedStorage.Shared.VehicleBuilder)
 local MapService = require(script.Parent.MapService)
+local VehicleService = require(script.Parent.VehicleService)
 
 local TrafficService = {}
 
@@ -23,18 +27,26 @@ type Car = {
 	orient: AlignOrientation,
 	rabbit: Vector3, -- lane point the car chases, at Y = 0; the ground height is added each frame
 	dir: Vector3, -- unit vector along X or Z
-	speed: number,
+	cruise: number, -- this car's own speed; no two cars share one
+	speed: number, -- current speed (drops behind a slower car)
 	cornerAt: Vector3, -- where the car next changes direction (or clears an intersection going straight)
 	nextDir: Vector3,
+	junction: Vector3?, -- center of the next intersection ahead
+	holding: string?, -- key of the intersection this car is allowed through
+	holdingCenter: Vector3?,
 }
 
 type Exit = { dir: Vector3, weight: number }
+
+-- One approach direction holds an intersection at a time; its cars go through single file, everyone else waits.
+type Hold = { dir: Vector3, cars: { [Car]: boolean }, count: number }
 
 local MAX_HOPS = 4 -- corners one car may pass in a single frame
 local RAY_UP = 40 -- ground probe starts this far above the car
 local RAY_LENGTH = 120
 
 local cars: { Car } = {}
+local holds: { [string]: Hold } = {}
 local folder: Folder
 local groundParams: RaycastParams
 local rng = Random.new()
@@ -100,6 +112,7 @@ local function plan(car: Car)
 		-- Off the grid's end: turn around where it stands.
 		car.nextDir = -dir
 		car.cornerAt = car.rabbit
+		car.junction = nil
 		return
 	end
 	local total = 0
@@ -118,6 +131,7 @@ local function plan(car: Car)
 	-- The incoming lane meets the outgoing lane before the center on a right turn and past it on a left turn.
 	local center = point(best :: number, roadAcross, dir)
 	local laneIn = center + rightOf(dir) * off
+	car.junction = center
 	car.nextDir = chosen
 	car.cornerAt = if chosen == dir then laneIn + dir * (off + 1) else laneIn + dir * (off * rightOf(chosen):Dot(dir))
 end
@@ -138,6 +152,123 @@ local function advance(car: Car, dt: number)
 		car.dir = car.nextDir
 		plan(car)
 	end
+end
+
+-- The nearest car ahead in the same lane, and the gap to it.
+local function leaderOf(car: Car): (Car?, number)
+	local best: Car? = nil
+	local bestGap = math.huge
+	for _, other in cars do
+		if other ~= car and other.dir == car.dir and math.abs(across(other.rabbit - car.rabbit, car.dir)) < 0.5 then
+			local gap = (other.rabbit - car.rabbit):Dot(car.dir)
+			if gap > 0 and gap < bestGap then
+				best = other
+				bestGap = gap
+			end
+		end
+	end
+	return best, bestGap
+end
+
+local function junctionKey(center: Vector3): string
+	return string.format("%d:%d", math.round(center.X), math.round(center.Z))
+end
+
+local function release(car: Car)
+	local key = car.holding
+	if not key then
+		return
+	end
+	car.holding = nil
+	car.holdingCenter = nil
+	local hold = holds[key]
+	if hold and hold.cars[car] then
+		hold.cars[car] = nil
+		hold.count -= 1
+		if hold.count <= 0 then
+			holds[key] = nil
+		end
+	end
+end
+
+-- May this car go through `center`? Claims it when it is free or held by cars from the same direction.
+local function mayEnter(car: Car, center: Vector3): boolean
+	local key = junctionKey(center)
+	if car.holding == key then
+		return true
+	end
+	local hold = holds[key]
+	if hold and hold.dir ~= car.dir then
+		return false
+	end
+	release(car)
+	if not hold then
+		hold = { dir = car.dir, cars = {}, count = 0 }
+		holds[key] = hold
+	end
+	local claimed = hold :: Hold
+	claimed.cars[car] = true
+	claimed.count += 1
+	car.holding = key
+	car.holdingCenter = center
+	return true
+end
+
+-- Ease toward cruise speed; slow behind a slower car in the lane (down to a stop at a body length) and stop at the
+-- line when another direction holds the next intersection.
+local function updateSpeed(car: Car, dt: number)
+	local cfg = Config.Traffic
+	local target = car.cruise
+	local leader, gap = leaderOf(car)
+	if leader and gap < cfg.FollowGap then
+		local room = math.clamp((gap - cfg.BodySize.Z) / (cfg.FollowGap - cfg.BodySize.Z), 0, 1)
+		target = math.min(target, leader.speed * room)
+	end
+	local holdingCenter = car.holdingCenter
+	if holdingCenter and (car.rabbit - holdingCenter).Magnitude > cfg.JunctionClear then
+		release(car)
+	end
+	local junction = car.junction
+	if junction then
+		local toCenter = (junction - car.rabbit):Dot(car.dir)
+		if toCenter > 0 and toCenter < cfg.JunctionApproach and not mayEnter(car, junction) then
+			target = math.min(target, math.sqrt(2 * cfg.Brake * math.max(toCenter - cfg.StopLine, 0)))
+		end
+	end
+	if target > car.speed then
+		car.speed = math.min(target, car.speed + cfg.Accel * dt)
+	else
+		car.speed = math.max(target, car.speed - cfg.Brake * dt)
+	end
+end
+
+-- A player car touched this traffic car: if they closed fast enough it is a crash, at least a small one.
+local function onTouched(car: Car, hit: BasePart)
+	local model = hit:FindFirstAncestorOfClass("Model")
+	local ownerId = if model then model:GetAttribute("OwnerUserId") else nil
+	if typeof(ownerId) ~= "number" then
+		return
+	end
+	local player = Players:GetPlayerByUserId(ownerId)
+	local entry = if player then VehicleService.GetEntry(player) else nil
+	if not player or not entry or entry.model ~= model then
+		return
+	end
+	local offset = car.body.Position - entry.chassis.Position
+	local flat = Vector3.new(offset.X, 0, offset.Z)
+	if flat.Magnitude < 0.01 then
+		return
+	end
+	-- Pre-impact velocities: by the time Touched fires the contact has already stopped the traffic car on the server
+	-- (the player car is remote there, so it acts like a wall). Use the traffic car's own driving velocity and the
+	-- player car's velocity from the last frame before the hit.
+	local rel = entry.lastVelocity - car.dir * car.speed
+	local closing = Vector3.new(rel.X, 0, rel.Z):Dot(flat.Unit)
+	if closing < Config.Traffic.MinImpactSpeed then
+		return
+	end
+	local stats = Config.Vehicles.Stats[entry.vehicleId] or Config.Vehicles.Stats[Config.Vehicles.Default]
+	VehicleService.ReportImpact(player, math.max(closing, Config.Passenger.CrashMinIntensity * stats.TopSpeed))
 end
 
 local function targetFor(car: Car): Vector3
@@ -163,7 +294,7 @@ local function spotIsFree(rabbit: Vector3): boolean
 	return true
 end
 
-local function spawnCar(): boolean
+local function spawnCar(cruise: number): boolean
 	local cfg = Config.Traffic
 	local coords = MapService.GetBlockout().RoadCoords
 	local low, high = math.huge, -math.huge
@@ -176,8 +307,15 @@ local function spawnCar(): boolean
 		if rng:NextNumber() < 0.5 then
 			dir = -dir
 		end
-		local rabbit = point(rng:NextNumber(low, high), coords[rng:NextInteger(1, #coords)], dir) + rightOf(dir) * cfg.LaneOffset
-		if not spotIsFree(rabbit) then
+		local alongValue = rng:NextNumber(low, high)
+		local inJunction = false
+		for _, c in coords do
+			if math.abs(alongValue - c) < cfg.JunctionClear then
+				inJunction = true
+			end
+		end
+		local rabbit = point(alongValue, coords[rng:NextInteger(1, #coords)], dir) + rightOf(dir) * cfg.LaneOffset
+		if inJunction or not spotIsFree(rabbit) then
 			continue
 		end
 		local model, body = VehicleBuilder.BuildTraffic(cfg.Colors[rng:NextInteger(1, #cfg.Colors)])
@@ -208,10 +346,14 @@ local function spawnCar(): boolean
 			orient = orient,
 			rabbit = rabbit,
 			dir = dir,
-			speed = cfg.Speed * (1 + rng:NextNumber(-cfg.SpeedJitter, cfg.SpeedJitter)),
+			cruise = cruise,
+			speed = cruise,
 			cornerAt = rabbit,
 			nextDir = dir,
 		}
+		body.Touched:Connect(function(hit: BasePart)
+			onTouched(car, hit)
+		end)
 		plan(car)
 		model:PivotTo(CFrame.lookAt(rabbit, rabbit + dir))
 		local start = targetFor(car)
@@ -231,9 +373,20 @@ local function spawnAll()
 		car.model:Destroy()
 	end
 	table.clear(cars)
+	table.clear(holds)
 	groundParams = MapService.StaticRaycastParams()
-	for _ = 1, Config.Traffic.Count do
-		spawnCar()
+	-- One cruise speed per slice of SpeedMin..SpeedMax, shuffled, so every car runs at its own speed.
+	local cfg = Config.Traffic
+	local speeds: { number } = {}
+	for i = 1, cfg.Count do
+		table.insert(speeds, cfg.SpeedMin + (cfg.SpeedMax - cfg.SpeedMin) * ((i - 1) + rng:NextNumber()) / cfg.Count)
+	end
+	for i = #speeds, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		speeds[i], speeds[j] = speeds[j], speeds[i]
+	end
+	for _, cruise in speeds do
+		spawnCar(cruise)
 	end
 end
 
@@ -251,15 +404,17 @@ end
 function TrafficService.Start()
 	spawnAll()
 	RunService.Heartbeat:Connect(function(dt: number)
-		local lost = 0
+		local lost: { number } = {}
 		for i = #cars, 1, -1 do
 			local car = cars[i]
 			if not car.body:IsDescendantOf(workspace) then
+				release(car)
 				car.model:Destroy()
 				table.remove(cars, i)
-				lost += 1
+				table.insert(lost, car.cruise)
 				continue
 			end
+			updateSpeed(car, dt)
 			advance(car, dt)
 			local target = targetFor(car)
 			if (car.body.Position - target).Magnitude > Config.Traffic.ResetDistance then
@@ -269,8 +424,8 @@ function TrafficService.Start()
 			car.align.Position = target
 			car.orient.CFrame = CFrame.lookAt(Vector3.zero, car.dir)
 		end
-		for _ = 1, lost do
-			spawnCar()
+		for _, cruise in lost do
+			spawnCar(cruise)
 		end
 	end)
 end

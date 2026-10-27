@@ -191,8 +191,15 @@ Config.Combo = {
 -- Hitting one is a crash like any wall; slipping past one at speed counts as a near miss.
 Config.Traffic = {
 	Count = 10, -- cars per map
-	Speed = 30, -- cruise speed, studs/s (the Yellow Cab tops out at 90)
-	SpeedJitter = 0.15, -- each car cruises within this share of Speed, up or down
+	SpeedMin = 18, -- cruise speeds are spread evenly across this range so no two cars match (studs/s; the Yellow Cab tops out at 90)
+	SpeedMax = 50,
+	Accel = 12, -- studs/s^2 back up to cruise
+	Brake = 40, -- studs/s^2 when closing on a slower car ahead
+	FollowGap = 24, -- inside this gap (lane point to lane point) a car matches the car ahead; at a body length it stops
+	MinImpactSpeed = 15, -- closing speed into a traffic car that counts as a crash (at least a small one); below is a nudge
+	JunctionApproach = 55, -- inside this distance of the next intersection's center a car claims it, or stops to wait its turn
+	JunctionClear = 24, -- a car holds the intersection until its lane point is this far past the center
+	StopLine = 19, -- a waiting car stops with its lane point this far from the center, clear of the crossing lanes
 	LaneOffset = 6, -- lane center from the road center line
 	StraightWeight = 2, -- odds at an intersection: straight vs each possible turn
 	TurnWeight = 1,

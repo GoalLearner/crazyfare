@@ -29,7 +29,7 @@ export type VehicleEntry = {
 	spinUntil: number, -- server time; crash detection ignores spinouts
 	crashImmuneUntil: number,
 	speedHistory: { { t: number, speed: number } }, -- recent horizontal speeds for the crash watch
-	impact: { peak: number, low: number, settleAt: number }?, -- a hit in progress; measured until settleAt so the whole stop counts
+	impact: { peak: number, low: number, settleAt: number, bonus: number }?, -- a hit in progress, measured until settleAt so the whole stop counts; bonus = biggest reported contact speed (traffic)
 	lastPosition: Vector3, -- last position that passed speed sanity
 	strikes: number, -- consecutive frames that failed it
 }
@@ -123,6 +123,27 @@ end
 
 function VehicleService.GetEntry(player: Player): VehicleEntry?
 	return entries[player]
+end
+
+-- A hit measured outside the speed watch (TrafficService reports how fast a player car closed on a traffic car).
+-- It joins the crash watch so one hit fires once, with the bigger of the two readings.
+function VehicleService.ReportImpact(player: Player, speed: number)
+	local entry = entries[player]
+	if not entry or entry.chassis.Anchored then
+		return
+	end
+	local now = workspace:GetServerTimeNow()
+	if now < entry.crashImmuneUntil or now < entry.spinUntil then
+		return
+	end
+	local impact = entry.impact
+	if impact then
+		impact.bonus = math.max(impact.bonus, speed)
+		return
+	end
+	local v = entry.chassis.AssemblyLinearVelocity
+	local current = Vector3.new(v.X, 0, v.Z).Magnitude
+	entry.impact = { peak = current, low = current, settleAt = now + Config.Passenger.CrashSettle, bonus = speed }
 end
 
 function VehicleService.GetAll(): { [Player]: VehicleEntry }
@@ -429,7 +450,7 @@ function VehicleService.Start()
 				impact.low = math.min(impact.low, speed)
 				if now >= impact.settleAt then
 					entry.impact = nil
-					local lost = impact.peak - impact.low
+					local lost = math.max(impact.peak - impact.low, impact.bonus)
 					if RunService:IsStudio() then
 						print(string.format("[VehicleService] crash: %s lost %.0f studs/s", player.Name, lost))
 					end
@@ -438,7 +459,7 @@ function VehicleService.Start()
 					table.insert(history, { t = now, speed = speed })
 				end
 			elseif drop >= Config.Passenger.CrashDeltaThreshold and now >= entry.crashImmuneUntil and now >= entry.spinUntil and not boostEnding then
-				entry.impact = { peak = peak, low = speed, settleAt = now + Config.Passenger.CrashSettle }
+				entry.impact = { peak = peak, low = speed, settleAt = now + Config.Passenger.CrashSettle, bonus = 0 }
 			end
 
 			local pos = entry.chassis.Position
