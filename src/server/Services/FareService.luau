@@ -269,7 +269,7 @@ local function onStunt(player: Player, kind: string, units: number, chain: numbe
 			end
 		end
 	end
-	fire(player, { kind = "Stunt", stunt = kind, amount = amount, chain = chain })
+	fire(player, { kind = "Stunt", stunt = kind, amount = amount, chain = chain, stunts = if fare then fare.stuntTips else nil })
 end
 
 local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerService.Npc, now: number, allowTip: boolean)
@@ -286,6 +286,8 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	local stunts = if allowTip then fare.stuntTips else 0
 	local held = if Config.Stunts.HoldUntilDelivery then stunts else 0
 	local payout = fare.base + tipShown + held
+	local grades = Config.Grades
+	local grade = if not allowTip then "Slow" elseif timeFrac >= grades.SpeedyFrac then "Speedy" elseif timeFrac >= grades.OnTimeFrac then "OnTime" else "Slow"
 
 	fares[player] = nil
 	delivered[player] = (delivered[player] or 0) + 1
@@ -298,6 +300,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		payout = payout,
 		tip = tipShown,
 		stunts = stunts,
+		grade = grade,
 		line = if allowTip then nil else "LATE. NO TIP.",
 	})
 	FareService.AddCash(player, payout)

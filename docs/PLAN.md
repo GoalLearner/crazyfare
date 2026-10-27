@@ -119,6 +119,6 @@ Verification
 Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10-item prompt). Owner calls: quota race stays and a solo Arcade clock mode comes later; AI rival taxis fill matches (Phase C); the Crazy feel goes first.
 - [x] A1 Economy: money in integer cents (`Money` helper), fares 5/10/18, quotas 75/100/125 counted per round, 25% of unspent cash carries into the next round, 3-minute rounds, match winner = total over three rounds
 - [x] A2 Live stunt tips: DRIFT! / BIG AIR! / NEAR MISS! pay into the fare at once, chain x1-x10 (+10% per step), 4 s idle / hurting crash / bail ends it, held until delivery, capped at 2x base, popups above the cab, COMBO xN counter, coin ding (Pro Sound Effects 9126073001) pitched up the chain
-- [ ] A3 Money you can hear: rolling TOTAL and FARE counters, cash burst on delivery, SPEEDY / ON TIME / SLOW stamp
+- [x] A3 Money you can hear: slot-machine TOTAL and FARE counters (a reel per digit, odometer roll, tick 9114069409), FARE meter rolls up from $0 on boarding and with stunt cash, coin burst from the cab into the TOTAL on delivery, SPEEDY / ON TIME / SLOW stamp (`Config.Grades`, stamp 9114025921)
 - [ ] A4 Where to: 12 named destinations, rooftop signs, "TAKE ME TO..." on boarding, arrival banner, drop-zone ring, countdown by the cab
 - [ ] A5 Speed and traffic: Dash, boost sound + flames, speed streaks, landing dust, drift smoke, 20-30 traffic vehicles with vans and buses

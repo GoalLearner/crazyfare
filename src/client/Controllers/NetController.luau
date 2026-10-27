@@ -60,7 +60,13 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			destinationIndex = payload.destinationIndex or 0,
 			startedAt = payload.startedAt,
 			deadline = payload.deadline,
+			stunts = 0,
 		}
+	elseif payload.kind == "Stunt" then
+		local fare = State.fare
+		if fare and payload.stunts then
+			fare.stunts = payload.stunts
+		end
 	elseif payload.kind == "Delivered" or payload.kind == "Bailed" then
 		State.fare = nil
 	end

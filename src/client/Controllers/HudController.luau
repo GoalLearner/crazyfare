@@ -1,6 +1,7 @@
 --!strict
--- The HUD: cash + quota, round timer, fare card, combo, boost tank, item slot, speed, center messages,
--- destination arrow, podium with gems and the rematch vote. Reads State; the only thing it sends is RematchVote.
+-- The HUD: rolling TOTAL + quota, round timer, fare card with a rolling FARE, stunt popups and combo, boost tank, item
+-- slot, speed, center messages, coin burst + grade stamp on delivery, podium with gems and the rematch vote.
+-- Reads State; the only thing it sends is RematchVote.
 
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -14,11 +15,14 @@ local Types = require(Shared:WaitForChild("Types"))
 local VecUtil = require(Shared:WaitForChild("VecUtil"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
+local RollingCounter = require(script.Parent.Parent.RollingCounter)
+local SoundController = require(script.Parent.SoundController)
 
 local HudController = {}
 
 local screen: ScreenGui
-local cashLabel: TextLabel
+local totalCounter: RollingCounter.Counter
+local totalReady = false
 local quotaBar: UI.Bar
 local quotaLabel: TextLabel
 local timerLabel: TextLabel
@@ -28,7 +32,7 @@ local arrowDistance: TextLabel
 
 local fareCard: Frame
 local fareTier: TextLabel
-local fareValue: TextLabel
+local fareCounter: RollingCounter.Counter
 local fareTimer: UI.Bar
 local fareHp: UI.Bar
 local fareHpLabel: TextLabel
@@ -40,6 +44,14 @@ local boostBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
 local itemLabel: TextLabel
+
+local stampRoot: Frame
+local stampLabel: TextLabel
+local stampStroke: UIStroke
+local stampScale: UIScale
+local stampToken = 0
+local lastTickAt = 0
+local rng = Random.new()
 
 local message: TextLabel
 local subMessage: TextLabel
@@ -160,12 +172,83 @@ local function updatePopups()
 	end
 end
 
+-- Coins pop out of the cab and fly into the TOTAL, which waits for them before it rolls.
+local function burstCoins(payout: number)
+	local hud = Config.Hud
+	local count = math.clamp(math.round(payout / 100 * hud.BurstCoinsPerDollar), hud.BurstCoinsMin, hud.BurstCoinsMax)
+	local from = popupAnchor()
+	local to = RollingCounter.GetCenter(totalCounter)
+	for i = 1, count do
+		local coin = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(from.X, from.Y), Size = UDim2.fromOffset(30, 30), TextColor3 = UI.Cash, TextStrokeTransparency = 0.1, Text = "$" }, popupLayer)
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local mid = from + Vector2.new(math.cos(angle), math.sin(angle)) * hud.BurstSpread * rng:NextNumber(0.45, 1)
+		local out = TweenService:Create(coin, TweenInfo.new(hud.BurstOutSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(mid.X, mid.Y) })
+		local fly = TweenService:Create(coin, TweenInfo.new(hud.BurstFlySeconds + i * 0.012, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.fromOffset(to.X, to.Y), Size = UDim2.fromOffset(18, 18) })
+		out.Completed:Once(function()
+			fly:Play()
+		end)
+		fly.Completed:Once(function()
+			coin:Destroy()
+		end)
+		out:Play()
+	end
+	RollingCounter.Hold(totalCounter, hud.CounterLandHold)
+end
+
+-- SPEEDY! / ON TIME / SLOW lands like a rubber stamp a beat after the payout, then fades.
+local function showStamp(grade: string)
+	local grades = Config.Grades
+	local color = grades.Colors[grade] or UI.White
+	stampToken += 1
+	local token = stampToken
+	task.delay(Config.Hud.StampDelay, function()
+		if token ~= stampToken then
+			return
+		end
+		stampLabel.Text = grades.Labels[grade] or string.upper(grade)
+		stampLabel.TextColor3 = color
+		stampLabel.TextTransparency = 0
+		stampStroke.Color = color
+		stampStroke.Transparency = 0
+		stampRoot.Visible = true
+		stampScale.Scale = 2.6
+		stampRoot.Rotation = -18
+		local slam = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		TweenService:Create(stampScale, slam, { Scale = 1 }):Play()
+		TweenService:Create(stampRoot, slam, { Rotation = -8 }):Play()
+		task.delay(Config.Hud.StampSeconds, function()
+			if token ~= stampToken then
+				return
+			end
+			local fade = TweenInfo.new(0.3)
+			TweenService:Create(stampLabel, fade, { TextTransparency = 1 }):Play()
+			local tween = TweenService:Create(stampStroke, fade, { Transparency = 1 })
+			tween.Completed:Once(function()
+				if token == stampToken then
+					stampRoot.Visible = false
+				end
+			end)
+			tween:Play()
+		end)
+	end)
+end
+
+-- Steps a counter; a tick sound per dime boundary, capped per second across both counters.
+local function stepCounter(counter: RollingCounter.Counter, dt: number, pitch: number)
+	local ticked = RollingCounter.Step(counter, dt)
+	local now = os.clock()
+	if ticked and now - lastTickAt >= 1 / Config.Hud.CounterTickMaxPerSecond then
+		lastTickAt = now
+		SoundController.PlayOneShot("Tick", pitch)
+	end
+end
+
 local function build()
 	screen = UI.Screen("CrazyFareHud", 10)
 
 	-- Cash + quota (top-left)
 	local cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 76), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
-	cashLabel = UI.Label({ Size = UDim2.fromOffset(220, 56), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, cashBox)
+	totalCounter = RollingCounter.new(cashBox, Config.Hud.TotalHeight, UI.Cash, UDim2.fromOffset(0, 4), 0)
 	quotaBar = UI.Bar({ Position = UDim2.fromOffset(0, 62), Size = UDim2.fromOffset(220, 10) }, UI.Cash, cashBox)
 	quotaLabel = UI.Label({ Position = UDim2.fromOffset(0, 74), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, cashBox)
 	gemsLabel = UI.Label({ Position = UDim2.fromOffset(0, 94), Size = UDim2.fromOffset(220, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Accent, Font = UI.FontMedium, Text = "" }, cashBox)
@@ -182,7 +265,7 @@ local function build()
 	fareCard = UI.Frame({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(240, 118), Visible = false }, screen)
 	UI.Corner(10, fareCard)
 	fareTier = UI.Label({ Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(120, 22), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.FontMedium, Text = "SHORT" }, fareCard)
-	fareValue = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 4), Size = UDim2.fromOffset(100, 34), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Cash, Text = "$10" }, fareCard)
+	fareCounter = RollingCounter.new(fareCard, Config.Hud.FareHeight, UI.Cash, UDim2.new(1, -12, 0, 6), 1)
 	fareTimer = UI.Bar({ Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 12) }, UI.Warn, fareCard)
 	fareHp = UI.Bar({ Position = UDim2.fromOffset(12, 74), Size = UDim2.new(1, -24, 0, 14) }, UI.Danger, fareCard)
 	fareHpLabel = UI.Label({ Position = UDim2.fromOffset(12, 92), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "PASSENGER" }, fareCard)
@@ -193,6 +276,14 @@ local function build()
 	comboScale = UI.New("UIScale", {}, comboLabel) :: UIScale
 	comboBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 44), Size = UDim2.fromOffset(200, 8) }, UI.Warn, center)
 	popupLayer = UI.Frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, screen)
+
+	-- Delivery grade stamp: an inked box slammed on screen under the payout
+	stampRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 84), BackgroundTransparency = 1, Rotation = -8, Visible = false }, screen)
+	UI.Corner(12, stampRoot)
+	stampStroke = UI.Stroke(UI.White, 5, stampRoot)
+	stampStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stampScale = UI.New("UIScale", {}, stampRoot) :: UIScale
+	stampLabel = UI.Label({ Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 1, -12), TextStrokeTransparency = 0.2 }, stampRoot)
 	boostBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 58), Size = UDim2.fromOffset(200, 8) }, UI.Accent, center)
 	speedLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 68), Size = UDim2.fromOffset(120, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "0" }, center)
 
@@ -298,6 +389,10 @@ local function onFare(payload: Types.FareEventPayload)
 			table.insert(parts, payload.line)
 		end
 		showMessage("+" .. UI.Money(payload.payout or 0), UI.Cash, Config.Hud.PayoutPunchSeconds, if #parts > 0 then table.concat(parts, "  ·  ") else nil)
+		burstCoins(payload.payout or 0)
+		if payload.grade then
+			showStamp(payload.grade)
+		end
 	elseif payload.kind == "Bailed" then
 		local reason = if payload.reason == "timeout" then "TIME'S UP" elseif payload.reason == "pedestrian" then "WATCH THE ROAD!" else "PASSENGER BAILED"
 		showMessage(reason, UI.Danger, Config.Hud.MessageSeconds, "-" .. UI.Money(payload.base or 0) .. " fare")
@@ -325,6 +420,7 @@ local function onFare(payload: Types.FareEventPayload)
 			punch(comboScale, 1.3)
 		end
 	elseif payload.kind == "Claimed" then
+		RollingCounter.Snap(fareCounter, 0) -- the meter starts: it rolls up to the base fare
 		local def = Config.Fares.Tiers[payload.tier or ""]
 		showMessage((if def then def.Label else "FARE") .. " TRIP", tierColor(payload.tier or ""), 1.0, "Drop them at the beacon")
 	end
@@ -351,14 +447,19 @@ local function onItem(payload: Types.ItemEventPayload)
 	end
 end
 
-local function update()
+local function update(dt: number)
 	local now = workspace:GetServerTimeNow()
 	local round = State.round
 	local phase = State.GetPhase()
 
-	cashLabel.Text = UI.Money(State.cash)
+	if not totalReady then
+		RollingCounter.Snap(totalCounter, State.cash)
+		totalReady = true
+	end
+	RollingCounter.SetTarget(totalCounter, State.cash)
+	stepCounter(totalCounter, dt, 1)
 	local quota = if round then round.quota else Money.Cents(Config.Round.Quotas[1])
-	UI.SetBar(quotaBar, if quota > 0 then State.cash / quota else 0)
+	UI.SetBar(quotaBar, if quota > 0 then RollingCounter.GetValue(totalCounter) / quota else 0)
 	quotaLabel.Text = "QUOTA " .. UI.Money(quota)
 
 	-- Timer / phase text
@@ -400,7 +501,8 @@ local function update()
 		fareCard.Visible = true
 		fareTier.Text = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
 		fareTier.TextColor3 = tierColor(fare.tier)
-		fareValue.Text = UI.Money(fare.base)
+		RollingCounter.SetTarget(fareCounter, fare.base + fare.stunts)
+		stepCounter(fareCounter, dt, 1.25)
 		local total = math.max(0.01, fare.deadline - fare.startedAt)
 		local remaining = VecUtil.Clamp01((fare.deadline - now) / total)
 		UI.SetBar(fareTimer, remaining, if remaining < 0.25 then UI.Danger else UI.Warn)

@@ -39,14 +39,14 @@ local function play(name: string)
 	end
 end
 
--- One coin per paid stunt, each its own copy so fast stunts overlap; pitch climbs with the chain.
-local function playCoin(chain: number)
-	local coin = sounds.Coin
-	if not coin then
+-- Plays its own copy of a sound, so quick repeats overlap instead of restarting (coins, counter ticks).
+function SoundController.PlayOneShot(name: string, pitch: number?)
+	local source = sounds[name]
+	if not source then
 		return
 	end
-	local sound = coin:Clone()
-	sound.PlaybackSpeed = 1 + math.max(0, chain - 1) * Config.Stunts.CoinPitchPerChain
+	local sound = source:Clone()
+	sound.PlaybackSpeed = pitch or 1
 	sound.Parent = SoundService
 	sound:Play()
 	sound.Ended:Once(function()
@@ -57,7 +57,8 @@ end
 local function onFare(payload: Types.FareEventPayload)
 	if payload.kind == "Stunt" then
 		if (payload.amount or 0) > 0 then
-			playCoin(payload.chain or 1)
+			-- one coin per paid stunt; pitch climbs with the chain
+			SoundController.PlayOneShot("Coin", 1 + math.max(0, (payload.chain or 1) - 1) * Config.Stunts.CoinPitchPerChain)
 		end
 	elseif payload.kind == "Claimed" then
 		play("Pickup")
@@ -65,6 +66,9 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Delivered" then
 		play("Deliver")
 		play("Thanks")
+		if payload.grade then
+			task.delay(Config.Hud.StampDelay, play, "Stamp")
+		end
 	elseif payload.kind == "Bailed" then
 		play("Bail")
 		play("Angry")

@@ -113,7 +113,8 @@ export type FareEventPayload = {
 	deadline: number?,
 	payout: number?,
 	tip: number?,
-	stunts: number?, -- "Delivered": stunt cash this ride paid (cents)
+	stunts: number?, -- "Delivered": stunt cash this ride paid; "Stunt": stunt cash riding in the fare so far (cents)
+	grade: string?, -- "Delivered": "Speedy" | "OnTime" | "Slow" (Config.Grades)
 	stunt: string?, -- "Stunt": "Drift" | "Airtime" | "NearMiss"
 	chain: number?, -- "Stunt": chain after it; "ChainBroken": the chain that ended
 	reason: string?, -- bail reason: "hp" | "timeout" | "pedestrian"; "ChainBroken": "crash" | "bail" | "idle"

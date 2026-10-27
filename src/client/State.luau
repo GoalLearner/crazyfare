@@ -16,6 +16,7 @@ export type FareInfo = {
 	destinationIndex: number,
 	startedAt: number,
 	deadline: number,
+	stunts: number, -- stunt cash riding in the fare (cents)
 }
 
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]

@@ -588,6 +588,8 @@ Config.Sounds = {
 		Pickup = 9113205239, -- Audi Car Door Movement Opening Closing 4
 		Deliver = 9113728049, -- Cash Register 2
 		Coin = 9126073001, -- Synth Sparkle Tone High Pitch Bell Tone Ding (1.16 s); one per paid stunt, pitched up the chain
+		Tick = 9114069409, -- Dial Switch Twisting Sharp Ticking 48 (0.42 s); money counters tick as they roll
+		Stamp = 9114025921, -- Date Stamp Big Office Impact Good Squeak 9 (0.94 s); the delivery grade stamp landing
 		Splat = 9119293925, -- Small Splat 2
 		Spinout = 9119197920, -- Slide Whistle 3
 		Crash = 9120369181, -- Vehicle Crash 2 (Pro Sound Effects); wall hit with a passenger aboard
@@ -714,6 +716,35 @@ Config.Hud = {
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
 	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face
+	-- Slot-machine money counters (TOTAL top-left, FARE on the fare card): every digit is a reel that rolls up
+	CounterRollSeconds = 0.9, -- a counter covers any gap in about this long
+	CounterMinRate = 250, -- cents per second at the slowest, so a small tip still visibly rolls
+	CounterTickMaxPerSecond = 16, -- tick sounds while a counter rolls
+	CounterLandHold = 0.55, -- after a delivery the TOTAL waits this long for the flying coins to land
+	TotalHeight = 48, -- px
+	FareHeight = 30, -- px
+	-- Coin burst on delivery: coins pop out of the cab and fly into the TOTAL
+	BurstCoinsMin = 6,
+	BurstCoinsMax = 16,
+	BurstCoinsPerDollar = 1,
+	BurstOutSeconds = 0.22,
+	BurstFlySeconds = 0.42,
+	BurstSpread = 110, -- px
+	-- Delivery grade stamp
+	StampDelay = 0.25, -- after the payout punch
+	StampSeconds = 1.3, -- on screen before it fades
+}
+
+-- Delivery grade: how much of the fare timer was left at the drop-off. The tip already pays for speed; the stamp says it out loud.
+Config.Grades = {
+	SpeedyFrac = 0.6, -- this share of the timer left or more: SPEEDY
+	OnTimeFrac = 0.25, -- this or more: ON TIME; less: SLOW
+	Labels = { Speedy = "SPEEDY!", OnTime = "ON TIME", Slow = "SLOW" } :: { [string]: string },
+	Colors = {
+		Speedy = Color3.fromRGB(255, 70, 190),
+		OnTime = Color3.fromRGB(250, 210, 60),
+		Slow = Color3.fromRGB(150, 160, 190),
+	} :: { [string]: Color3 },
 }
 
 -- Each map is a data entry. The blockout spec is shared by DevBlockout (builds it) and the minimap (draws it).
