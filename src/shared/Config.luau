@@ -64,6 +64,7 @@ export type MapFeatures = {
 	},
 	DiagonalPark: { X: number, Z: number, Width: number }, -- a park block with a path corner to corner (north-east to south-west)
 	BigHumps: { HumpSpec },
+	Runout: { X: number, Z: number, Width: number, LandmarkShift: number }, -- a clear lane through the block a jump lands you facing; its landmark moves this far east
 	BoostPads: { { X: number, Z: number, Yaw: number, Length: number, Width: number } }, -- before each big jump
 	Tunnel: { X: number, ZFrom: number, ZTo: number, Height: number }, -- a covered stretch of a north-south road
 }
@@ -1017,6 +1018,9 @@ Config.Map = {
 				-- roof at 9 (come up short and you land on it), a landing ramp down to the next road.
 				-- (Tested 2026-10-27: a 12-stud climb bled 68 studs/s to 39 and only hopped onto the roof; now lower, with a boost pad.)
 				JumpBlock = { X = 0, Z = -120, Dir = -1, Width = 24, LaunchStart = -36, Crest = -14, RoofStart = -8, RoofEnd = 20, LandEnd = 40, CrestHeight = 8, RoofHeight = 6 },
+				-- After the jump block's landing: a clear lane on through the radio tower's block (the tower moves aside),
+				-- so a full-speed landing has room to brake or turn instead of meeting the tower's base.
+				Runout = { X = 0, Z = -240, Width = 24, LandmarkShift = 28 },
 				-- A shortcut from the junction at (-60, 60) to the one at (-180, 180), with a big hump halfway.
 				DiagonalPark = { X = -120, Z = 120, Width = 14 },
 				BigHumps = {

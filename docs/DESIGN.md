@@ -142,7 +142,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 ## 8. Maps
 
 ### The City's set pieces (Phase D, `Config.Map.City.Blockout.Features`, built by DevBlockout and drawn on the minimap from the same spec)
-- **The jump block**, straight ahead of the start grid: a road-wide lane through the block north of the plaza. A boost pad at the plaza's edge, a launch ramp, a low warehouse to fly over (come up short and you land on its roof), a landing ramp to the next road. It works backwards as a smaller jump.
+- **The jump block**, straight ahead of the start grid: a road-wide lane through the block north of the plaza. A boost pad at the plaza's edge, a launch ramp, a low warehouse to fly over (come up short and you land on its roof), a landing ramp to the next road. It works backwards as a smaller jump. Past the landing, a clear **runout lane** with orange edges runs on through the radio tower's block (the tower sits to the east of it) to the outer road, so a full-speed landing has room to brake or turn.
 - **The hill** on the road beside the plaza: a crest across the road; at speed the top throws you.
 - **The diagonal park**: a path corner to corner through the park block, from the junction at (-60, 60) to the one at (-180, 180), with a big hump halfway.
 - **A big hump** on the long south road.

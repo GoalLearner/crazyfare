@@ -92,6 +92,8 @@ local function drawFeatures(f: Config.MapFeatures?)
 	end
 	local park = f.DiagonalPark
 	addStrip(park.X + half, park.Z - half, park.X - half, park.Z + half, park.Width, ROAD, 1)
+	local runout = f.Runout
+	addStrip(runout.X, runout.Z - half, runout.X, runout.Z + half, runout.Width, ROAD, 1)
 	local jump = f.JumpBlock
 	addStrip(jump.X, jump.Z - half, jump.X, jump.Z + half, jump.Width, ROAD, 1)
 	addStrip(jump.X, jump.Z + jump.Dir * jump.LaunchStart, jump.X, jump.Z + jump.Dir * jump.LandEnd, jump.Width, RAMP, 2)

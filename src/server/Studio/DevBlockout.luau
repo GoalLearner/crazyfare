@@ -481,7 +481,28 @@ local function buildDiagonalPath(ctx: Ctx, parent: Folder, cx: number, cz: numbe
 end
 
 -- Landmarks: one-of-a-kind shapes you can steer by from across the map.
-local function buildLandmark(ctx: Ctx, parent: Folder, kind: string, cx: number, cz: number)
+-- The runout lane: a clear road-wide strip through the block past the jump's landing, with ramp-orange edges.
+local function buildRunout(ctx: Ctx, parent: Folder, cx: number, cz: number)
+	local f = features(ctx)
+	if not f or f.Runout.X ~= cx or f.Runout.Z ~= cz then
+		return
+	end
+	local w = f.Runout.Width
+	local lane = makePart("Runout", Vector3.new(w, 0.6, ctx.B.CellSize + 2), CFrame.new(cx, 0.3, cz), COLOR_ROAD, parent, Tags.Road)
+	lane.Material = Enum.Material.Asphalt
+	for _, sideSign in { -1, 1 } do
+		decor(makePart("RunoutEdge", Vector3.new(0.8, 0.05, ctx.B.CellSize), CFrame.new(cx + sideSign * (w / 2 - 0.6), 0.63, cz), COLOR_RAMP, parent))
+	end
+end
+
+-- How far east a block's landmark sits: out of the way of a runout lane through its block.
+local function landmarkShift(ctx: Ctx, cx: number, cz: number): number
+	local f = features(ctx)
+	return if f and f.Runout.X == cx and f.Runout.Z == cz then f.Runout.LandmarkShift else 0
+end
+
+local function buildLandmark(ctx: Ctx, parent: Folder, kind: string, cellX: number, cz: number)
+	local cx = cellX + landmarkShift(ctx, cellX, cz)
 	if kind == "hotel" then
 		local h = 110
 		local tower = makePart("Hotel", Vector3.new(56, h, 56), CFrame.new(cx, 0.5 + h / 2, cz), Color3.fromRGB(230, 220, 200), parent, Tags.Building)
@@ -569,11 +590,14 @@ local function buildProps(ctx: Ctx, parent: Folder, cx: number, cz: number)
 end
 
 -- No curb stops where a set piece is in the way: the jump block's lane mouths, the walls of the tunnel.
-local function spotAllowed(ctx: Ctx, position: Vector3, kind: string, cx: number): boolean
+local function spotAllowed(ctx: Ctx, position: Vector3, kind: string, cx: number, cz: number): boolean
 	if kind == "jump" and math.abs(position.X - cx) < 1 then
 		return false
 	end
 	local f = features(ctx)
+	if f and f.Runout.X == cx and f.Runout.Z == cz and math.abs(position.X - cx) < 1 then
+		return false -- the runout lane's mouths
+	end
 	if f then
 		local t = f.Tunnel
 		if math.abs(position.X - t.X) < ctx.B.RoadWidth / 2 + 6 and position.Z > t.ZFrom - 4 and position.Z < t.ZTo + 4 then
@@ -619,6 +643,7 @@ local function buildCells(ctx: Ctx): { Spot }
 				end
 			elseif LANDMARK_CELLS[key] and kind == LANDMARK_CELLS[key] then
 				buildLandmark(ctx, cells, kind, cx, cz)
+				buildRunout(ctx, cells, cx, cz)
 			elseif kind == "alley" then
 				buildAlley(ctx, cells, cx, cz)
 			elseif kind == "jump" then
@@ -635,7 +660,7 @@ local function buildCells(ctx: Ctx): { Spot }
 					{ position = Vector3.new(cx, 0.5, cz + e), look = Vector3.new(0, 0, 1) },
 					{ position = Vector3.new(cx, 0.5, cz - e), look = Vector3.new(0, 0, -1) },
 				} do
-					if spotAllowed(ctx, spot.position, kind, cx) then
+					if spotAllowed(ctx, spot.position, kind, cx, cz) then
 						table.insert(spots, spot)
 					end
 				end
