@@ -2,7 +2,8 @@
 -- Pit Stop: between rounds every player gets CardsOffered random boost cards priced as a share of the next round's
 -- quota (last place gets a pity discount), buys them with round cash, and the boosts apply to the next round only.
 -- Boosts are exposed as player attributes "Pit_<CardId>" = Card.Value so both server systems and the owning client
--- can read them without another remote. StartItem is granted directly.
+-- can read them without another remote. StartItem is granted directly. Nothing applies until the round starts, so a card
+-- can be handed back for a full refund while the Pit Stop is open.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -122,6 +123,28 @@ local function buy(player: Player, cardId: string)
 	end
 end
 
+-- Changed your mind: hand a bought card back for its full price while the Pit Stop is still open.
+local function undo(player: Player, cardId: string)
+	if not open then
+		return
+	end
+	local cards = offers[player]
+	if not cards then
+		return
+	end
+	for _, card in cards do
+		if card.id == cardId then
+			if not card.bought then
+				return
+			end
+			card.bought = false
+			FareService.Refund(player, card.price)
+			sendOffer(player)
+			return
+		end
+	end
+end
+
 -- Called at the start of the next round, after items were cleared: grant StartItem, set the boost attributes.
 function PitStopService.ApplyBoosts()
 	for player, cards in offers do
@@ -165,11 +188,17 @@ end
 
 function PitStopService.Init()
 	offerEvent = Remotes.Get("PitStopOffer")
-	Remotes.Get("PitStopBuy").OnServerEvent:Connect(function(player: Player, cardId: any)
+	-- PitStopBuy(cardId, undo?): buys the card, or with undo = true hands a bought card back.
+	Remotes.Get("PitStopBuy").OnServerEvent:Connect(function(player: Player, cardId: any, undoFlag: any)
 		if not RateLimiter.Allow(player, "PitStopBuy", Config.Net.RateLimits.PitStopBuy) then
 			return
 		end
-		if typeof(cardId) == "string" then
+		if typeof(cardId) ~= "string" then
+			return
+		end
+		if undoFlag == true then
+			undo(player, cardId)
+		else
 			buy(player, cardId)
 		end
 	end)

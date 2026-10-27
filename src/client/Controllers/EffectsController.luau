@@ -107,10 +107,15 @@ local function addSign(inst: Instance)
 		return
 	end
 	local dest = Config.Destinations
+	-- Hang the sign from a point straight above the marker. The markers are discs lying on their side, and a billboard's
+	-- "world space" offset actually follows the part's own axes, so it would slide the sign sideways into the ground.
+	local anchor = Instance.new("Attachment")
+	anchor.Name = "DestinationSignAnchor"
+	anchor.Position = part.CFrame:VectorToObjectSpace(Vector3.new(0, dest.SignHeight, 0))
+	anchor.Parent = part
 	local gui = UI.New("BillboardGui", {
 		Name = "DestinationSign",
-		Adornee = part,
-		StudsOffsetWorldSpace = Vector3.new(0, dest.SignHeight, 0),
+		Adornee = anchor,
 		LightInfluence = 0,
 		MaxDistance = dest.SignMaxDistance,
 		AlwaysOnTop = false,

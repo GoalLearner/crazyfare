@@ -112,6 +112,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 - Players spend **round cash** on temporary, this-round-only boost cards. 4–5 randomized from the pool: **SpeedTune, BigTank, StartItem, ArmoredSeats, TipJar, ExtraWiper**.
 - Prices are a share of the next round's quota (about 22-44%), so two picks cost roughly a round of banked cash. Last place gets a **30% pity discount**.
+- Changed your mind? Tap a **BOUGHT** card to hand it back for a full refund, any time before the round starts (boosts only apply at the start).
 - Cash you bank is spendable at the Pit Stop. The quota counts only this round's earnings, but **25% of your unspent cash carries into the next round as a head start**, so spend-vs-bank is still a real decision and a big early lead can't snowball.
 
 ## 8. Maps

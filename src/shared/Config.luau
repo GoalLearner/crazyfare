@@ -192,7 +192,7 @@ Config.PitStop = {
 	Seconds = 30,
 	CardsOffered = 5, -- Pit Stop Plus (Phase 6) makes this 6
 	MaxBuys = 2, -- cards one player can buy per Pit Stop; the rich still have to choose
-	-- Price = Share x the NEXT round's quota (round 2 = $45, round 3 = $60), so cards keep pace with the money and
+	-- Price = Share x the NEXT round's quota (round 2 = $100, round 3 = $125), so cards keep pace with the money and
 	-- two picks cost about a whole round of banked cash. Unspent cash is quota progress, so buying is a real trade.
 	PityDiscount = 0.3, -- last place pays this much less
 	CarryFrac = 0.25, -- each new round starts with this share of your unspent cash as a head start toward the quota

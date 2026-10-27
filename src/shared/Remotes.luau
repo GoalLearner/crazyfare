@@ -22,7 +22,7 @@ local EVENT_NAMES = {
 	"DriveState", -- (drifting: boolean)
 	"ResetVehicle", -- ()
 	"ClientReady", -- () client booted; server replies with RoundState + VehicleAssigned
-	"PitStopBuy", -- (cardId: string)
+	"PitStopBuy", -- (cardId: string, undo: boolean?) undo hands a bought card back for a refund
 	"RematchVote", -- ()
 	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
 	"RequestLeaderboards", -- ()

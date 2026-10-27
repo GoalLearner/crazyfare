@@ -72,6 +72,11 @@ function FareService.Spend(player: Player, amount: number): boolean
 	return true
 end
 
+-- Pit Stop undo: gives back exactly what Spend took (the wallet only, never quota progress).
+function FareService.Refund(player: Player, amount: number)
+	wallet[player] = (wallet[player] or 0) + amount
+end
+
 function FareService.GetFare(player: Player): Types.Fare?
 	return fares[player]
 end

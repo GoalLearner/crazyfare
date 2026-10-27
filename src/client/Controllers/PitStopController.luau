@@ -1,6 +1,7 @@
 --!strict
 -- The Pit Stop panel between rounds: the cards the server offered, their prices, your cash, and a countdown.
--- Buying sends PitStopBuy; the server answers with a fresh offer that marks the card bought.
+-- Buying sends PitStopBuy; the server answers with a fresh offer that marks the card bought. Tapping a BOUGHT card hands
+-- it back for a full refund (PitStopBuy with undo) until the round starts.
 -- A GARAGE tab hosts the garage inside the same panel, so cars, upgrades and paint can change between rounds.
 
 local RunService = game:GetService("RunService")
@@ -168,11 +169,21 @@ local function renderCards(offer: Types.PitStopOfferPayload)
 			TextSize = 16,
 			TextColor3 = if affordable or card.bought then UI.White else UI.Muted,
 			Text = if card.bought then "BOUGHT" else UI.Money(card.price),
-			AutoButtonColor = affordable and not card.bought,
+			AutoButtonColor = affordable or card.bought,
 		}, frame) :: TextButton
 		UI.Corner(8, button)
-		if not card.bought and affordable then
-			local id = card.id
+		local id = card.id
+		if card.bought then
+			button.MouseEnter:Connect(function()
+				button.Text = "UNDO"
+			end)
+			button.MouseLeave:Connect(function()
+				button.Text = "BOUGHT"
+			end)
+			button.Activated:Connect(function()
+				buyRemote:FireServer(id, true)
+			end)
+		elseif affordable then
 			button.Activated:Connect(function()
 				buyRemote:FireServer(id)
 			end)
