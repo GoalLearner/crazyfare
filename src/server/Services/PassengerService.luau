@@ -32,6 +32,8 @@ export type Npc = {
 	bubble: TextLabel,
 	icon: TextLabel,
 	walkTween: Tween?,
+	riders: number, -- people in the group (2+ = a carpool, Config.Chaos.Carpool)
+	group: TextLabel?, -- "CARPOOL x3" over a waiting group
 }
 
 local PassengerService = {}
@@ -172,6 +174,23 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	if npc.golden then
 		addGoldenMarks(model, torso, torsoCf)
 	end
+	-- A carpool: the others stand beside them (welded, so they walk and ride along), one model each so a stop takes one
+	local carpool = Config.Chaos.Carpool
+	for k = 2, npc.riders do
+		local buddy = Instance.new("Model")
+		buddy.Name = "Buddy"
+		local side = if k % 2 == 0 then 1 else -1
+		local offset = CFrame.new(side * carpool.Spacing * math.ceil((k - 1) / 2), -0.15, 0.4)
+		local shirt = carpool.Shirts[(k - 2) % #carpool.Shirts + 1]
+		local bTorso = makePart("Torso", Vector3.new(1.5, 1.6, 0.85), torsoCf * offset, shirt, buddy)
+		local bHead = makePart("Head", Vector3.new(1.05, 1.05, 1.05), torsoCf * offset * CFrame.new(0, 1.35, 0), SKIN, buddy)
+		bHead.Shape = Enum.PartType.Ball
+		local bLegs = makePart("Leg", Vector3.new(1.3, 1.5, 0.65), torsoCf * offset * CFrame.new(0, -1.55, 0), PANTS, buddy)
+		for _, p in { bTorso, bHead, bLegs } do
+			weld(torso, p)
+		end
+		buddy.Parent = model
+	end
 
 	-- The badge: tier color ring, the kind's icon inside ($, a bolt, a nervous face; a star for the Golden Fare)
 	local iconSize = if npc.golden then 60 else 46
@@ -193,6 +212,13 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	stroke.Color = badgeColor
 	stroke.Parent = ring
 	icon.ZIndex = 2
+
+	if npc.riders > 1 then
+		local group = makeLabel(head, "Group", UDim2.fromOffset(120, 22), Vector3.new(0, 3.6, 0))
+		group.Text = string.format(carpool.Label, npc.riders)
+		group.TextColor3 = carpool.Color
+		npc.group = group
+	end
 
 	local bubble = makeLabel(head, "Bubble", UDim2.fromOffset(260, 40), Vector3.new(0, 3.2, 0))
 	bubble.Text = ""
@@ -331,7 +357,7 @@ end
 
 -- `golden` true forces a Golden Fare (debug); nil rolls Config.Golden.Chance (more during a GOLDEN HOUR event) while
 -- none is in play.
-function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?): Npc
+function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden: boolean?, riders: number?): Npc
 	local tierDef = Config.Fares.Tiers[tier]
 	local chance = Config.Golden.Chance * Events.GoldenChanceMult(os.time())
 	local isGolden = if golden ~= nil then golden else (not goldenInPlay() and rng:NextNumber() < chance)
@@ -349,6 +375,7 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden:
 		position = groundPos,
 		hp = tierDef.Hp,
 		maxHp = tierDef.Hp,
+		riders = riders or (if not isGolden and rng:NextNumber() < Config.Chaos.Carpool.Chance then rng:NextInteger(2, Config.Chaos.Carpool.MaxRiders) else 1),
 	} :: any
 	local model, torso, icon, bubble = buildModel(npc, groundPos, point.cframe.LookVector)
 	npc.model = model
@@ -362,6 +389,39 @@ function PassengerService.SpawnAt(point: MapService.Point, tier: string, golden:
 		onGoldenSpawned:Fire(typed)
 	end
 	return typed
+end
+
+-- A carpool stop: one of the group gets out (the passenger aboard keeps the rest).
+function PassengerService.DropRider(player: Player)
+	local npc = loadedByPlayer[player]
+	if not npc or npc.riders <= 1 then
+		return
+	end
+	npc.riders -= 1
+	local buddy = npc.model:FindFirstChild("Buddy")
+	if buddy then
+		buddy:Destroy()
+	end
+	local group = npc.group
+	if group then
+		group.Text = string.format(Config.Chaos.Carpool.Label, npc.riders)
+		;(group.Parent :: BillboardGui).Enabled = npc.riders > 1
+	end
+end
+
+-- Studio: a full carpool at a random free curb.
+function PassengerService.DebugSpawnCarpool(): Npc?
+	local free: { MapService.Point } = {}
+	for _, point in MapService.GetPickups() do
+		if not npcAtPickup[point.index] then
+			table.insert(free, point)
+		end
+	end
+	if #free == 0 then
+		return nil
+	end
+	local point = free[rng:NextInteger(1, #free)]
+	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), false, Config.Chaos.Carpool.MaxRiders)
 end
 
 -- Debug: a Golden Fare at a random free curb (nil when every curb is taken or one is already in play).
@@ -701,6 +761,7 @@ function PassengerService.Snapshot(): { Types.NpcSnap }
 				state = npc.state,
 				kind = npc.kind,
 				golden = npc.golden,
+				riders = npc.riders,
 			})
 		end
 	end

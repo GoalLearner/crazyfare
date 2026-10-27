@@ -23,6 +23,7 @@ export type FareInfo = {
 	request: string?, -- what they asked for on the way (Config.Chaos.Requests.List Id)
 	requestProgress: number,
 	requestDone: boolean,
+	riders: number, -- people aboard (2+ = a carpool)
 }
 
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]

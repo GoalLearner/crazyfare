@@ -155,14 +155,16 @@ end
 local function styleNpcDot(dot: Frame, npc: Types.NpcSnap)
 	local corner = dot:FindFirstChildOfClass("UICorner")
 	local stroke = dot:FindFirstChildOfClass("UIStroke")
-	local size = if npc.golden then 13 else 8
+	local carpool = npc.riders > 1
+	local size = if npc.golden then 13 elseif carpool then 11 else 8
 	dot.Size = UDim2.fromOffset(size, size)
 	dot.Rotation = if npc.kind == "ThrillSeeker" and not npc.golden then 45 else 0
 	if corner then
 		corner.CornerRadius = UDim.new(0, if npc.golden or npc.kind == "Regular" then size / 2 else 1)
 	end
 	if stroke then
-		stroke.Thickness = if npc.golden then 2 else 0
+		stroke.Thickness = if npc.golden or carpool then 2 else 0
+		stroke.Color = if carpool and not npc.golden then Config.Chaos.Carpool.Color else UI.White
 	end
 	dot.BackgroundColor3 = if npc.golden then Config.Golden.Color else tierColor(npc.tier)
 	dot.ZIndex = if npc.golden then 4 else 3

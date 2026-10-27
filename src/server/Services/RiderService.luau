@@ -54,6 +54,7 @@ local function seat(rider: Rider)
 	model:SetAttribute("RiderGolden", rider.npc.golden)
 	model:SetAttribute("RiderPose", rider.pose)
 	model:SetAttribute("RiderKind", rider.npc.kind)
+	model:SetAttribute("RiderCount", rider.npc.riders)
 end
 
 local function setPose(rider: Rider, pose: string)
@@ -165,6 +166,10 @@ local function step()
 		local entry = VehicleService.GetEntry(player)
 		if entry and entry.model ~= rider.vehicle then
 			seat(rider) -- the car was respawned: the passenger climbs into the new one
+		end
+		local vehicle = rider.vehicle
+		if vehicle and vehicle:GetAttribute("RiderCount") ~= rider.npc.riders then
+			vehicle:SetAttribute("RiderCount", rider.npc.riders) -- a carpool stop let one out
 		end
 		if rider.pose ~= "rest" and clock >= rider.poseUntil then
 			setPose(rider, "rest")

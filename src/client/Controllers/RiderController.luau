@@ -1,8 +1,8 @@
 --!strict
 -- Draws the passenger riding in every cab (yours and rivals'), from the attributes RiderService writes on each car:
 -- head and shoulders out of the roof, sunroof style, in their kind's shirt (a black suit and a gold crown for the
--- Golden Fare), arms by pose, and their lines in a speech bubble. Local parts only: nothing here touches physics or
--- the server. Every number is Config.Rider.
+-- Golden Fare), arms by pose, and their lines in a speech bubble; a carpool's others pop out of the roof beside them.
+-- Local parts only: nothing here touches physics or the server. Every number is Config.Rider.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -18,6 +18,7 @@ type Figure = {
 	model: Model?, -- the drawn rider (nil when the car is empty)
 	kind: string,
 	golden: boolean,
+	count: number, -- people in the cab (a carpool's others sit beside the one who talks)
 	torsoC0: CFrame,
 	arms: { Weld },
 	pose: string,
@@ -92,10 +93,11 @@ local function clear(figure: Figure)
 	figure.label = nil
 end
 
-local function build(figure: Figure, car: Model, chassis: BasePart, kind: string, golden: boolean)
+local function build(figure: Figure, car: Model, chassis: BasePart, kind: string, golden: boolean, count: number)
 	clear(figure)
 	figure.kind = kind
 	figure.golden = golden
+	figure.count = count
 	local cfg = Config.Rider
 	-- The car's Silhouette marks the seat; the top of the car (measured before the rider is added) sets the height.
 	local silhouette = car:FindFirstChild("Silhouette")
@@ -121,6 +123,16 @@ local function build(figure: Figure, car: Model, chassis: BasePart, kind: string
 	end
 	for _, side in SIDES do
 		table.insert(figure.arms, weldTo(chassis, part("RiderArm", cfg.ArmSize, shirt, model), armC0(figure, side, "rest")))
+	end
+	-- the rest of a carpool: heads and shoulders beside and a little behind
+	local carpool = Config.Chaos.Carpool
+	for k = 2, count do
+		local side = if k % 2 == 0 then 1 else -1
+		local c0 = figure.torsoC0 * CFrame.new(side * (cfg.TorsoSize.X + 0.5) * math.ceil((k - 1) / 2), -0.2, 1)
+		weldTo(chassis, part("BuddyTorso", cfg.TorsoSize * 0.9, carpool.Shirts[(k - 2) % #carpool.Shirts + 1], model), c0)
+		local buddyHead = part("BuddyHead", Vector3.one * cfg.HeadSize * 0.95, SKIN, model)
+		buddyHead.Shape = Enum.PartType.Ball
+		weldTo(chassis, buddyHead, c0 * CFrame.new(0, cfg.TorsoSize.Y * 0.45 + cfg.HeadSize * 0.45, 0))
 	end
 
 	-- Speech bubble: white, rounded, black text, over the head
@@ -179,7 +191,7 @@ local function update(car: Model)
 	local lineIdAttr = car:GetAttribute("RiderLineId")
 	local lineId = if typeof(lineIdAttr) == "number" then lineIdAttr else 0
 	if not figure then
-		local made: Figure = { model = nil, kind = "", golden = false, torsoC0 = CFrame.new(), arms = {}, pose = "rest", gui = nil, label = nil, lineId = lineId, lineToken = 0 }
+		local made: Figure = { model = nil, kind = "", golden = false, count = 1, torsoC0 = CFrame.new(), arms = {}, pose = "rest", gui = nil, label = nil, lineId = lineId, lineToken = 0 }
 		figures[car] = made
 		figure = made
 	end
@@ -195,8 +207,10 @@ local function update(car: Model)
 		return
 	end
 	local golden = car:GetAttribute("RiderGolden") == true
-	if not current.model or current.kind ~= kind or current.golden ~= golden then
-		build(current, car, chassis, kind, golden)
+	local countAttr = car:GetAttribute("RiderCount")
+	local count = if typeof(countAttr) == "number" then countAttr else 1
+	if not current.model or current.kind ~= kind or current.golden ~= golden or current.count ~= count then
+		build(current, car, chassis, kind, golden, count)
 	end
 	local poseAttr = car:GetAttribute("RiderPose")
 	local pose = if typeof(poseAttr) == "string" then poseAttr else "rest"

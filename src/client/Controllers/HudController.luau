@@ -651,6 +651,11 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "NewLeader" then
 		local b = Config.Chaos.Bounty
 		showMessage(b.Crown .. " " .. string.format(b.Banner, if payload.you then b.You else string.upper(payload.line or "")), b.Color, b.BannerSeconds)
+	elseif payload.kind == "NextStop" then
+		RollingCounter.Snap(fareCounter, 0) -- a carpool's next leg: the meter starts again
+		arrivalShown = false
+		local name = payload.destinationName or ""
+		showShout(string.format(Config.Chaos.Carpool.NextShout, if name ~= "" then name else "THE BEACON"))
 	elseif payload.kind == "Request" and payload.done then
 		addPopup("Request", payload.payout or 0) -- paid with the tip at the drop-off
 	elseif payload.kind == "Cash" then
@@ -801,8 +806,8 @@ local function update(dt: number)
 		fareDest.Text = if fare.destinationName ~= "" then fare.destinationName else "DROP-OFF"
 		fareDest.TextColor3 = fareColor(fare)
 		local tierLabel = (Config.Fares.Tiers[fare.tier] or Config.Fares.Tiers.Green).Label
-		fareTier.Text = if fare.golden then Config.Golden.Label .. " " .. tierLabel else tierLabel
-		fareTier.TextColor3 = if fare.golden then Config.Golden.Color else UI.Muted
+		fareTier.Text = if fare.golden then Config.Golden.Label .. " " .. tierLabel elseif fare.riders > 1 then string.format("%s  x%d", tierLabel, fare.riders) else tierLabel
+		fareTier.TextColor3 = if fare.golden then Config.Golden.Color elseif fare.riders > 1 then Config.Chaos.Carpool.Color else UI.Muted
 		RollingCounter.SetTarget(fareCounter, fare.base + fare.stunts)
 		stepCounter(fareCounter, dt, 1.25)
 		local total = math.max(0.01, fare.deadline - fare.startedAt)

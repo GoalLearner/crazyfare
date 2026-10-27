@@ -106,6 +106,10 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			FareService.DebugForceRequest(player, arg)
 		end
 	end,
+	-- A full carpool appears and climbs in.
+	Carpool = function(player)
+		FareService.DebugCarpool(player)
+	end,
 	-- The nearest waiting passenger climbs in, wherever they are.
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)

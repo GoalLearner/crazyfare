@@ -52,7 +52,7 @@ local function onRoundState(payload: Types.RoundStatePayload)
 end
 
 local function onFareEvent(payload: Types.FareEventPayload)
-	if payload.kind == "Claimed" and payload.destination and payload.deadline and payload.startedAt then
+	if (payload.kind == "Claimed" or payload.kind == "NextStop") and payload.destination and payload.deadline and payload.startedAt then
 		State.fare = {
 			tier = payload.tier or "Green",
 			base = payload.base or 0,
@@ -67,6 +67,7 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			request = payload.request,
 			requestProgress = 0,
 			requestDone = false,
+			riders = payload.riders or 1,
 		}
 	elseif payload.kind == "Request" then
 		local fare = State.fare

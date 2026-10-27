@@ -281,6 +281,39 @@ local function pickDestination(npc: PassengerService.Npc): MapService.Point?
 	return closestToBand
 end
 
+-- A carpool's later stops: each a NextTier trip from the last, never a drop-off already used.
+local function pickStops(from: Vector3, count: number, first: number): { number }
+	local tierDef = Config.Fares.Tiers[Config.Chaos.Carpool.NextTier]
+	local used: { [number]: boolean } = { [first] = true }
+	local stops: { number } = {}
+	for _ = 1, count do
+		local candidates: { MapService.Point } = {}
+		local nearest: MapService.Point? = nil
+		local nearestGap = math.huge
+		for _, point in MapService.GetDropoffs() do
+			if not used[point.index] then
+				local d = VecUtil.FlatDistance(point.position, from)
+				if d >= tierDef.MinTrip and d < tierDef.MaxTrip then
+					table.insert(candidates, point)
+				end
+				local gap = math.abs(d - (tierDef.MinTrip + tierDef.MaxTrip) / 2)
+				if gap < nearestGap then
+					nearestGap = gap
+					nearest = point
+				end
+			end
+		end
+		local pick = if #candidates > 0 then candidates[rng:NextInteger(1, #candidates)] else nearest
+		if not pick then
+			break
+		end
+		used[pick.index] = true
+		table.insert(stops, pick.index)
+		from = pick.position
+	end
+	return stops
+end
+
 -- A passenger request for this pickup (people only), or nil.
 local function rollRequest(player: Player): { Id: string, Stunt: string, Goal: number, Single: boolean, Unit: string, Label: string, Shout: string }?
 	local cfg = Config.Chaos.Requests
@@ -320,7 +353,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		npcId = npc.id,
 		expired = false,
 		tier = npc.tier,
-		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult else 1),
+		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult elseif npc.riders > 1 then Config.Chaos.Carpool.PayMult else 1),
 		kind = npc.kind,
 		golden = npc.golden,
 		pickupIndex = npc.pickupIndex,
@@ -333,6 +366,8 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		request = nil,
 		requestProgress = 0,
 		requestDone = false,
+		riders = npc.riders,
+		stops = if npc.riders > 1 then pickStops(destination.position, npc.riders - 1, destination.index) else {},
 	}
 	local request = rollRequest(player)
 	if request then
@@ -355,6 +390,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		passenger = npc.kind,
 		golden = npc.golden,
 		request = fare.request,
+		riders = fare.riders,
 	})
 	-- Everyone else nearby and empty sees TAKEN.
 	for other, entry in VehicleService.GetAll() do
@@ -408,6 +444,17 @@ local function onStunt(player: Player, kind: string, units: number, chain: numbe
 	end
 end
 
+-- Studio: a full carpool appears at a free curb and climbs into this driver's car.
+function FareService.DebugCarpool(player: Player)
+	if not RunService:IsStudio() or fares[player] or not VehicleService.GetEntry(player) then
+		return
+	end
+	local npc = PassengerService.DebugSpawnCarpool()
+	if npc then
+		claim(player, npc)
+	end
+end
+
 -- Studio: the next passenger this driver picks up asks for this request.
 function FareService.DebugForceRequest(player: Player, id: string)
 	if RunService:IsStudio() then
@@ -445,11 +492,12 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		end
 	end
 	local tipShown = math.round(tipRaw)
-	-- a request done on the way: BonusFrac of the base on top of the tip
-	if allowTip and fare.requestDone then
+	-- a request done on the way: BonusFrac of the base on top of the tip (once: a carpool's next stops don't repeat it)
+	if allowTip and fare.requestDone and fare.request then
 		tipShown += math.round(fare.base * Config.Chaos.Requests.BonusFrac)
 		local line = Config.Chaos.Requests.PayLine
 		bonus = if bonus then bonus .. "  ·  " .. line else line
+		fare.request = nil
 	end
 	-- Stunt cash rides in the fare (Config.Stunts.HoldUntilDelivery) and is lost with the tip on a late arrival.
 	local stunts = if allowTip then fare.stuntTips else 0
@@ -466,7 +514,14 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	fares[player] = nil
 	delivered[player] = (delivered[player] or 0) + 1
 	bestTip[player] = math.max(bestTip[player] or 0, tipShown + stunts)
-	PassengerService.Deliver(player)
+	local nextIndex = fare.stops[1]
+	local nextPoint = if nextIndex then MapService.GetDropoff(nextIndex) else nil
+	local carpoolLine = if nextPoint then string.format(Config.Chaos.Carpool.DropLine, fare.riders - 1) else nil
+	if nextPoint then
+		PassengerService.DropRider(player)
+	else
+		PassengerService.Deliver(player)
+	end
 	fire(player, {
 		kind = "Delivered",
 		tier = fare.tier,
@@ -475,12 +530,45 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		tip = tipShown,
 		stunts = stunts,
 		grade = grade,
-		line = if allowTip then nil else "LATE. NO TIP.",
+		line = if not allowTip then "LATE. NO TIP." else carpoolLine,
 		bonus = bonus,
 	})
 	FareService.AddCash(player, payout)
 	onDelivered:Fire(player, fare.tier, tipShown + stunts)
 	onGraded:Fire(player, grade)
+
+	if nextPoint then
+		-- A carpool: the rest ride on to the next stop, a fresh leg with its own base, timer and tip
+		table.remove(fare.stops, 1)
+		local distance = VecUtil.FlatDistance(nextPoint.position, fare.destination)
+		local tierName = Config.Chaos.Carpool.NextTier
+		fare.tier = tierName
+		fare.base = Money.Cents(Config.Fares.Tiers[tierName].Base) * Config.Chaos.Carpool.PayMult
+		fare.destination = nextPoint.position
+		fare.destinationIndex = nextPoint.index
+		fare.distance = distance
+		fare.startedAt = now
+		fare.deadline = now + Config.Fares.TimeBase + distance / Config.Fares.TimeSpeed
+		fare.stuntTips = 0
+		fare.expired = false
+		fare.riders -= 1
+		fares[player] = fare
+		fire(player, {
+			kind = "NextStop",
+			tier = fare.tier,
+			base = fare.base,
+			destination = fare.destination,
+			destinationIndex = nextPoint.index,
+			destinationName = nextPoint.name,
+			startedAt = now,
+			deadline = fare.deadline,
+			passenger = fare.kind,
+			golden = false,
+			request = fare.request,
+			riders = fare.riders,
+		})
+		return
+	end
 
 	task.delay(Config.Fares.RespawnDelay, function()
 		if enabled then

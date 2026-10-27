@@ -35,6 +35,7 @@ export type NpcSnap = {
 	state: number,
 	kind: string, -- Config.PassengerTypes.Kinds key
 	golden: boolean,
+	riders: number, -- people in the group (2+ = a carpool)
 }
 
 export type Snapshot = {
@@ -126,6 +127,7 @@ export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
 -- | "NewLeader" (to everyone: `line` = the new leader's name, `you` when it's you) | "Cash" (a money-truck pickup: `payout`)
 -- | "Request" (your passenger's request moved: `request`, `progress`, `done`, and `payout` = the bonus when done)
+-- | "NextStop" (a carpool's next leg, shaped like "Claimed")
 -- | "Golden" (to everyone: a Golden Fare appeared at `position`)
 export type FareEventPayload = {
 	kind: string,
@@ -155,6 +157,7 @@ export type FareEventPayload = {
 	request: string?, -- "Claimed" / "Request": the passenger's request (Config.Chaos.Requests.List Id)
 	progress: number?, -- "Request": toward its Goal
 	done: boolean?, -- "Request": just completed
+	riders: number?, -- "Claimed" / "NextStop": people aboard (2+ = a carpool)
 	you: boolean?, -- "NewLeader": you took the lead
 }
 
@@ -192,6 +195,8 @@ export type Fare = {
 	request: string?, -- Config.Chaos.Requests.List Id the passenger asked for
 	requestProgress: number, -- toward its Goal (seconds or count)
 	requestDone: boolean,
+	riders: number, -- people still aboard, the one going to this stop included (2+ = a carpool)
+	stops: { number }, -- carpool: drop-off indices after this one
 }
 
 return {}

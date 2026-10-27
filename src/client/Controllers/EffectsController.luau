@@ -406,7 +406,7 @@ function EffectsController.Init()
 	State.ItemEvent:Connect(onItem)
 	State.RoundChanged:Connect(onRound)
 	State.FareEvent:Connect(function(payload: Types.FareEventPayload)
-		if payload.kind == "Claimed" then
+		if payload.kind == "Claimed" or payload.kind == "NextStop" then
 			setBeacon(State.fare)
 		elseif payload.kind == "Delivered" or payload.kind == "Bailed" then
 			setBeacon(nil)

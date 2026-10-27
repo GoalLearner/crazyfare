@@ -50,6 +50,7 @@ type Bot = {
 	heldItem: string,
 	heldSince: number,
 	staged: { mode: string, dir: Vector3, speed: number, untilClock: number }?, -- Studio debug: parked or charging
+	dropTo: Vector3?, -- the drop-off its route leads to (a carpool's next stop moves it)
 	airY: number, -- thrown into the air (a hydrant): height above the ride height...
 	airVel: number, -- ...and its vertical speed
 }
@@ -310,9 +311,10 @@ local function think(bot: Bot, now: number)
 	useItems(bot, now)
 	local fare = FareService.GetFare(bot.driver)
 	if fare then
-		if bot.goal ~= "dropoff" then
+		if bot.goal ~= "dropoff" or bot.dropTo ~= fare.destination then
 			bot.goal = "dropoff"
 			bot.npcId = nil
+			bot.dropTo = fare.destination
 			setRoute(bot, fare.destination)
 		elseif #bot.route == 0 and bot.stoppedSince and os.clock() - bot.stoppedSince > cfg.ClaimWait then
 			setRoute(bot, fare.destination) -- pulled up short somehow: go again
@@ -649,6 +651,7 @@ local function addBot()
 		heldItem = "",
 		heldSince = 0,
 		staged = nil,
+		dropTo = nil,
 		airY = 0,
 		airVel = 0,
 	}

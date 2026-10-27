@@ -871,6 +871,22 @@ Config.Chaos = {
 		Sting = "NewBest", -- Config.Sounds.Stings key when one is done
 		Color = Color3.fromRGB(255, 170, 60), -- the fare card's request row while it's open (green when done)
 	},
+	-- Carpool fares: now and then (Chance per new passenger; never a Golden Fare) 2..MaxRiders people wait together.
+	-- They board together and each has a stop. Every stop pays like a delivery (its own base, timer, tip and stunt cash)
+	-- times PayMult, then the next stop starts; each next stop is a NextTier trip from the last. One HP for the whole
+	-- group; a bail empties the cab.
+	Carpool = {
+		Chance = 0.12,
+		MaxRiders = 3,
+		PayMult = 1.2,
+		NextTier = "Green",
+		Label = "CARPOOL x%d", -- over the waiting group
+		NextShout = "NEXT STOP: %s!", -- over your cab after each drop
+		DropLine = "%d TO GO", -- under a stop's payout
+		Color = Color3.fromRGB(190, 120, 250),
+		Spacing = 2.2, -- studs between the people standing at the curb
+		Shirts = { Color3.fromRGB(240, 240, 240), Color3.fromRGB(90, 160, 220), Color3.fromRGB(240, 140, 60) }, -- the others'
+	},
 	Labels = { Ram = "RAMMED!", Cash = "CASH", Request = "REQUEST COMPLETE!" } :: { [string]: string }, -- popups over your cab
 }
 
