@@ -127,6 +127,8 @@ local function onItem(payload: Types.ItemEventPayload)
 		play("Splat")
 	elseif payload.kind == "Spinout" then
 		play("Spinout")
+	elseif payload.kind == "Rammed" or payload.kind == "Ram" then
+		play("Crash")
 	end -- Lemon Nitro's whoosh plays when the boost starts (Heartbeat), like Shift and Dash
 end
 

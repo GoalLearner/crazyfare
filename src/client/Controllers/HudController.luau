@@ -154,7 +154,7 @@ local function punch(scale: UIScale, from: number)
 end
 
 local function popupText(kind: string, amount: number): string
-	local name = Config.Stunts.Names[kind] or Config.SpeedFx.Labels[kind] or string.upper(kind)
+	local name = Config.Stunts.Names[kind] or Config.SpeedFx.Labels[kind] or Config.Chaos.Labels[kind] or string.upper(kind)
 	if amount > 0 then
 		return string.format('%s <font color="%s">+%s</font>', name, CASH_HEX, UI.Money(amount))
 	end
@@ -613,7 +613,7 @@ local function onFare(payload: Types.FareEventPayload)
 		showMessage("+" .. UI.Money(payload.payout or 0), UI.Danger, Config.Hud.PayoutPunchSeconds, "HUNTER BONUS  ·  " .. (payload.line or ""))
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
-	elseif payload.kind == "Hurt" and payload.source == "crash" then
+	elseif payload.kind == "Hurt" and (payload.source == "crash" or payload.source == "ram") then
 		showMessage(string.format("-%d HP", payload.amount or 0), UI.Danger, Config.Hud.CrashMessageSeconds) -- the rider yells the line
 	elseif payload.kind == "Hurt" and payload.source == "pedestrian" then
 		showMessage("WATCH THE ROAD!", UI.Danger, Config.Hud.MessageSeconds, string.format("-%d HP", payload.amount or 0))
@@ -659,6 +659,8 @@ local function onItem(payload: Types.ItemEventPayload)
 		showMessage("SEATBELT ON", UI.Cash, 0.9, string.format("%d s immune", math.round(payload.seconds or 0)))
 	elseif payload.kind == "Oil" then
 		showMessage("OIL!", UI.Warn, 1.2, "no steering")
+	elseif payload.kind == "Rammed" or payload.kind == "Ram" then
+		addPopup("Ram", 0) -- both drivers, over their own cab
 	elseif payload.kind == "Immune" then
 		showMessage("NO EFFECT", UI.Accent, 0.8, "this ride shrugs it off")
 	elseif payload.kind == "Granted" and payload.item and payload.item ~= "" then

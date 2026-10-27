@@ -61,6 +61,7 @@ local State = {
 	splatUntil = 0,
 	splatStartedAt = 0,
 	splatCoverage = 0,
+	pendingShove = Vector3.zero, -- a ram's push, added to your car on the next physics step
 }
 
 local vehicleChanged: Signal.Signal<Model?> = Signal.new()
@@ -133,6 +134,7 @@ function State.ResetRound()
 	State.shieldUp = false
 	State.splatUntil = 0
 	State.splatCoverage = 0
+	State.pendingShove = Vector3.zero
 	State.combo = 0 -- stunt chain from the snapshot
 	State.cash = 0
 	State.hp = 0

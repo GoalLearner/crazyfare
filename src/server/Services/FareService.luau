@@ -383,6 +383,9 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 		base = if fare then fare.base else 0,
 	})
 	-- Hunter Bonus: the rival who made them bail gets a share of the lost fare.
+	if RunService:IsStudio() then
+		print(string.format("[FareService] %s's passenger bailed (%s), credit %s, fare %s", victim.Name, reason, if attacker then attacker.Name else "nobody", tostring(fare ~= nil)))
+	end
 	if attacker and fare and attacker ~= victim and attacker.Parent then
 		local bonus = math.round(fare.base * Config.Items.HunterBonusFrac)
 		if bonus > 0 then

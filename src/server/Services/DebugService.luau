@@ -68,6 +68,19 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local pos = Vector3.new(x, MapService.GroundY(Vector3.new(x, 0, z), 0) + Config.Chassis.ResetLift, z)
 		VehicleService.Teleport(entry, CFrame.lookAt(pos, pos + Vector3.xAxis))
 	end,
+	-- The first bot parked broadside 40 studs ahead with a passenger (ram it), or charging back at you (get rammed).
+	BotStage = function(player, arg)
+		local BotService = require(script.Parent.BotService) :: any
+		BotService.DebugStage(player, if arg == "charge" then "charge" else "park")
+	end,
+	-- The first bot's passenger at this HP (to see a ram or a hit make them bail).
+	BotHp = function(_player, arg)
+		local Racers = require(script.Parent.Parent.Racers) :: any
+		local bot = Racers.Bots()[1]
+		if bot and typeof(arg) == "number" then
+			PassengerService.SetHp(bot, arg)
+		end
+	end,
 	-- The nearest waiting passenger climbs in, wherever they are.
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)

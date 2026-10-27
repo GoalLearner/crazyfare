@@ -317,6 +317,8 @@ Config.Rider = {
 -- earn no stunt cash, gems or XP, and are always named with a BOT tag. Server-steered over the road grid.
 Config.Bots = {
 	Enabled = true,
+	DebugChargeSpeed = 55, -- Studio "Bot charge": studs/s straight at you
+	DebugStageSeconds = 6, -- how long a staged bot stays parked or charging
 	IdBase = -1000, -- bot UserIds count down from here (Studio's test players are -1, -2...)
 	FillTo = 4, -- drivers per match, people + bots
 	MinHumans = 1, -- a live match starts with this many people when bots fill the rest
@@ -752,6 +754,25 @@ Config.Session = {
 	},
 }
 
+-- Chaos (Phase X, owner spec 2026-10-27): mechanics that make rounds louder, built and playtested one at a time.
+Config.Chaos = {
+	-- Ramming: two racers' cars (players or bots) meeting with a closing speed above MinSpeed. The faster car is the
+	-- attacker; the other's passenger takes DamageMin..DamageMax by closing speed (MinSpeed..FullSpeed).
+	Ram = {
+		MinSpeed = 35, -- studs/s of closing speed
+		FullSpeed = 90, -- closing speed that does DamageMax
+		DamageMin = 15,
+		DamageMax = 40,
+		Padding = 1.5, -- studs around both footprints (contact is read from replicated positions)
+		MaxHeightGap = 4, -- studs: a car flying over another isn't a ram
+		Lookback = 0.25, -- seconds of speed history: the speed going into the bump, not after it
+		PairCooldown = 1.5, -- seconds before the same two cars can ram again
+		CrashImmuneSeconds = 0.6, -- the bump's own speed loss isn't also a crash for either car
+		Shove = 28, -- studs/s added to the hit car along the attacker's line (half at MinSpeed, full at FullSpeed)
+	},
+	Labels = { Ram = "RAMMED!" } :: { [string]: string }, -- popups over your cab
+}
+
 -- Live events: weekly windows (UTC) when something good happens in every server, so players have a time to come back
 -- to. Edit on update day; servers and clients read the same schedule (src/shared/Events.luau).
 Config.Events = {
@@ -862,6 +883,8 @@ Config.Shake = {
 	Splat = 0.8,
 	Spinout = 1.2,
 	Crash = 0.5,
+	Rammed = 1.1, -- your car got rammed
+	Ram = 0.45, -- you rammed someone
 	Decay = 6, -- 1/s
 }
 

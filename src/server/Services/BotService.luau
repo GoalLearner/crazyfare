@@ -49,6 +49,7 @@ type Bot = {
 	wasAnchored: boolean,
 	heldItem: string,
 	heldSince: number,
+	staged: { mode: string, dir: Vector3, speed: number, untilClock: number }?, -- Studio debug: parked or charging
 }
 
 local bots: { [Player]: Bot } = {}
@@ -516,6 +517,21 @@ local function drive(bot: Bot, entry: VehicleService.VehicleEntry, dt: number, n
 		bot.thinkAt = 0
 	end
 
+	-- Studio debug: parked broadside, or charging in a straight line
+	local staged = bot.staged
+	if staged then
+		if os.clock() < staged.untilClock then
+			bot.speed = staged.speed
+			bot.rabbit += staged.dir * staged.speed * dt
+			align.Position = Vector3.new(bot.rabbit.X, groundY(bot.rabbit, chassis.Position.Y) + cfg.RideHeight, bot.rabbit.Z)
+			orient.CFrame = CFrame.lookAt(Vector3.zero, staged.dir)
+			return
+		end
+		bot.staged = nil
+		bot.route = {}
+		bot.thinkAt = 0
+	end
+
 	-- Spinout from a Banana: stop and spin in place.
 	if now < entry.spinUntil then
 		bot.speed = math.max(0, bot.speed - cfg.Brake * 2 * dt)
@@ -618,6 +634,7 @@ local function addBot()
 		wasAnchored = true,
 		heldItem = "",
 		heldSince = 0,
+		staged = nil,
 	}
 	bots[driver] = bot
 	table.insert(order, driver)
@@ -639,6 +656,32 @@ local function removeBot(driver: Player)
 end
 
 -- Bots fill the match to FillTo drivers while at least MinHumans people are here; the newest leaves first.
+-- Studio: the first bot is put 40 studs ahead of this driver's car, either parked broadside with a passenger aboard
+-- ("park": ram it) or charging straight back at the car ("charge": get rammed).
+function BotService.DebugStage(player: Player, mode: string)
+	local entry = VehicleService.GetEntry(player)
+	local driver = order[1]
+	local bot = if driver then bots[driver] else nil
+	local botEntry = if driver then VehicleService.GetEntry(driver) else nil
+	if not RunService:IsStudio() or not entry or not bot or not botEntry or not driver then
+		return
+	end
+	local cfg = Config.Bots
+	local look = flat(entry.chassis.CFrame.LookVector)
+	look = if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)
+	local at = flat(entry.chassis.Position) + look * 40
+	local dir = if mode == "charge" then -look else rightOf(look)
+	local y = groundY(at, entry.chassis.Position.Y) + cfg.RideHeight
+	bot.rabbit = at
+	bot.dir = dir
+	bot.staged = { mode = mode, dir = dir, speed = if mode == "charge" then cfg.DebugChargeSpeed else 0, untilClock = os.clock() + cfg.DebugStageSeconds }
+	VehicleService.Teleport(botEntry, CFrame.lookAt(Vector3.new(at.X, y, at.Z), Vector3.new(at.X, y, at.Z) + dir))
+	if mode == "park" then
+		FareService.DebugClaimNearest(driver)
+	end
+	print(string.format("[BotService] %s staged 40 studs ahead of %s (%s)", driver.Name, player.Name, mode))
+end
+
 function BotService.Rebalance()
 	local cfg = Config.Bots
 	local humans = #Players:GetPlayers()

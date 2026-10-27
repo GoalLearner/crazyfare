@@ -90,6 +90,11 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 		State.spinDirection = if math.random() < 0.5 then -1 else 1
 	elseif kind == "Oil" then
 		State.oilUntil = now() + (payload.seconds or Config.Items.OilSlick.Seconds)
+	elseif kind == "Rammed" then
+		State.Shake:Fire(Config.Shake.Rammed)
+		State.pendingShove = payload.push or Vector3.zero
+	elseif kind == "Ram" then
+		State.Shake:Fire(Config.Shake.Ram)
 	elseif kind == "ShieldUp" then
 		State.shieldUp = true
 	elseif kind == "ShieldBreak" then

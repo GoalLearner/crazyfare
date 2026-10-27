@@ -396,6 +396,13 @@ local function step(rawDt: number)
 	end
 	hopHeld = driftHeld
 
+	-- Rammed: the push lands once
+	local shove = State.pendingShove
+	if shove.Magnitude > 0 then
+		State.pendingShove = Vector3.zero
+		ch:ApplyImpulse(shove * mass)
+	end
+
 	-- Spinout: yaw spin driven directly
 	if spinning then
 		local av = ch.AssemblyAngularVelocity

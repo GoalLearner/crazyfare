@@ -591,6 +591,7 @@ end
 
 -- Passenger gets out angry, walks to the nearest free pickup point, becomes available again with the same destination.
 function PassengerService.Bail(player: Player, reason: string)
+	local attacker = if reason == "hp" then lastAttacker[player] else nil -- read before unload clears it
 	local npc = unload(player)
 	if not npc then
 		return
@@ -605,8 +606,6 @@ function PassengerService.Bail(player: Player, reason: string)
 		occupied[index] = true
 	end
 	local point = MapService.NearestPickup(exitPos, occupied)
-	local attacker = if reason == "hp" then lastAttacker[player] else nil
-	lastAttacker[player] = nil
 	onBailed:Fire(player, npc, reason, attacker)
 	if point then
 		walkTo(npc, point)

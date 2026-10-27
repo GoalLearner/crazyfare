@@ -154,6 +154,7 @@ export type ItemEventPayload = {
 	coverage: number?,
 	position: Vector3?,
 	attacker: string?,
+	push: Vector3?, -- "Rammed": studs/s to add to your car
 }
 
 -- Client -> server combo report. kind: "Drift" | "Airtime" | "NearMiss"; value = seconds for Drift/Airtime
