@@ -27,6 +27,7 @@ local ProgressionService = require(script.Parent.ProgressionService)
 local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 local BotService = require(script.Parent.BotService)
+local WorldEventService = require(script.Parent.WorldEventService)
 local SessionService = require(script.Parent.SessionService)
 
 local MapService = require(script.Parent.MapService)
@@ -63,6 +64,7 @@ local function voteCount(): number
 end
 
 function RoundService.GetPayload(): Types.RoundStatePayload
+	local event, eventEnds, eventPlace = WorldEventService.GetActive()
 	return {
 		phase = phase,
 		round = roundIndex,
@@ -75,6 +77,9 @@ function RoundService.GetPayload(): Types.RoundStatePayload
 		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
 		mode = mode,
 		frenzy = if frenzy then true else nil,
+		event = event,
+		eventEndsAt = if event then eventEnds else nil,
+		eventAt = eventPlace,
 	}
 end
 
@@ -109,6 +114,7 @@ end
 local function setPhase(newPhase: Types.RoundPhase, duration: number)
 	if newPhase ~= "Playing" then
 		stopFrenzy()
+		WorldEventService.Cancel()
 	end
 	phase = newPhase
 	phaseStartsAt = now()
@@ -220,6 +226,9 @@ end
 
 local function beginPlaying()
 	setPhase("Playing", if mode == "Arcade" then Config.Arcade.StartSeconds else Config.Round.CapSeconds)
+	if mode == "Race" then
+		WorldEventService.ScheduleRound()
+	end
 	VehicleService.SetReleased(true)
 	FareService.SetEnabled(true)
 	ItemService.SetEnabled(true)
@@ -288,6 +297,9 @@ end
 function RoundService.Init()
 	roundState = Remotes.Get("RoundState")
 
+	WorldEventService.OnChanged:Connect(function()
+		broadcast()
+	end)
 	FareService.OnQuotaReached:Connect(function()
 		if mode == "Race" then
 			endRound()

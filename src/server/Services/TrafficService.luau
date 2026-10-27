@@ -41,6 +41,7 @@ type Car = {
 	holding: string?, -- key of the intersection this car is allowed through
 	holdingCenter: Vector3?,
 	blockedFor: number, -- seconds its body has been held up (a player car in the way)
+	surge: boolean, -- an extra car for the Rush Hour event (removed when it ends)
 }
 
 type Exit = { dir: Vector3, weight: number }
@@ -56,6 +57,8 @@ local cars: { Car } = {}
 local holds: { [string]: Hold } = {}
 local crossers: { Vector3 } = {} -- pedestrians and walking-back passengers out in the road this frame
 local playerCars: { { position: Vector3, velocity: Vector3 } } = {} -- player cars on the map this frame (flat)
+local blockers: { { position: Vector3, velocity: Vector3 } } = {} -- world-event obstacles (parade floats, the money truck)
+local surging = false -- Rush Hour: replacements for lost surge cars are surge cars too
 local folder: Folder
 local groundParams: RaycastParams
 local rng = Random.new()
@@ -332,7 +335,7 @@ local function spotIsFree(rabbit: Vector3): boolean
 	return true
 end
 
-local function spawnCar(cruise: number, kind: string): boolean
+local function spawnCar(cruise: number, kind: string, surge: boolean?): boolean
 	local cfg = Config.Traffic
 	local kindCfg = cfg.Kinds[kind] or cfg.Kinds.Sedan
 	local size = kindCfg.Size
@@ -395,6 +398,7 @@ local function spawnCar(cruise: number, kind: string): boolean
 			cornerAt = rabbit,
 			nextDir = dir,
 			blockedFor = 0,
+			surge = surge == true,
 		}
 		body.Touched:Connect(function(hit: BasePart)
 			onTouched(car, hit)
@@ -419,6 +423,7 @@ local function spawnAll()
 	end
 	table.clear(cars)
 	table.clear(holds)
+	surging = false
 	groundParams = MapService.StaticRaycastParams()
 	-- One cruise speed per slice of SpeedMin..SpeedMax, shuffled, so every car runs at its own speed (capped by its
 	-- kind: buses are slow). Kinds split Count by Weight; the last kind takes what rounding leaves.
@@ -445,6 +450,33 @@ local function spawnAll()
 	for i, cruise in speeds do
 		spawnCar(cruise, kinds[i] or "Sedan")
 	end
+end
+
+-- Rush Hour: `extra` more cars at speeds and kinds like the rest, until EndSurge.
+function TrafficService.Surge(extra: number)
+	local cfg = Config.Traffic
+	surging = true
+	for _ = 1, extra do
+		local kind = cfg.KindOrder[rng:NextInteger(1, #cfg.KindOrder)]
+		spawnCar(rng:NextNumber(cfg.SpeedMin, cfg.SpeedMax), kind, true)
+	end
+end
+
+function TrafficService.EndSurge()
+	surging = false
+	for i = #cars, 1, -1 do
+		local car = cars[i]
+		if car.surge then
+			release(car)
+			car.model:Destroy()
+			table.remove(cars, i)
+		end
+	end
+end
+
+-- World-event obstacles in the road (positions and velocities, flat): traffic stops short of them like a player car.
+function TrafficService.SetBlockers(list: { { position: Vector3, velocity: Vector3 } })
+	blockers = list
 end
 
 -- Where every traffic vehicle is and where it's heading (BotService yields to crossing traffic at junctions).
@@ -482,14 +514,17 @@ function TrafficService.Start()
 				table.insert(playerCars, { position = Vector3.new(p.X, 0, p.Z), velocity = Vector3.new(v.X, 0, v.Z) })
 			end
 		end
-		local lost: { { cruise: number, kind: string } } = {}
+		for _, blocker in blockers do
+			table.insert(playerCars, blocker)
+		end
+		local lost: { { cruise: number, kind: string, surge: boolean } } = {}
 		for i = #cars, 1, -1 do
 			local car = cars[i]
 			if not car.body:IsDescendantOf(workspace) then
 				release(car)
 				car.model:Destroy()
 				table.remove(cars, i)
-				table.insert(lost, { cruise = car.cruise, kind = car.kind })
+				table.insert(lost, { cruise = car.cruise, kind = car.kind, surge = car.surge })
 				continue
 			end
 			local heldByPlayer = updateSpeed(car, dt)
@@ -506,7 +541,7 @@ function TrafficService.Start()
 					release(car)
 					car.model:Destroy()
 					table.remove(cars, i)
-					table.insert(lost, { cruise = car.cruise, kind = car.kind })
+					table.insert(lost, { cruise = car.cruise, kind = car.kind, surge = car.surge })
 					continue
 				end
 			else
@@ -522,7 +557,9 @@ function TrafficService.Start()
 			car.orient.CFrame = CFrame.lookAt(Vector3.zero, car.dir)
 		end
 		for _, gone in lost do
-			spawnCar(gone.cruise, gone.kind)
+			if not gone.surge or surging then
+				spawnCar(gone.cruise, gone.kind, gone.surge)
+			end
 		end
 	end)
 end

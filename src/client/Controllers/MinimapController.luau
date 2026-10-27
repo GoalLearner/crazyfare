@@ -65,8 +65,10 @@ local ROAD = Color3.fromRGB(70, 70, 76)
 local RAMP = Color3.fromRGB(230, 120, 40)
 local HILL = Color3.fromRGB(105, 105, 112)
 local TUNNEL = Color3.fromRGB(34, 34, 40)
+local BRIDGE = Color3.fromRGB(120, 130, 150)
+local PARADE = Color3.fromRGB(190, 110, 240)
 
-local function addStrip(x0: number, z0: number, x1: number, z1: number, width: number, color: Color3, z: number)
+local function addStrip(x0: number, z0: number, x1: number, z1: number, width: number, color: Color3, z: number): Frame
 	local scale = SIZE / (2 * B.Half)
 	local dx, dz = x1 - x0, z1 - z0
 	local length = math.sqrt(dx * dx + dz * dz)
@@ -80,6 +82,7 @@ local function addStrip(x0: number, z0: number, x1: number, z1: number, width: n
 		ZIndex = z,
 	}, map)
 	table.insert(roadStrips, frame)
+	return frame
 end
 
 local function drawFeatures(f: Config.MapFeatures?)
@@ -109,6 +112,8 @@ local function drawFeatures(f: Config.MapFeatures?)
 	end
 	local tunnel = f.Tunnel
 	addStrip(tunnel.X, tunnel.ZFrom, tunnel.X, tunnel.ZTo, B.RoadWidth + 4, TUNNEL, 2)
+	local bridge = f.Drawbridge
+	addStrip(bridge.X, bridge.Z - bridge.LeafLength, bridge.X, bridge.Z + bridge.LeafLength, bridge.Width, BRIDGE, 2)
 end
 
 local function drawRoads(mapName: string)
@@ -180,6 +185,41 @@ local function ensureRival(id: number): RivalMarker
 end
 
 local crown: TextLabel? = nil
+local eventMarks: { GuiObject } = {}
+local shownEvent: string? = nil
+
+-- A world event on the map: the parade's road, the raised drawbridge, the hydrant jets, the money truck's junction.
+local function showEvent(payload: Types.RoundStatePayload)
+	local id = if payload.phase == "Playing" then payload.event else nil
+	if id == shownEvent then
+		return
+	end
+	shownEvent = id
+	for _, mark in eventMarks do
+		mark:Destroy()
+	end
+	table.clear(eventMarks)
+	local f = B.Features
+	local ev = Config.Chaos.Events
+	if id == "Parade" then
+		local p = ev.Parade
+		local strip = if p.Axis == "Z" then addStrip(-B.Half, p.Coord, B.Half, p.Coord, B.RoadWidth, PARADE, 3) else addStrip(p.Coord, -B.Half, p.Coord, B.Half, B.RoadWidth, PARADE, 3)
+		strip.BackgroundTransparency = 0.3
+		table.insert(eventMarks, strip)
+	elseif id == "Drawbridge" and f then
+		local d = f.Drawbridge
+		table.insert(eventMarks, addStrip(d.X, d.Z - d.LeafLength, d.X, d.Z + d.LeafLength, d.Width + 8, UI.Danger, 3))
+	elseif id == "HydrantBurst" and f then
+		for _, h in f.Hydrants do
+			local dot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(h.X + h.DX * f.HydrantSpray, h.Z + h.DZ * f.HydrantSpray), Size = UDim2.fromOffset(6, 6), BackgroundColor3 = ev.HydrantBurst.JetColor, BackgroundTransparency = 0, ZIndex = 4 }, map)
+			UI.Corner(3, dot)
+			table.insert(eventMarks, dot)
+		end
+	elseif id == "MoneyTruck" and payload.eventAt then
+		local at = payload.eventAt
+		table.insert(eventMarks, UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(at.X, at.Z), Size = UDim2.fromOffset(18, 18), Text = "$", TextColor3 = Config.Golden.Color, ZIndex = 8 }, map))
+	end
+end
 
 local function crownLabel(): TextLabel
 	local existing = crown
@@ -268,6 +308,7 @@ function MinimapController.Init()
 			drawRoads(payload.map)
 		end
 	end)
+	State.RoundChanged:Connect(showEvent)
 end
 
 function MinimapController.Start() end

@@ -93,6 +93,16 @@ local podiumTitle: TextLabel
 local rematchButton: TextButton
 local podiumBonus: TextLabel
 local frenzyShown = false -- the FRENZY! banner went up for the current Frenzy
+local eventShown: string? = nil -- the world event whose banner went up
+
+local function eventDef(id: string?): { Id: string, Name: string, Sub: string, Weight: number, Maps: { [string]: boolean }? }?
+	for _, def in Config.Chaos.Events.List do
+		if def.Id == id then
+			return def
+		end
+	end
+	return nil
+end
 local gemsLabel: TextLabel
 
 local function tierColor(tier: string): Color3
@@ -582,6 +592,14 @@ local function onRound(payload: Types.RoundStatePayload)
 		showMessage(f.Banner, f.Color, f.BannerSeconds, f.BannerSub)
 	end
 	frenzyShown = frenzyNow
+	local eventNow = if payload.phase == "Playing" then payload.event else nil
+	if eventNow and eventNow ~= eventShown then
+		local def = eventDef(eventNow)
+		if def then
+			showMessage(def.Name, Config.Chaos.Events.Color, Config.Chaos.Events.BannerSeconds, def.Sub)
+		end
+	end
+	eventShown = eventNow
 	if payload.phase == "PreCountdown" and payload.round == 1 then
 		rematchButton.Text = "REMATCH"
 		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
@@ -622,6 +640,8 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "NewLeader" then
 		local b = Config.Chaos.Bounty
 		showMessage(b.Crown .. " " .. string.format(b.Banner, if payload.you then b.You else string.upper(payload.line or "")), b.Color, b.BannerSeconds)
+	elseif payload.kind == "Cash" then
+		addPopup("Cash", payload.payout or 0) -- a money-truck coin; the TOTAL rolls up with the snapshot
 	elseif payload.kind == "Taken" then
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Hurt" and (payload.source == "crash" or payload.source == "ram") then
@@ -716,8 +736,9 @@ local function update(dt: number)
 	if round and phase == "Playing" then
 		timerLabel.Text = UI.FormatTime(round.endsAt - now)
 		timerLabel.TextColor3 = if round.endsAt - now < (if arcade then Config.Arcade.DangerSeconds else Config.Chaos.Frenzy.Seconds) then UI.Danger else UI.White
-		phaseLabel.Text = if round.frenzy then Config.Chaos.Frenzy.Phase else ""
-		phaseLabel.TextColor3 = if round.frenzy then Config.Chaos.Frenzy.Color else UI.Muted
+		local event = eventDef(round.event)
+		phaseLabel.Text = if round.frenzy then Config.Chaos.Frenzy.Phase elseif event then string.format("%s  %s", event.Name, UI.FormatTime((round.eventEndsAt or now) - now)) else ""
+		phaseLabel.TextColor3 = if round.frenzy then Config.Chaos.Frenzy.Color elseif event then Config.Chaos.Events.Color else UI.Muted
 	elseif round and phase == "Countdown" then
 		local remaining = round.endsAt - now
 		local n = math.ceil(remaining)

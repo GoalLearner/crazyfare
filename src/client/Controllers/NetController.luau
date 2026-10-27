@@ -95,6 +95,8 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 		State.pendingShove = payload.push or Vector3.zero
 	elseif kind == "Ram" then
 		State.Shake:Fire(Config.Shake.Ram)
+	elseif kind == "Launched" then
+		State.pendingShove += payload.push or Vector3.zero -- a hydrant throws your car up
 	elseif kind == "ShieldUp" then
 		State.shieldUp = true
 	elseif kind == "ShieldBreak" then

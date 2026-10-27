@@ -104,6 +104,18 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)
 	end,
+	-- A world event starts now (arg: its Config.Chaos.Events.List Id).
+	Event = function(_player, arg)
+		if typeof(arg) == "string" then
+			local WorldEventService = require(script.Parent.WorldEventService) :: any
+			WorldEventService.DebugStart(arg)
+		end
+	end,
+	-- Your car where the running world event happens.
+	ToEvent = function(player)
+		local WorldEventService = require(script.Parent.WorldEventService) :: any
+		WorldEventService.DebugTeleport(player)
+	end,
 	-- The round clock jumps to just before Frenzy (or to `arg` seconds left).
 	Clock = function(_player, arg)
 		local RoundService = require(script.Parent.RoundService) :: any

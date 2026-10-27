@@ -99,6 +99,8 @@ local function onFare(payload: Types.FareEventPayload)
 		if table.find(Config.Sounds.ComboStingChains, payload.chain or 0) then
 			sting("Combo")
 		end
+	elseif payload.kind == "Cash" then
+		SoundController.PlayOneShot("Coin", 1.25)
 	elseif payload.kind == "Claimed" then
 		play("Pickup")
 		play("Board")
@@ -133,6 +135,7 @@ local function onItem(payload: Types.ItemEventPayload)
 end
 
 local frenzyOn = false
+local eventHeard: string? = nil
 
 -- Frenzy: the music speeds up (pitch and tempo) and a sting marks the start.
 local function setFrenzy(on: boolean)
@@ -151,6 +154,11 @@ end
 
 local function onRound(payload: Types.RoundStatePayload)
 	setFrenzy(payload.frenzy == true and payload.phase == "Playing")
+	local event = if payload.phase == "Playing" then payload.event else nil
+	if event and event ~= eventHeard then
+		sting(Config.Chaos.Events.Sting)
+	end
+	eventHeard = event
 	if payload.phase == lastPhase then
 		return
 	end

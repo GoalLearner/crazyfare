@@ -67,6 +67,9 @@ export type MapFeatures = {
 	Runout: { X: number, Z: number, Width: number, LandmarkShift: number }, -- a clear lane through the block a jump lands you facing; its landmark moves this far east
 	BoostPads: { { X: number, Z: number, Yaw: number, Length: number, Width: number } }, -- before each big jump
 	Tunnel: { X: number, ZFrom: number, ZTo: number, Height: number }, -- a covered stretch of a north-south road
+	Drawbridge: { X: number, Z: number, LeafLength: number, Width: number, Thickness: number }, -- two leaves on a north-south road meeting at Z; they rise in the Drawbridge event
+	Hydrants: { { X: number, Z: number, DX: number, DZ: number } }, -- curb hydrants; (DX, DZ) points into the road where the jet lands
+	HydrantSpray: number, -- studs from a hydrant to its jet
 }
 
 -- A passenger personality (Config.PassengerTypes.Kinds). Multipliers of 1 change nothing.
@@ -114,6 +117,8 @@ Config.Tags = {
 	Water = "Water",
 	Traffic = "Traffic", -- ambient NPC cars (near-miss targets)
 	BoostPad = "BoostPad", -- a glowing strip that launches your cab (VehicleController)
+	Drawbridge = "Drawbridge", -- a drawbridge leaf (attribute Side: -1 north, 1 south)
+	Hydrant = "Hydrant",
 }
 
 -- Pedestrians (PedestrianService): walk the sidewalk around each block and cross the street at the corners when no
@@ -803,7 +808,54 @@ Config.Chaos = {
 		PayLine = "FRENZY x2", -- under the payout
 		Sting = "Combo", -- Config.Sounds.Stings key played when it starts
 	},
-	Labels = { Ram = "RAMMED!" } :: { [string]: string }, -- popups over your cab
+	-- World events: one per race round, starting StartMin..StartMax seconds after GO and lasting Seconds, picked by
+	-- Weight among the ones this map has (Maps nil = any map). A banner and a sting when it starts; its name and time
+	-- left stay under the timer.
+	Events = {
+		StartMin = 60,
+		StartMax = 120,
+		Seconds = 30,
+		Sting = "Golden", -- Config.Sounds.Stings key
+		BannerSeconds = 1.8,
+		Color = Color3.fromRGB(120, 220, 255),
+		List = {
+			{ Id = "RushHour", Name = "RUSH HOUR!", Sub = "TRAFFIC JUST DOUBLED", Weight = 1 },
+			{ Id = "Drawbridge", Name = "DRAWBRIDGE!", Sub = "IT'S GOING UP. JUMP IT.", Weight = 1, Maps = { City = true } },
+			{ Id = "Parade", Name = "PARADE!", Sub = "MAIN STREET IS CLOSED", Weight = 1, Maps = { City = true } },
+			{ Id = "HydrantBurst", Name = "HYDRANTS!", Sub = "FREE LIFTS", Weight = 1, Maps = { City = true } },
+			{ Id = "MoneyTruck", Name = "MONEY TRUCK!", Sub = "IT SPILLED. GO GO GO", Weight = 1 },
+		} :: { { Id: string, Name: string, Sub: string, Weight: number, Maps: { [string]: boolean }? } },
+		RushHour = { ExtraTraffic = 24 },
+		Drawbridge = { MaxAngle = 20, RiseSeconds = 10, LowerSeconds = 4 }, -- degrees; up over RiseSeconds, down over the last LowerSeconds
+		Parade = {
+			Axis = "Z", -- the road runs along X at Z = Coord
+			Coord = 60, -- the road just south of the plaza
+			From = -320, -- the first float starts here and rolls toward +X
+			Speed = 9, -- studs/s
+			Floats = 6,
+			Spacing = 18, -- studs between float centers
+			Size = Vector3.new(14, 3, 20), -- float base: length along the road, height, width across it
+			Colors = { Color3.fromRGB(240, 90, 160), Color3.fromRGB(90, 200, 250), Color3.fromRGB(250, 210, 60), Color3.fromRGB(130, 230, 120), Color3.fromRGB(190, 120, 250), Color3.fromRGB(250, 140, 60) },
+		},
+		HydrantBurst = {
+			LaunchSpeed = 72, -- studs/s straight up
+			Radius = 5, -- studs around a jet that throw a car
+			Cooldown = 1.5, -- seconds before the same car can be thrown again
+			JetHeight = 18,
+			JetWidth = 3,
+			JetColor = Color3.fromRGB(120, 200, 255),
+		},
+		MoneyTruck = {
+			Pickups = 10,
+			MinDollars = 2,
+			MaxDollars = 5,
+			ScatterMin = 8, -- studs from the truck
+			ScatterMax = 16,
+			PickupRadius = 4.5,
+			Size = Vector3.new(7, 6, 13), -- the truck's body
+		},
+	},
+	Labels = { Ram = "RAMMED!", Cash = "CASH" } :: { [string]: string }, -- popups over your cab
 }
 
 -- Live events: weekly windows (UTC) when something good happens in every server, so players have a time to come back
@@ -1250,6 +1302,24 @@ Config.Map = {
 					{ X = 60, Z = 88, Yaw = 0, Length = 12, Width = 14 },
 				},
 				Tunnel = { X = -180, ZFrom = -43, ZTo = 43, Height = 14 },
+				-- The east road's mirror of the tunnel: two leaves meeting mid-block that rise into a jump in the event.
+				Drawbridge = { X = 180, Z = 0, LeafLength = 22, Width = 24, Thickness = 0.4 },
+				-- Curb hydrants mid-block, spraying into the near lane during the Hydrants event.
+				Hydrants = {
+					{ X = -46.5, Z = -120, DX = -1, DZ = 0 },
+					{ X = -73.5, Z = 120, DX = 1, DZ = 0 },
+					{ X = 73.5, Z = -240, DX = -1, DZ = 0 },
+					{ X = 46.5, Z = 240, DX = 1, DZ = 0 },
+					{ X = 193.5, Z = -120, DX = -1, DZ = 0 },
+					{ X = 166.5, Z = 240, DX = 1, DZ = 0 },
+					{ X = -193.5, Z = -240, DX = 1, DZ = 0 },
+					{ X = -166.5, Z = 240, DX = -1, DZ = 0 },
+					{ X = -120, Z = -46.5, DX = 0, DZ = -1 },
+					{ X = 120, Z = -73.5, DX = 0, DZ = 1 },
+					{ X = -240, Z = 73.5, DX = 0, DZ = -1 },
+					{ X = 240, Z = 193.5, DX = 0, DZ = -1 },
+				},
+				HydrantSpray = 7,
 			} :: MapFeatures?,
 		},
 		Gimmicks = {} :: { [string]: number },

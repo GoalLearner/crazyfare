@@ -50,12 +50,15 @@ type Bot = {
 	heldItem: string,
 	heldSince: number,
 	staged: { mode: string, dir: Vector3, speed: number, untilClock: number }?, -- Studio debug: parked or charging
+	airY: number, -- thrown into the air (a hydrant): height above the ride height...
+	airVel: number, -- ...and its vertical speed
 }
 
 local bots: { [Player]: Bot } = {}
 local order: { Player } = {} -- oldest first; the newest leaves first
 local rng = Random.new()
 local groundParams: RaycastParams? = nil
+local blockers: { { position: Vector3, velocity: Vector3, clearance: number } } = {} -- world-event obstacles
 
 local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
@@ -443,6 +446,9 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 	for _, person in crossers do
 		obstacle(person, 0, cfg.PersonClearance)
 	end
+	for _, blocker in blockers do
+		obstacle(blocker.position, flat(blocker.velocity):Dot(bot.dir), blocker.clearance)
+	end
 	-- crossing traffic inside the next junction: wait for it
 	local junction, toJunction = junctionAhead(bot)
 	if junction and toJunction > 0 and toJunction < cfg.JunctionLook then
@@ -569,8 +575,16 @@ local function drive(bot: Bot, entry: VehicleService.VehicleEntry, dt: number, n
 	if #bot.route == 0 and bot.speed < 1 then
 		bot.stoppedSince = bot.stoppedSince or os.clock()
 	end
+	-- thrown into the air: an arc on top of the ride height, as floaty as the players' air
+	if bot.airY > 0 or bot.airVel > 0 then
+		bot.airVel -= workspace.Gravity * Config.Chassis.AirGravityMult * dt
+		bot.airY = math.max(0, bot.airY + bot.airVel * dt)
+		if bot.airY <= 0 then
+			bot.airVel = 0
+		end
+	end
 	wanted = bot.rabbit + rightOf(bot.dir) * bot.lateral
-	align.Position = Vector3.new(wanted.X, groundY(wanted, chassis.Position.Y) + cfg.RideHeight, wanted.Z)
+	align.Position = Vector3.new(wanted.X, groundY(wanted, chassis.Position.Y) + cfg.RideHeight + bot.airY, wanted.Z)
 	orient.CFrame = CFrame.lookAt(Vector3.zero, bot.dir)
 end
 
@@ -635,6 +649,8 @@ local function addBot()
 		heldItem = "",
 		heldSince = 0,
 		staged = nil,
+		airY = 0,
+		airVel = 0,
 	}
 	bots[driver] = bot
 	table.insert(order, driver)
@@ -680,6 +696,20 @@ function BotService.DebugStage(player: Player, mode: string)
 		FareService.DebugClaimNearest(driver)
 	end
 	print(string.format("[BotService] %s staged 40 studs ahead of %s (%s)", driver.Name, player.Name, mode))
+end
+
+-- World-event obstacles in the road (the parade, the money truck): bots slow and stop for them like for a car.
+function BotService.SetBlockers(list: { { position: Vector3, velocity: Vector3, clearance: number } })
+	blockers = list
+end
+
+-- Throw a bot's car into the air at `speed` studs/s (a hydrant).
+function BotService.Launch(driver: Player, speed: number)
+	local bot = bots[driver]
+	if bot then
+		bot.airVel = math.max(bot.airVel, speed)
+		bot.airY = math.max(bot.airY, 0.01)
+	end
 end
 
 function BotService.Rebalance()

@@ -75,6 +75,9 @@ export type RoundStatePayload = {
 	mode: string?, -- "Race" | "Arcade"
 	timeBonus: number?, -- Arcade: seconds just added to the clock
 	frenzy: boolean?, -- the last Config.Chaos.Frenzy.Seconds of a race round
+	event: string?, -- the world event running (Config.Chaos.Events.List Id)
+	eventEndsAt: number?, -- server time it ends
+	eventAt: Vector3?, -- where it is, when it has one place (the money truck)
 }
 
 export type ProfilePayload = {
@@ -121,7 +124,7 @@ export type PitStopCard = { id: string, name: string, effect: string, price: num
 export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt: number, buysLeft: number }
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
--- | "NewLeader" (to everyone: `line` = the new leader's name, `you` when it's you)
+-- | "NewLeader" (to everyone: `line` = the new leader's name, `you` when it's you) | "Cash" (a money-truck pickup: `payout`)
 -- | "Golden" (to everyone: a Golden Fare appeared at `position`)
 export type FareEventPayload = {
 	kind: string,

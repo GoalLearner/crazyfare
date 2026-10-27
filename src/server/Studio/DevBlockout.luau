@@ -85,6 +85,9 @@ local COLOR_LAMP = Color3.fromRGB(255, 240, 190)
 local PARK_CELLS: { [string]: boolean } = { ["-120,120"] = true, ["240,-240"] = true, ["-240,0"] = true }
 local COLOR_TUNNEL = Color3.fromRGB(120, 116, 110)
 local COLOR_PORTAL = Color3.fromRGB(240, 190, 60)
+local COLOR_BRIDGE = Color3.fromRGB(110, 120, 135)
+local COLOR_BRIDGE_TOWER = Color3.fromRGB(150, 60, 50)
+local COLOR_JET = Color3.fromRGB(120, 200, 255)
 local LANDMARK_CELLS: { [string]: string } = { ["240,240"] = "hotel", ["-240,-240"] = "dome", ["0,-240"] = "antenna" }
 
 local function makePart(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance, tagName: string?): Part
@@ -926,6 +929,46 @@ local function buildTunnel(ctx: Ctx, f: Config.MapFeatures)
 	end
 end
 
+-- The drawbridge: two steel leaves on the east road meeting mid-block. They lie on the road until the Drawbridge event
+-- turns each about its outer end (WorldEventService), so they meet in a peak you can jump. Brick towers either side.
+local function buildDrawbridge(ctx: Ctx, f: Config.MapFeatures)
+	local spec = f.Drawbridge
+	local folder = Instance.new("Folder")
+	folder.Name = "Drawbridge"
+	folder.Parent = ctx.map
+	for _, side in { -1, 1 } do
+		local leaf = makePart("DrawbridgeLeaf", Vector3.new(spec.Width - 1, spec.Thickness, spec.LeafLength), CFrame.new(spec.X, 0.2 + spec.Thickness / 2, spec.Z + side * spec.LeafLength / 2), COLOR_BRIDGE, folder, Tags.Drawbridge)
+		leaf.Material = Enum.Material.DiamondPlate
+		leaf:SetAttribute("Side", side)
+		-- a yellow stripe at the tip, riding along when the leaf turns
+		local stripe = decor(makePart("DrawbridgeStripe", Vector3.new(spec.Width - 1, 0.06, 1.2), leaf.CFrame * CFrame.new(0, spec.Thickness / 2 + 0.03, -side * (spec.LeafLength / 2 - 0.6)), COLOR_LINE, folder))
+		stripe.Anchored = false
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = leaf
+		weld.Part1 = stripe
+		weld.Parent = stripe
+	end
+	for _, sx in { -1, 1 } do
+		local tower = makePart("DrawbridgeTower", Vector3.new(3, 14, 3), CFrame.new(spec.X + sx * (spec.Width / 2 + 2.5), 0.5 + 7, spec.Z), COLOR_BRIDGE_TOWER, folder, Tags.Wall)
+		tower.Material = Enum.Material.Brick
+		local light = decor(makePart("DrawbridgeLight", Vector3.new(1.2, 1.2, 1.2), tower.CFrame * CFrame.new(0, 7.6, 0), COLOR_HYDRANT, folder))
+		light.Material = Enum.Material.Neon
+	end
+end
+
+-- Curb hydrants (they spray into the near lane in the Hydrants event). Decoration otherwise: nothing hits them.
+local function buildHydrants(ctx: Ctx, f: Config.MapFeatures)
+	local folder = Instance.new("Folder")
+	folder.Name = "Hydrants"
+	folder.Parent = ctx.map
+	for i, h in f.Hydrants do
+		local body = decor(makePart("Hydrant" .. i, Vector3.new(1.3, 2.4, 1.3), CFrame.new(h.X, 0.5 + 1.2, h.Z), COLOR_HYDRANT, folder, Tags.Hydrant))
+		body.Material = Enum.Material.Metal
+		local cap = decor(makePart("HydrantCap", Vector3.new(1.7, 0.4, 1.7), body.CFrame * CFrame.new(0, 1.3, 0), COLOR_JET, folder))
+		cap.Material = Enum.Material.Metal
+	end
+end
+
 -- Invisible barrier at the playable edge; the ground and skyline carry on behind it.
 local function buildWalls(ctx: Ctx)
 	local B = ctx.B
@@ -1039,6 +1082,8 @@ function DevBlockout.Generate(mapName: string?): Folder
 		end
 		buildTunnel(ctx, f)
 		buildBoostPads(ctx, f)
+		buildDrawbridge(ctx, f)
+		buildHydrants(ctx, f)
 	end
 	buildWalls(ctx)
 	buildHorizon(ctx)
