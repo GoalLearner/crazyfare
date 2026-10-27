@@ -111,7 +111,7 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "Bailed" then
 		play("Bail")
 		play("Angry")
-	elseif payload.kind == "Hurt" and payload.source == "crash" then
+	elseif payload.kind == "Hurt" and (payload.source == "crash" or payload.source == "pedestrian") then
 		play("Crash")
 	elseif payload.kind == "Golden" then
 		-- a shimmer of coins: three quick pings climbing, under the chime

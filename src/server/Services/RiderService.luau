@@ -150,7 +150,7 @@ local function onDamaged(player: Player, _amount: number, source: string)
 	end
 	setPose(rider, "panic")
 	-- A crash always gets a yelp; item hits share the line cooldown.
-	if source == "crash" or source == "debug" then
+	if source == "crash" or source == "pedestrian" or source == "debug" then
 		say(rider, pick(kindLines("Crash", rider.npc.kind)))
 	elseif canSpeak(rider) then
 		say(rider, pick(kindLines("Hit", rider.npc.kind)))

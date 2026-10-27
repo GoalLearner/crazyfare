@@ -117,8 +117,10 @@ Config.Tags = {
 }
 
 -- Pedestrians (PedestrianService): walk the sidewalk around each block and cross the street at the corners when no
--- car is coming. Hit one and your passenger walks out. The reaction is a cartoon hop, spin and yell, never a knockdown
--- or injury, which keeps the game in Roblox's "mild violence" band.
+-- car is coming. A car bearing down usually gets a cartoon dive-roll out of its path; a failed dive is a clip that hurts
+-- your passenger and ends your combo (owner rule 2026-10-27; it used to make them walk out). The reactions are a roll,
+-- a hop, a spin and a yell, never a knockdown or injury, which keeps the game in Roblox's "mild violence" band. Never a
+-- near-miss stunt: we never reward aiming at people.
 Config.Pedestrians = {
 	Count = 16, -- per map
 	WalkSpeed = 5, -- studs/s
@@ -140,6 +142,20 @@ Config.Pedestrians = {
 	BubbleSeconds = 1.8,
 	BillboardDistance = 160,
 	HitLines = { "HEY!!", "WATCH IT!", "EYES ON THE ROAD!", "I HAD THE WALK SIGN!", "NOT COOL!" },
+	-- Dodging: a walker in a car's path, at most DiveDistance ahead of its front bumper and closing faster than HitMinSpeed,
+	-- rolls once for a dive. The chance falls from DiveChance at low speed to DiveChanceAtTop at the car's top speed.
+	DiveDistance = 10, -- studs ahead of the front bumper
+	DiveMargin = 1.5, -- studs either side of the car's path that still count as in its way
+	DiveChance = 0.75,
+	DiveChanceAtTop = 0.5,
+	DiveSeconds = 0.55, -- the dive-roll
+	DiveHop = 1, -- studs: how high the roll arcs
+	DiveClear = 1.5, -- studs past the car's side where the walker lands
+	DiveMin = 3, -- studs: shortest and longest dive
+	DiveMax = 9,
+	DecideSeconds = 1.2, -- one roll per car approach; a walker who stayed put gets clipped if the car keeps coming
+	DiveLines = { "WHOA!", "NOPE!", "YIKES!", "NOT TODAY!", "MY SHOES!" },
+	PassengerDamage = 20, -- a clip; Shield, Seatbelt, Armored Seats and the Night Cab still count
 	SkinColors = {
 		Color3.fromRGB(240, 205, 175),
 		Color3.fromRGB(210, 160, 120),

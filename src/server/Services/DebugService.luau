@@ -13,6 +13,7 @@ local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
 local DataService = require(script.Parent.DataService)
 local VehicleService = require(script.Parent.VehicleService)
+local MapService = require(script.Parent.MapService)
 
 local DebugService = {}
 
@@ -55,6 +56,39 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	end,
 	Bail = function(player)
 		PassengerService.Bail(player, "hp")
+	end,
+	-- Your car at the west end of the long north road, facing east: a straight run for testing.
+	Runway = function(player)
+		local entry = VehicleService.GetEntry(player)
+		if not entry or entry.chassis.Anchored then
+			return
+		end
+		local roads = MapService.GetBlockout().RoadCoords
+		local x, z = roads[1] + 20, roads[1]
+		local pos = Vector3.new(x, MapService.GroundY(Vector3.new(x, 0, z), 0) + Config.Chassis.ResetLift, z)
+		VehicleService.Teleport(entry, CFrame.lookAt(pos, pos + Vector3.xAxis))
+	end,
+	-- The nearest waiting passenger climbs in, wherever they are.
+	ClaimNearest = function(player)
+		FareService.DebugClaimNearest(player)
+	end,
+	-- A walker on the road ahead of your car (arg "dive" / "clip" forces the outcome; nil rolls as usual).
+	PedAhead = function(player, arg)
+		local PedestrianService = require(script.Parent.PedestrianService) :: any
+		PedestrianService.DebugPlaceAhead(player, if typeof(arg) == "string" then arg else nil)
+	end,
+	-- Pretend a bot's Banana just spun you, so a clip in the next seconds is credited to that bot.
+	RivalSpin = function(player)
+		local Racers = require(script.Parent.Parent.Racers) :: any
+		local bot = Racers.Bots()[1]
+		local entry = VehicleService.GetEntry(player)
+		if not bot or not entry then
+			return
+		end
+		local seconds = Config.Items.Banana.SpinSeconds * 2
+		entry.lockedBy = bot
+		entry.lockedUntil = workspace:GetServerTimeNow() + seconds
+		print("[DebugService] steering locked by " .. bot.Name .. " for " .. tostring(seconds) .. " s")
 	end,
 	-- Cycles a pretend live event (none -> each kind -> none) so the event line and its multipliers can be seen today.
 	NextEvent = function()

@@ -118,6 +118,7 @@ local function reportCombo(kind: string, value: number)
 	comboEvent:FireServer({ kind = kind, value = value })
 end
 
+-- Pedestrians and passengers are never targets: we never reward aiming at people.
 local function isNearMissTarget(part: BasePart): boolean
 	return CollectionService:HasTag(part, Config.Tags.Building)
 		or CollectionService:HasTag(part, Config.Tags.Wall)

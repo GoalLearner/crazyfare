@@ -136,7 +136,7 @@ export type FareEventPayload = {
 	grade: string?, -- "Delivered": "Speedy" | "OnTime" | "Slow" (Config.Grades)
 	stunt: string?, -- "Stunt": "Drift" | "Airtime" | "NearMiss"
 	chain: number?, -- "Stunt": chain after it; "ChainBroken": the chain that ended
-	reason: string?, -- bail reason: "hp" | "timeout" | "pedestrian"; "ChainBroken": "crash" | "bail" | "idle"
+	reason: string?, -- bail reason: "hp" | "timeout"; "ChainBroken": "crash" | "bail" | "idle" | "pedestrian"
 	amount: number?, -- "Hurt": HP the passenger lost; "Stunt": cents it paid (0 with no passenger or at the fare's cap)
 	source: string?, -- "Hurt": "crash" | an item name | "debug" | ...
 	position: Vector3?,

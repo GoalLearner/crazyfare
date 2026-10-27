@@ -155,6 +155,11 @@ local function consumeShield(victim: Player, position: Vector3): boolean
 	return true
 end
 
+-- A non-item hit (a pedestrian clip) a raised Shield can take instead of the passenger. True when it did.
+function ItemService.AbsorbHit(victim: Player, position: Vector3): boolean
+	return consumeShield(victim, position)
+end
+
 -- Nearest rival inside LockRange; a loaded rival wins over an empty one at any distance.
 local function pickTarget(owner: Player, from: Vector3): Player?
 	local best: Player? = nil
@@ -425,11 +430,15 @@ local function triggerTrap(trap: Trap, victim: Player, victimEntry: VehicleServi
 	if trap.kind == "Banana" then
 		local cfg = Config.Items.Banana
 		victimEntry.spinUntil = now() + cfg.SpinSeconds
+		victimEntry.lockedBy = trap.owner
+		victimEntry.lockedUntil = now() + cfg.SpinSeconds
 		fire(victim, { kind = "Spinout", item = "Banana", seconds = cfg.SpinSeconds })
 		PassengerService.ApplyDamage(victim, cfg.Damage, "Banana", trap.owner)
 		broadcast({ kind = "Burst", item = "Banana", position = trap.position })
 	elseif trap.kind == "OilSlick" then
 		local cfg = Config.Items.OilSlick
+		victimEntry.lockedBy = trap.owner
+		victimEntry.lockedUntil = now() + cfg.Seconds
 		fire(victim, { kind = "Oil", item = "OilSlick", seconds = cfg.Seconds })
 		PassengerService.ApplyDamage(victim, cfg.Damage, "OilSlick", trap.owner)
 	end

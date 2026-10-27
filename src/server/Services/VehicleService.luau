@@ -29,6 +29,8 @@ export type VehicleEntry = {
 	drifting: boolean, -- client-reported; Tomato loses lock on drifting targets
 	boostUntil: number, -- server time; speed sanity allowance
 	spinUntil: number, -- server time; crash detection ignores spinouts
+	lockedBy: Player?, -- the rival whose Banana or Oil Slick has this car spinning or unsteerable...
+	lockedUntil: number, -- ...until this server time (a pedestrian clip in that window is theirs)
 	crashImmuneUntil: number,
 	speedHistory: { { t: number, speed: number } }, -- recent horizontal speeds for the crash watch
 	impact: { peak: number, low: number, settleAt: number, bonus: number }?, -- a hit in progress, measured until settleAt so the whole stop counts; bonus = biggest reported contact speed (traffic)
@@ -294,6 +296,8 @@ function VehicleService.Spawn(player: Player)
 		drifting = false,
 		boostUntil = 0,
 		spinUntil = 0,
+		lockedBy = nil,
+		lockedUntil = 0,
 		crashImmuneUntil = 0,
 		speedHistory = {},
 		impact = nil,
@@ -346,6 +350,8 @@ function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3)
 		drifting = false,
 		boostUntil = 0,
 		spinUntil = 0,
+		lockedBy = nil,
+		lockedUntil = 0,
 		crashImmuneUntil = 0,
 		speedHistory = {},
 		impact = nil,
@@ -368,6 +374,8 @@ function VehicleService.PlaceOnGrid(entry: VehicleEntry)
 	entry.lastVelocity = Vector3.zero
 	entry.boostUntil = 0
 	entry.spinUntil = 0
+	entry.lockedBy = nil
+	entry.lockedUntil = 0
 	entry.drifting = false
 	entry.crashImmuneUntil = workspace:GetServerTimeNow() + Config.Passenger.DamageCooldown
 	VehicleService.SetSilhouette(entry.player, false)

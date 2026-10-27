@@ -453,6 +453,18 @@ local function tick()
 	end
 end
 
+-- Studio: this driver claims the nearest waiting passenger, wherever they are (to test what happens with one aboard).
+function FareService.DebugClaimNearest(player: Player)
+	local entry = VehicleService.GetEntry(player)
+	if not RunService:IsStudio() or not entry or fares[player] then
+		return
+	end
+	local npc = PassengerService.GetAvailableNear(entry.chassis.Position, math.huge)
+	if npc then
+		claim(player, npc)
+	end
+end
+
 function FareService.Init()
 	fareEvent = Remotes.Get("FareEvent")
 	PassengerService.OnBailed:Connect(handleBail)

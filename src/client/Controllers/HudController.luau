@@ -605,7 +605,7 @@ local function onFare(payload: Types.FareEventPayload)
 			showStamp(payload.grade)
 		end
 	elseif payload.kind == "Bailed" then
-		local reason = if payload.reason == "timeout" then "TIME'S UP" elseif payload.reason == "pedestrian" then "WATCH THE ROAD!" else "PASSENGER BAILED"
+		local reason = if payload.reason == "timeout" then "TIME'S UP" else "PASSENGER BAILED"
 		showMessage(reason, UI.Danger, Config.Hud.MessageSeconds, "-" .. UI.Money(payload.base or 0) .. " fare")
 	elseif payload.kind == "Expired" then
 		showMessage("TIME'S UP", UI.Warn, Config.Hud.MessageSeconds, "no tip now, still deliver them")
@@ -615,6 +615,8 @@ local function onFare(payload: Types.FareEventPayload)
 		showMessage("TAKEN", UI.Warn, 0.8)
 	elseif payload.kind == "Hurt" and payload.source == "crash" then
 		showMessage(string.format("-%d HP", payload.amount or 0), UI.Danger, Config.Hud.CrashMessageSeconds) -- the rider yells the line
+	elseif payload.kind == "Hurt" and payload.source == "pedestrian" then
+		showMessage("WATCH THE ROAD!", UI.Danger, Config.Hud.MessageSeconds, string.format("-%d HP", payload.amount or 0))
 	elseif payload.kind == "Golden" then
 		local g = Config.Golden
 		showMessage(g.Announce, g.Color, g.AnnounceSeconds, g.AnnounceSub)

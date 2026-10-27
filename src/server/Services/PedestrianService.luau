@@ -2,9 +2,12 @@
 -- Pedestrians: Config.Pedestrians.Count walkers going around the sidewalk ring of each block and crossing the street at
 -- the corners. Before stepping off the curb they look for cars (players and traffic) heading for the crosswalk and wait
 -- for a gap; mid-crossing they run if a car bears down on them. Traffic stops for anyone crossing in its lane
--- (TrafficService reads GetCrossers). A player car that clips one makes its passenger walk out (PassengerService.Bail,
--- reason "pedestrian"). The pedestrian only hops, spins and yells: no knockdown, no injury (Roblox "mild violence").
--- Walkers are anchored, non-colliding figures moved by CFrame, like the bailing passengers.
+-- (TrafficService reads GetCrossers). A racer's car (player or bot) bearing down on one gets a cartoon dive-roll out
+-- of its path most of the time (Config.Pedestrians.DiveChance, less at top speed). A failed dive is a clip: the
+-- passenger takes PassengerDamage (Shield, Seatbelt and armor count), the combo ends, and when a rival's Banana or Oil
+-- Slick had the car out of control the damage, and any bail, is theirs. The walker only rolls, hops, spins and yells:
+-- no knockdown, no injury (Roblox "mild violence"). Walkers are anchored, non-colliding figures moved by CFrame, like
+-- the bailing passengers.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +17,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
+local ItemService = require(script.Parent.ItemService)
+local ComboService = require(script.Parent.ComboService)
 
 local PedestrianService = {}
 
@@ -40,6 +45,12 @@ type Ped = {
 	hopStart: number,
 	immuneUntil: number,
 	bubbleUntil: number,
+	diveStart: number, -- the dive-roll out of a car's path
+	diveFrom: Vector3,
+	diveTo: Vector3,
+	decidedUntil: number, -- rolled for the car coming at them; no second roll before this
+	forced: string?, -- Studio debug: "dive" or "clip" for the next approach
+	standUntil: number, -- Studio debug: stands where it was put until then
 }
 
 -- Figure proportions (match the passengers).
@@ -48,6 +59,7 @@ local HEAD_SIZE = Vector3.new(1.1, 1.1, 1.1)
 local LEG_SIZE = Vector3.new(0.7, 1.6, 0.7)
 local ARM_SIZE = Vector3.new(0.5, 1.5, 0.5)
 local TORSO_HEIGHT = 2.5 -- torso center above the ground
+local DEBUG_STAND_SECONDS = 5 -- a walker the Debug panel put on the road waits there this long
 local BOB = 0.25
 local RAY_UP = 30
 local RAY_LENGTH = 80
@@ -308,6 +320,12 @@ local function spawnPed(): boolean
 			hopStart = -math.huge,
 			immuneUntil = 0,
 			bubbleUntil = 0,
+			diveStart = -math.huge,
+			diveFrom = pos,
+			diveTo = pos,
+			decidedUntil = 0,
+			forced = nil,
+			standUntil = 0,
 		})
 		return true
 	end
@@ -336,17 +354,119 @@ function PedestrianService.GetCrossers(): { Vector3 }
 	return list
 end
 
-local function react(ped: Ped, now: number)
-	local cfg = Config.Pedestrians
-	ped.hopStart = now
-	ped.immuneUntil = now + cfg.HitImmuneSeconds
-	ped.bubble.Text = pick(cfg.HitLines)
-	ped.bubbleUntil = now + cfg.BubbleSeconds
+local function say(ped: Ped, text: string, now: number)
+	ped.bubble.Text = text
+	ped.bubbleUntil = now + Config.Pedestrians.BubbleSeconds
 	local gui = ped.bubble.Parent :: BillboardGui
 	gui.Enabled = true
 end
 
--- Did a moving player car clip this walker? Box test in the car's own space.
+local function react(ped: Ped, now: number)
+	local cfg = Config.Pedestrians
+	ped.hopStart = now
+	ped.immuneUntil = now + cfg.HitImmuneSeconds
+	say(ped, pick(cfg.HitLines), now)
+end
+
+-- Odds of getting out of the way: DiveChance at low speed, down to DiveChanceAtTop at the car's top speed.
+local function diveChance(entry: VehicleService.VehicleEntry, speed: number): number
+	local cfg = Config.Pedestrians
+	local stats = Config.Vehicles.Stats[entry.vehicleId]
+	local top = if stats then stats.TopSpeed else speed
+	local t = math.clamp((speed - cfg.HitMinSpeed) / math.max(1, top - cfg.HitMinSpeed), 0, 1)
+	return cfg.DiveChance + (cfg.DiveChanceAtTop - cfg.DiveChance) * t
+end
+
+-- Free ground for a dive this way, up to `want` studs (stops short of a wall or building).
+local function room(ped: Ped, dir: Vector3, want: number): number
+	local hit = workspace:Raycast(ped.torso.Position, dir * (want + 1), groundParams)
+	return if hit then math.max(0, hit.Distance - 1) else want
+end
+
+-- Dive-roll sideways out of the car's path: away from its centre line, or the other way if a wall is in the way.
+local function startDive(ped: Ped, carDir: Vector3, side: Vector3, halfWidth: number, now: number)
+	local cfg = Config.Pedestrians
+	local lateral = side.Magnitude
+	local away = if lateral > 0.1 then side.Unit else carDir:Cross(Vector3.yAxis) * (if rng:NextNumber() < 0.5 then -1 else 1)
+	local clear = halfWidth + cfg.HitRadius + cfg.DiveClear
+	local wantAway = math.clamp(clear - lateral, cfg.DiveMin, cfg.DiveMax)
+	local wantBack = math.clamp(clear + lateral, cfg.DiveMin, cfg.DiveMax)
+	local roomAway = room(ped, away, wantAway)
+	local dir, dist = away, roomAway
+	if roomAway < wantAway then
+		local roomBack = room(ped, -away, wantBack)
+		if roomBack > roomAway then
+			dir, dist = -away, roomBack
+		end
+	end
+	ped.diveStart = now
+	ped.diveFrom = ped.pos
+	ped.diveTo = ped.pos + Vector3.new(dir.X, 0, dir.Z) * dist
+	ped.immuneUntil = now + cfg.DiveSeconds + cfg.HitImmuneSeconds
+	ped.hopStart = -math.huge
+	say(ped, pick(cfg.DiveLines), now)
+end
+
+-- A racer's car in this walker's path, close and closing fast: roll once for a dive.
+local function dodge(ped: Ped, now: number)
+	local cfg = Config.Pedestrians
+	if now < ped.immuneUntil or now < ped.decidedUntil then
+		return
+	end
+	for player, entry in VehicleService.GetAll() do
+		local chassis = entry.chassis
+		local vel = flat(entry.lastVelocity)
+		local speed = vel.Magnitude
+		if chassis.Anchored or speed < cfg.HitMinSpeed then
+			continue
+		end
+		local dir = vel / speed
+		local rel = ped.pos - flat(chassis.Position)
+		local along = rel:Dot(dir)
+		local side = rel - dir * along
+		local half = chassis.Size / 2
+		local inPath = side.Magnitude < half.X + cfg.HitRadius + cfg.DiveMargin
+		local close = along > 0 and along - half.Z <= cfg.DiveDistance
+		if not (inPath and close and rel.Magnitude > 0.1 and vel:Dot(rel.Unit) > cfg.HitMinSpeed) then
+			continue
+		end
+		ped.decidedUntil = now + cfg.DecideSeconds
+		local chance = diveChance(entry, speed)
+		local dives = if ped.forced then ped.forced == "dive" else rng:NextNumber() < chance
+		ped.forced = nil
+		if dives then
+			startDive(ped, dir, side, half.X, now)
+		end
+		if RunService:IsStudio() then
+			print(string.format("[PedestrianService] %s at %d studs/s: %s (chance %.2f)", player.Name, math.floor(speed), if dives then "dived clear" else "stayed put", chance))
+		end
+		return
+	end
+end
+
+-- A failed dive: the car clips the walker. The passenger takes the hit unless a Seatbelt or Shield covers it, the combo
+-- ends, and a rival who had this car spinning or unsteerable gets the credit.
+local function clip(player: Player, entry: VehicleService.VehicleEntry, ped: Ped, now: number)
+	local cfg = Config.Pedestrians
+	react(ped, now)
+	ComboService.Reset(player, "pedestrian")
+	local by = entry.lockedBy
+	local attacker = if by and now < entry.lockedUntil and by ~= player then by else nil
+	local lost = 0
+	local shielded = false
+	if PassengerService.GetLoaded(player) and not PassengerService.IsImmune(player) then
+		shielded = ItemService.AbsorbHit(player, ped.torso.Position)
+		if not shielded then
+			lost = PassengerService.ApplyDamage(player, cfg.PassengerDamage, "pedestrian", attacker)
+		end
+	end
+	if RunService:IsStudio() then
+		local credit = if attacker then attacker.Name else "nobody"
+		print(string.format("[PedestrianService] %s clipped a pedestrian: -%d HP, shield %s, credit %s", player.Name, math.round(lost), tostring(shielded), credit))
+	end
+end
+
+-- Did a moving racer's car clip this walker? Box test in the car's own space.
 local function checkHits(ped: Ped, now: number)
 	local cfg = Config.Pedestrians
 	if now < ped.immuneUntil then
@@ -361,14 +481,34 @@ local function checkHits(ped: Ped, now: number)
 		local p = chassis.CFrame:PointToObjectSpace(waist)
 		local half = chassis.Size / 2
 		if math.abs(p.X) < half.X + cfg.HitRadius and math.abs(p.Z) < half.Z + cfg.HitRadius and math.abs(p.Y) < half.Y + TORSO_HEIGHT + 1 then
-			react(ped, now)
-			local hadPassenger = PassengerService.GetLoaded(player) ~= nil
-			PassengerService.Bail(player, "pedestrian")
-			if RunService:IsStudio() then
-				print(string.format("[PedestrianService] %s clipped a pedestrian (passenger walked out: %s)", player.Name, tostring(hadPassenger)))
-			end
+			clip(player, entry, ped, now)
 			return
 		end
+	end
+end
+
+-- Studio: put the nearest walker on the road ahead of this driver's car. `outcome` "dive" / "clip" forces the roll.
+function PedestrianService.DebugPlaceAhead(player: Player, outcome: string?)
+	local entry = VehicleService.GetEntry(player)
+	if not entry or not RunService:IsStudio() then
+		return
+	end
+	local chassis = entry.chassis
+	local look = flat(chassis.CFrame.LookVector)
+	local target = flat(chassis.Position) + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)) * 40
+	local nearest: Ped? = nil
+	for _, ped in peds do
+		if not nearest or (ped.pos - target).Magnitude < (nearest.pos - target).Magnitude then
+			nearest = ped
+		end
+	end
+	if nearest then
+		nearest.pos = target
+		nearest.immuneUntil = 0
+		nearest.decidedUntil = 0
+		nearest.forced = outcome
+		nearest.standUntil = workspace:GetServerTimeNow() + DEBUG_STAND_SECONDS
+		print(string.format("[PedestrianService] walker placed 40 studs ahead of %s (outcome: %s)", player.Name, outcome or "roll"))
 	end
 end
 
@@ -376,7 +516,15 @@ local function step(ped: Ped, dt: number, now: number, cars: { { pos: Vector3, v
 	local cfg = Config.Pedestrians
 	local hopT = (now - ped.hopStart) / cfg.HopSeconds
 	local hopping = hopT >= 0 and hopT < 1
-	if not hopping then
+	local diveT = (now - ped.diveStart) / cfg.DiveSeconds
+	local diving = diveT >= 0 and diveT < 1
+	if diving then
+		ped.pos = ped.diveFrom:Lerp(ped.diveTo, 1 - (1 - diveT) ^ 2)
+	elseif ped.diveStart > -math.huge and diveT >= 1 then
+		ped.pos = ped.diveTo -- landed; walk on from here
+		ped.diveStart = -math.huge
+	end
+	if not hopping and not diving and now >= ped.standUntil then
 		local leg = ped.leg
 		local speed = cfg.WalkSpeed
 		local go = true
@@ -419,6 +567,13 @@ local function step(ped: Ped, dt: number, now: number, cars: { { pos: Vector3, v
 	local cf = CFrame.lookAt(base, base + Vector3.new(look.X, 0, look.Z))
 	if hopping then
 		cf = cf * CFrame.new(0, math.sin(math.pi * hopT) * cfg.HopHeight, 0) * CFrame.Angles(0, math.pi * 2 * hopT, 0)
+	elseif diving then
+		-- a forward roll in the direction of the dive, with a little arc
+		local roll = flat(ped.diveTo - ped.diveFrom)
+		local heading = if roll.Magnitude > 0.1 then roll.Unit else look
+		cf = CFrame.lookAt(base, base + Vector3.new(heading.X, 0, heading.Z))
+			* CFrame.new(0, math.sin(math.pi * diveT) * cfg.DiveHop, 0)
+			* CFrame.Angles(-math.pi * 2 * diveT, 0, 0)
 	end
 	ped.torso.CFrame = cf
 end
@@ -434,6 +589,7 @@ function PedestrianService.Start()
 		local now = workspace:GetServerTimeNow()
 		local cars = vehicles()
 		for _, ped in peds do
+			dodge(ped, now)
 			step(ped, dt, now, cars)
 			checkHits(ped, now)
 		end

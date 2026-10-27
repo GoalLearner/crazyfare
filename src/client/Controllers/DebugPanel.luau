@@ -28,6 +28,11 @@ local BUTTONS: { Button } = {
 	{ label = "End round", command = "ForceEnd", arg = nil },
 	{ label = "Next car", command = "NextVehicle", arg = nil },
 	{ label = "Next event", command = "NextEvent", arg = nil },
+	{ label = "Runway", command = "Runway", arg = nil },
+	{ label = "Board", command = "ClaimNearest", arg = nil },
+	{ label = "Ped ahead", command = "PedAhead", arg = nil },
+	{ label = "Ped clip", command = "PedAhead", arg = "clip" },
+	{ label = "Rival spin", command = "RivalSpin", arg = nil },
 }
 
 function DebugPanel.Init()
