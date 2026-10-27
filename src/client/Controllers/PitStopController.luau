@@ -134,7 +134,7 @@ local function build()
 	end)
 	cashLabel = UI.Label({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Cash, Text = "$0" }, panel)
 	timerLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 54), Size = UDim2.fromOffset(200, 24), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, panel)
-	footer = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -40, 0, 18), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "Boosts last one round. Unspent cash counts toward the quota." }, panel)
+	footer = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -40, 0, 18), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = string.format("Boosts last one round. %d%% of unspent cash carries into the next round.", math.round(Config.PitStop.CarryFrac * 100)) }, panel)
 	cardRow = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 88), Size = UDim2.new(1, -40, 0, CARD_HEIGHT), BackgroundTransparency = 1 }, panel)
 	UI.New("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,

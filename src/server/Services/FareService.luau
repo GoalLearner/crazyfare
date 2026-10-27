@@ -1,11 +1,16 @@
 --!strict
 -- The money side of passengers: pickup contests, destinations, timers, delivery, tips, combo at payout, cash, quota, rank.
+-- All money here is integer cents (Config is in dollars; Money.Cents converts). Three ledgers per player:
+--   wallet       spendable at the Pit Stop, carried across the match
+--   roundEarned  progress toward this round's quota; each round starts at Config.PitStop.CarryFrac of the wallet
+--   matchEarned  everything earned this match (spending doesn't reduce it): the final standings
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Money = require(ReplicatedStorage.Shared.Money)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -23,11 +28,13 @@ local onDelivered: Signal.Signal<Player, string, number> = Signal.new()
 FareService.OnDelivered = onDelivered -- (player, tier, tip shown)
 
 local fares: { [Player]: Types.Fare } = {}
-local cash: { [Player]: number } = {}
+local wallet: { [Player]: number } = {}
+local roundEarned: { [Player]: number } = {}
+local matchEarned: { [Player]: number } = {}
 local delivered: { [Player]: number } = {}
 local bestTip: { [Player]: number } = {}
 local enabled = false
-local quota = Config.Round.Quotas[1]
+local quota = Money.Cents(Config.Round.Quotas[1])
 local rng = Random.new()
 local fareEvent: RemoteEvent
 
@@ -35,27 +42,48 @@ local function fire(player: Player, payload: Types.FareEventPayload)
 	fareEvent:FireClient(player, payload)
 end
 
+-- Spendable cash, in cents.
 function FareService.GetCash(player: Player): number
-	return cash[player] or 0
+	return wallet[player] or 0
 end
 
+-- This round's progress toward the quota, in cents.
+function FareService.GetRoundEarned(player: Player): number
+	return roundEarned[player] or 0
+end
+
+-- Money earned (cents): banks it, counts toward this round's quota and toward the match total.
 function FareService.AddCash(player: Player, amount: number)
-	cash[player] = (cash[player] or 0) + amount
-	if enabled and (cash[player] or 0) >= quota then
+	wallet[player] = (wallet[player] or 0) + amount
+	roundEarned[player] = (roundEarned[player] or 0) + amount
+	matchEarned[player] = (matchEarned[player] or 0) + amount
+	if enabled and (roundEarned[player] or 0) >= quota then
 		onQuotaReached:Fire(player)
 	end
+end
+
+-- Pit Stop spending: only the wallet goes down. False (and nothing spent) when it can't be afforded.
+function FareService.Spend(player: Player, amount: number): boolean
+	local have = wallet[player] or 0
+	if have < amount then
+		return false
+	end
+	wallet[player] = have - amount
+	return true
 end
 
 function FareService.GetFare(player: Player): Types.Fare?
 	return fares[player]
 end
 
+-- This round's quota, in cents.
 function FareService.GetQuota(): number
 	return quota
 end
 
-function FareService.SetQuota(value: number)
-	quota = value
+-- `dollars` straight from Config.Round.Quotas.
+function FareService.SetQuota(dollars: number)
+	quota = Money.Cents(dollars)
 end
 
 function FareService.SetEnabled(value: boolean)
@@ -69,11 +97,12 @@ function FareService.TargetNpcCount(): number
 	return math.clamp(want, math.min(Config.Fares.MinNpcs, maxCount), maxCount)
 end
 
--- Players sorted by cash (desc), then deliveries (desc), then UserId for stability.
-local function sortedPlayers(): { Player }
+-- Players sorted by this round's earnings (or the match total), then deliveries, then UserId for stability.
+local function sortedPlayers(byMatch: boolean?): { Player }
+	local score = if byMatch then matchEarned else roundEarned
 	local list = Players:GetPlayers()
 	table.sort(list, function(a, b)
-		local ca, cb = cash[a] or 0, cash[b] or 0
+		local ca, cb = score[a] or 0, score[b] or 0
 		if ca ~= cb then
 			return ca > cb
 		end
@@ -108,13 +137,15 @@ function FareService.GetRankBucket(player: Player): Types.RankBucket
 	return "Mid"
 end
 
-function FareService.GetResults(): { Types.PodiumEntry }
+-- Round podium (`byMatch` false: this round's earnings) or final standings (`byMatch` true: the match total).
+function FareService.GetResults(byMatch: boolean?): { Types.PodiumEntry }
+	local score = if byMatch then matchEarned else roundEarned
 	local results: { Types.PodiumEntry } = {}
-	for _, player in sortedPlayers() do
+	for _, player in sortedPlayers(byMatch) do
 		table.insert(results, {
 			id = player.UserId,
 			name = player.DisplayName,
-			cash = cash[player] or 0,
+			cash = score[player] or 0,
 			fares = delivered[player] or 0,
 			bestTip = bestTip[player] or 0,
 		})
@@ -126,15 +157,20 @@ end
 function FareService.ResetMatch()
 	table.clear(fares)
 	for _, player in Players:GetPlayers() do
-		cash[player] = 0
+		wallet[player] = 0
+		roundEarned[player] = 0
+		matchEarned[player] = 0
 		delivered[player] = 0
 		bestTip[player] = 0
 	end
 end
 
--- New round inside a match: active fares drop, cash and stats carry forward.
+-- New round inside a match: active fares drop; the quota count restarts at a head start of the unspent wallet.
 function FareService.ResetRound()
 	table.clear(fares)
+	for _, player in Players:GetPlayers() do
+		roundEarned[player] = math.floor((wallet[player] or 0) * Config.PitStop.CarryFrac)
+	end
 end
 
 local function pickDestination(npc: PassengerService.Npc): MapService.Point?
@@ -180,7 +216,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		npcId = npc.id,
 		expired = false,
 		tier = npc.tier,
-		base = tierDef.Base,
+		base = Money.Cents(tierDef.Base),
 		pickupIndex = npc.pickupIndex,
 		destinationIndex = destination.index,
 		destination = destination.position,
@@ -342,13 +378,17 @@ function FareService.Init()
 		})
 	end)
 	Players.PlayerAdded:Connect(function(player: Player)
-		cash[player] = 0
+		wallet[player] = 0
+		roundEarned[player] = 0
+		matchEarned[player] = 0
 		delivered[player] = 0
 		bestTip[player] = 0
 	end)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		fares[player] = nil
-		cash[player] = nil
+		wallet[player] = nil
+		roundEarned[player] = nil
+		matchEarned[player] = nil
 		delivered[player] = nil
 		bestTip[player] = nil
 	end)

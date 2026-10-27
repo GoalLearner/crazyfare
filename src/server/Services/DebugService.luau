@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Money = require(ReplicatedStorage.Shared.Money)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local PassengerService = require(script.Parent.PassengerService)
@@ -33,7 +34,7 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	end,
 	AddCash = function(player, arg)
 		if typeof(arg) == "number" then
-			FareService.AddCash(player, math.round(arg))
+			FareService.AddCash(player, Money.Cents(arg)) -- the button sends dollars
 		end
 	end,
 	ForceEnd = function()

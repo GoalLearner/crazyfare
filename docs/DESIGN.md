@@ -13,7 +13,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 ### Match and rounds
 - A match is **3 rounds**.
 - Round start: all players spawn on the **StartGrid**. NPCs are already standing across the map so players can read the board during the **3-2-1 countdown** (a short "read the board" beat precedes it). Then free-for-all.
-- Round end: first player to hit the **quota** (round 1 $30, round 2 $45, round 3 $60) or a **4-minute cap** (highest cash wins).
+- Round end: first player to earn the **quota this round** (round 1 $75, round 2 $100, round 3 $125) or a **3-minute cap** (highest earnings that round win). The match winner is whoever earned the most over all three rounds. Money is shown with cents.
 - Between rounds: a **30 s Pit Stop** (section 7).
 - Match end: podium, placements, Gem payout, rematch vote.
 
@@ -94,7 +94,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 - Players spend **round cash** on temporary, this-round-only boost cards. 4–5 randomized from the pool: **SpeedTune, BigTank, StartItem, ArmoredSeats, TipJar, ExtraWiper**.
 - Prices are a share of the next round's quota (about 22-44%), so two picks cost roughly a round of banked cash. Last place gets a **30% pity discount**.
-- **Unspent cash carries forward as quota progress**, so spend-vs-bank is a real decision.
+- Cash you bank is spendable at the Pit Stop. The quota counts only this round's earnings, but **25% of your unspent cash carries into the next round as a head start**, so spend-vs-bank is still a real decision and a big early lead can't snowball.
 
 ## 8. Maps
 

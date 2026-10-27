@@ -151,8 +151,8 @@ Config.Round = {
 	AutoStartDelay = 4, -- seconds after MinPlayers is met before PreCountdown
 	PreCountdownSeconds = 3, -- "read the board": NPCs visible, cars frozen
 	CountdownSeconds = 3, -- 3-2-1
-	CapSeconds = 240, -- round time cap; highest cash wins at the cap
-	Quotas = { 30, 45, 60 }, -- round 1, 2, 3
+	CapSeconds = 180, -- round time cap; highest earnings this round win at the cap
+	Quotas = { 75, 100, 125 }, -- dollars earned THIS round (round 1, 2, 3); paced for 6-9 fares by a good player
 	RoundsPerMatch = 3,
 	RoundEndSeconds = 5, -- placements shown between a round and its Pit Stop
 	MatchEndSeconds = 20, -- final podium + rematch vote
@@ -169,9 +169,9 @@ Config.Fares = {
 	TakenNoticeRadius = 40, -- rivals inside this see "TAKEN"
 	TierOrder = { "Green", "Yellow", "Red" },
 	Tiers = {
-		Green = { Base = 3, Hp = 60, Color = Color3.fromRGB(80, 220, 100), MinTrip = 60, MaxTrip = 190, Label = "SHORT" },
-		Yellow = { Base = 6, Hp = 80, Color = Color3.fromRGB(250, 210, 60), MinTrip = 190, MaxTrip = 330, Label = "MEDIUM" },
-		Red = { Base = 10, Hp = 100, Color = Color3.fromRGB(240, 70, 70), MinTrip = 330, MaxTrip = 9999, Label = "LONG" },
+		Green = { Base = 5, Hp = 60, Color = Color3.fromRGB(80, 220, 100), MinTrip = 60, MaxTrip = 190, Label = "SHORT" },
+		Yellow = { Base = 10, Hp = 80, Color = Color3.fromRGB(250, 210, 60), MinTrip = 190, MaxTrip = 330, Label = "MEDIUM" },
+		Red = { Base = 18, Hp = 100, Color = Color3.fromRGB(240, 70, 70), MinTrip = 330, MaxTrip = 9999, Label = "LONG" },
 	} :: { [string]: TierDef },
 	-- Spawn weighting by the PickupPoint's distance from the StartGrid center: greens near, reds far.
 	TierWeightsByDistance = {
@@ -195,6 +195,7 @@ Config.PitStop = {
 	-- Price = Share x the NEXT round's quota (round 2 = $45, round 3 = $60), so cards keep pace with the money and
 	-- two picks cost about a whole round of banked cash. Unspent cash is quota progress, so buying is a real trade.
 	PityDiscount = 0.3, -- last place pays this much less
+	CarryFrac = 0.25, -- each new round starts with this share of your unspent cash as a head start toward the quota
 	Cards = {
 		SpeedTune = { Name = "Speed Tune", Effect = "+8% top speed", Share = 0.38, Value = 1.08 },
 		BigTank = { Name = "Big Tank", Effect = "+50% boost tank", Share = 0.32, Value = 1.5 },

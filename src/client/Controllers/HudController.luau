@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Money = require(Shared:WaitForChild("Money"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local VecUtil = require(Shared:WaitForChild("VecUtil"))
@@ -249,7 +250,7 @@ local function update()
 	local phase = State.GetPhase()
 
 	cashLabel.Text = UI.Money(State.cash)
-	local quota = if round then round.quota else Config.Round.Quotas[1]
+	local quota = if round then round.quota else Money.Cents(Config.Round.Quotas[1])
 	UI.SetBar(quotaBar, if quota > 0 then State.cash / quota else 0)
 	quotaLabel.Text = "QUOTA " .. UI.Money(quota)
 
@@ -276,7 +277,7 @@ local function update()
 		podiumFooter.Text = "Pit stop in " .. math.max(0, math.ceil(round.endsAt - now))
 	elseif phase == "PitStop" and round then
 		timerLabel.Text = "PIT STOP"
-		phaseLabel.Text = "NEXT: ROUND " .. (round.round + 1) .. "  ·  FIRST TO " .. UI.Money(Config.Round.Quotas[math.min(round.round + 1, #Config.Round.Quotas)])
+		phaseLabel.Text = "NEXT: ROUND " .. (round.round + 1) .. "  ·  FIRST TO " .. UI.Money(Money.Cents(Config.Round.Quotas[math.min(round.round + 1, #Config.Round.Quotas)]))
 	elseif phase == "MatchEnd" and round then
 		timerLabel.Text = ""
 		phaseLabel.Text = ""

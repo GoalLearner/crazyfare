@@ -1,6 +1,8 @@
 --!strict
 -- Tiny helpers for building UI from code. No Studio-authored GUI assets anywhere in the project.
 
+local Money = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Money"))
+
 local UI = {}
 
 UI.Font = Enum.Font.GothamBlack
@@ -103,8 +105,9 @@ function UI.FormatTime(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
-function UI.Money(amount: number): string
-	return string.format("$%d", math.round(amount))
+-- Money arrives in cents from the server (see Shared/Money).
+function UI.Money(cents: number): string
+	return Money.Format(cents)
 end
 
 return UI

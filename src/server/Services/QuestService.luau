@@ -206,7 +206,7 @@ function QuestService.Init()
 			QuestService.Progress(player, "red", 1)
 		end
 		if tip > 0 then
-			QuestService.Progress(player, "tips", tip)
+			QuestService.Progress(player, "tips", tip / 100) -- tips arrive in cents; the quest counts dollars
 			LeaderboardService.ReportTip(player, tip)
 		end
 	end)

@@ -56,7 +56,7 @@ local function renderQuests(quests: Types.QuestPayload)
 		UI.Label({ Position = UDim2.fromOffset(12, 20), Size = UDim2.new(1, -140, 0, 20), Text = q.text, TextXAlignment = Enum.TextXAlignment.Left, Font = UI.FontMedium, TextScaled = false, TextSize = 15 }, row)
 		local bar = UI.Bar({ Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -140, 0, 5) }, if q.done then UI.Cash else UI.Accent, row)
 		UI.SetBar(bar, if q.goal > 0 then q.progress / q.goal else 0)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 8), Size = UDim2.fromOffset(110, 20), Text = if q.done then "DONE" else string.format("%d / %d", q.progress, q.goal), TextColor3 = if q.done then UI.Cash else UI.White, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 15 }, row)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 8), Size = UDim2.fromOffset(110, 20), Text = if q.done then "DONE" else string.format("%d / %d", math.floor(q.progress), q.goal), TextColor3 = if q.done then UI.Cash else UI.White, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 15 }, row)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 30), Size = UDim2.fromOffset(110, 16), Text = string.format("+%d gems", q.reward), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 12 }, row)
 	end
 	questFooter.Text = string.format("Daily resets in %s  ·  Weekly board and quest reset in %s", formatDuration(quests.dailyResetsIn), formatDuration(quests.weeklyResetsIn))

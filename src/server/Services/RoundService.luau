@@ -137,7 +137,7 @@ local function endRound()
 	ItemService.SetEnabled(false)
 	VehicleService.SetReleased(false)
 	PitStopService.ClearBoosts()
-	results = FareService.GetResults()
+	results = FareService.GetResults(roundIndex >= Config.Round.RoundsPerMatch) -- the last round shows the match total
 	if roundIndex < Config.Round.RoundsPerMatch then
 		setPhase("RoundEnd", Config.Round.RoundEndSeconds)
 	else

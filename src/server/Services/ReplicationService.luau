@@ -42,7 +42,7 @@ local function buildSnapshot(): Types.Snapshot
 			x = round1(cf.Position.X),
 			z = round1(cf.Position.Z),
 			yaw = round1(VecUtil.Yaw(cf.LookVector)),
-			cash = FareService.GetCash(player),
+			cash = FareService.GetRoundEarned(player), -- cents toward this round's quota
 			fare = if fare then fare.base else 0,
 			tier = (if fare then fare.tier else "") :: string,
 			hp = if npc then math.round(npc.hp) else 0,

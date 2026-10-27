@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Money = require(ReplicatedStorage.Shared.Money)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -82,7 +83,7 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 				id = id,
 				name = def.Name,
 				effect = def.Effect,
-				price = math.max(1, math.round(def.Share * nextQuota * discount)),
+				price = Money.Cents(math.max(1, math.round(def.Share * nextQuota * discount))), -- whole dollars, sent as cents
 				bought = false,
 			})
 		end
@@ -111,10 +112,9 @@ local function buy(player: Player, cardId: string)
 			if card.bought then
 				return
 			end
-			if FareService.GetCash(player) < card.price then
+			if not FareService.Spend(player, card.price) then
 				return
 			end
-			FareService.AddCash(player, -card.price)
 			card.bought = true
 			sendOffer(player)
 			return

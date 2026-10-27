@@ -12,8 +12,8 @@ export type PlayerSnap = {
 	x: number,
 	z: number,
 	yaw: number, -- radians, heading around Y
-	cash: number,
-	fare: number, -- current fare's base value (0 when empty)
+	cash: number, -- cents earned toward this round's quota
+	fare: number, -- current fare's base value in cents (0 when empty)
 	tier: string, -- "" when empty
 	hp: number,
 	maxHp: number,
@@ -43,9 +43,9 @@ export type Snapshot = {
 export type PodiumEntry = {
 	id: number,
 	name: string,
-	cash: number,
+	cash: number, -- cents: this round's earnings, or the match total on the last round
 	fares: number,
-	bestTip: number,
+	bestTip: number, -- cents
 	gems: number?, -- awarded at match end
 	xp: number?,
 	levelUp: boolean?,
@@ -141,7 +141,7 @@ export type Fare = {
 	npcId: number,
 	expired: boolean, -- timer ran out: passenger still rides, tip is gone
 	tier: string,
-	base: number,
+	base: number, -- cents
 	pickupIndex: number,
 	destinationIndex: number,
 	destination: Vector3,
