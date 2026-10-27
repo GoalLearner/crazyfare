@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 
 local DebugPanel = {}
@@ -12,6 +13,7 @@ local DebugPanel = {}
 type Button = { label: string, command: string, arg: any }
 
 local BUTTONS: { Button } = {
+	{ label = "Fill boost", command = "FillBoost", arg = nil }, -- this client only: a full tank (and its size in Output)
 	{ label = "Tomato", command = "GiveItem", arg = "Tomato" },
 	{ label = "Banana", command = "GiveItem", arg = "Banana" },
 	{ label = "Nitro", command = "GiveItem", arg = "LemonNitro" },
@@ -54,18 +56,27 @@ local BUTTONS: { Button } = {
 function DebugPanel.Init()
 	local debugRemote = Remotes.Get("Debug")
 	local screen = UI.Screen("CrazyFareDebug", 30)
+	-- below Roblox's chat window (it covered the top buttons), down to the bottom of the screen, scrolling
 	local panel = UI.Frame({
-		Position = UDim2.fromOffset(24, 220), -- under the event line
-		Size = UDim2.fromOffset(120, #BUTTONS * 30 + 30),
+		Position = UDim2.fromOffset(24, 330),
+		Size = UDim2.new(0, 132, 1, -350),
 		BackgroundTransparency = 0.4,
 	}, screen)
 	UI.Corner(8, panel)
 	UI.Label({ Size = UDim2.new(1, 0, 0, 22), Text = "DEBUG", TextColor3 = UI.Muted, Font = UI.FontMedium }, panel)
-	local list = UI.Frame({ Position = UDim2.fromOffset(6, 26), Size = UDim2.new(1, -12, 1, -30), BackgroundTransparency = 1 }, panel)
+	local list = UI.New("ScrollingFrame", {
+		Position = UDim2.fromOffset(6, 26),
+		Size = UDim2.new(1, -8, 1, -30),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, panel) :: ScrollingFrame
 	UI.New("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
 	for i, spec in BUTTONS do
 		local button = UI.New("TextButton", {
-			Size = UDim2.new(1, 0, 0, 26),
+			Size = UDim2.new(1, -8, 0, 26),
 			LayoutOrder = i,
 			BackgroundColor3 = Color3.fromRGB(40, 40, 50),
 			BorderSizePixel = 0,
@@ -77,6 +88,11 @@ function DebugPanel.Init()
 		}, list) :: TextButton
 		UI.Corner(6, button)
 		button.Activated:Connect(function()
+			if spec.command == "FillBoost" then
+				State.boostTank = State.boostTankMax
+				print(string.format("[DebugPanel] boost tank filled: %.1f s", State.boostTankMax))
+				return
+			end
 			debugRemote:FireServer(spec.command, spec.arg)
 		end)
 	end

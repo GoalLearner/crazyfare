@@ -83,7 +83,9 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 
 ### Where to
 - Every drop-off has a **name**, given out when the map is built: a drop-off on a landmark or park block takes its name (THE STADIUM, HOTEL ZEPHYR, RADIO TOWER, CITY PARK), the rest take the map's list in order (City: THE BURGER JOINT, THE MALL, THE HOSPITAL... Beach: THE PIER, THE SURF SHOP...). Storefront decoration never reuses a destination's name.
-- **Rooftop signs** float over every drop-off; the current destination's sign grows and lights up in the fare's tier color.
+- **Rooftop signs** float over every drop-off; the current destination's sign grows, lights up in the fare's tier color and reads from across the map, the rest only up close (110 studs).
+- **Few words while you drive** (owner 2026-10-27): the arrow over the cab says nothing unless you're in the ring (STOP) or facing away (TURN AROUND); the beam carries no name; while you carry a passenger every waiting passenger's badge, label and speech hides from you; a rival's tag shows their fare and HP, and their name only within 70 studs.
+- **Stops stand clear of set pieces:** pickups and drop-offs are never within 20 studs of a ramp or hump, the hill, the drawbridge, a boost pad, a hydrant or a fruit stall.
 - On boarding the passenger shouts **"TAKE ME TO THE STADIUM!"** in a small speech bubble over the cab (1.5 s). Their later lines use the same bubble, so there is only ever one over your cab; rivals' passengers talk only when you're within 90 studs, at most once every 4 s. The fare card leads with the destination name; the tall beam carries it too.
 - A **glowing ring** on the ground marks the zone you must stop inside (the delivery radius), with a pulsing disc.
 - The fare's **countdown** floats big beside the cab: white, then yellow at 10 s, then red with a tick every second at 5 s.

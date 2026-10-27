@@ -90,6 +90,8 @@ local function styleSign(sign: Sign)
 	sign.label.TextColor3 = if active then activeColor else SIGN_TEXT
 	sign.stroke.Color = if active then activeColor else SIGN_EDGE
 	sign.frame.BackgroundTransparency = if active then 0 else 0.2
+	-- only your destination's sign reads from afar; the rest are local landmarks
+	sign.gui.MaxDistance = if active then dest.SignMaxDistance else dest.SignIdleDistance
 end
 
 local function addSign(inst: Instance)
@@ -213,14 +215,7 @@ local function setBeacon(fare: State.FareInfo?)
 	part.CanCollide = false
 	part.CanQuery = false
 	part.CanTouch = false
-	part.Parent = workspace
-	local gui = UI.New("BillboardGui", {
-		Size = UDim2.fromOffset(160, 40),
-		StudsOffset = Vector3.new(0, h / 2 + 4, 0),
-		AlwaysOnTop = true,
-		MaxDistance = 2000,
-	}, part)
-	UI.Label({ Size = UDim2.fromScale(1, 1), Text = if fare.destinationName ~= "" then fare.destinationName else "DROP HERE", TextColor3 = color }, gui)
+	part.Parent = workspace -- no name on top: it read over the timer (the fare card and the rooftop sign carry it)
 	beacon = part
 end
 
@@ -301,15 +296,14 @@ local function updateArrow()
 		local look = Vector3.new(ch.CFrame.LookVector.X, 0, ch.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.01 then look.Unit else dir
 		local angle = math.deg(math.atan2(look:Cross(dir).Y, look:Dot(dir)))
+		-- the arrow shows the way; words only when it's not enough (no distance: owner 2026-10-27, too many words)
 		local word = ""
 		if dist <= Config.Fares.DeliverRadius then
 			word = "STOP"
 		elseif math.abs(angle) >= Config.Hud.Arrow.TurnAroundDegrees then
 			word = "TURN AROUND"
-		elseif math.abs(angle) >= Config.Hud.Arrow.SideDegrees then
-			word = if angle < 0 then "RIGHT" else "LEFT"
 		end
-		arrowLabel.Text = if word == "" then string.format("%d", math.round(dist)) else word .. "\n" .. string.format("%d", math.round(dist))
+		arrowLabel.Text = word
 	end
 end
 

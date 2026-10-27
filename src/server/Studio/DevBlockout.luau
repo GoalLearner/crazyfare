@@ -593,7 +593,65 @@ local function buildProps(ctx: Ctx, parent: Folder, cx: number, cz: number)
 end
 
 -- No curb stops where a set piece is in the way: the jump block's lane mouths, the walls of the tunnel.
+-- The four small humps on the cross roads (buildRamps); pickups and drop-offs keep clear of them too.
+local SMALL_HUMPS = {
+	{ name = "RampNorth", x = -180, z = -120, yaw = 0 },
+	{ name = "RampSouth", x = 180, z = 120, yaw = math.pi },
+	{ name = "RampWest", x = 120, z = 180, yaw = math.pi / 2 },
+	{ name = "RampEast", x = -120, z = -180, yaw = -math.pi / 2 },
+}
+local HUMP_LENGTH, HUMP_HEIGHT, HUMP_WIDTH = 24, 6, 12
+local HUMP_RUN = HUMP_LENGTH * math.cos(math.asin(HUMP_HEIGHT / HUMP_LENGTH)) -- flat distance from the up slab to the down slab
+
+-- Within Config.Map.SpotClearance of a set piece: ramps and humps, the hill, the drawbridge, boost pads, hydrants, stalls.
+local function nearSetPiece(ctx: Ctx, p: Vector3): boolean
+	local clear = Config.Map.SpotClearance
+	local function near(x: number, z: number, reach: number): boolean
+		return Vector3.new(p.X - x, 0, p.Z - z).Magnitude < reach + clear
+	end
+	for _, h in SMALL_HUMPS do
+		local look = CFrame.Angles(0, h.yaw, 0).LookVector
+		if near(h.x + look.X * HUMP_RUN / 2, h.z + look.Z * HUMP_RUN / 2, HUMP_RUN) then
+			return true
+		end
+	end
+	local f = features(ctx)
+	if not f then
+		return false
+	end
+	for _, hump in f.BigHumps do
+		if near(hump.X, hump.Z, hump.Length / 2) then
+			return true
+		end
+	end
+	for _, pad in f.BoostPads do
+		if near(pad.X, pad.Z, pad.Length / 2) then
+			return true
+		end
+	end
+	for _, h in f.Hydrants do
+		if near(h.X, h.Z, 0) then
+			return true
+		end
+	end
+	for _, s in f.FruitStands do
+		if near(s.X, s.Z, 0) then
+			return true
+		end
+	end
+	local halfRoad = ctx.B.RoadWidth / 2
+	local hill = f.Hill
+	if math.abs(p.X - hill.X) < halfRoad + clear and p.Z > hill.ZFrom - clear and p.Z < hill.ZTo + clear then
+		return true
+	end
+	local bridge = f.Drawbridge -- its leaves and the brick towers beside them
+	return math.abs(p.X - bridge.X) < halfRoad + clear and math.abs(p.Z - bridge.Z) < bridge.LeafLength + clear
+end
+
 local function spotAllowed(ctx: Ctx, position: Vector3, kind: string, cx: number, cz: number): boolean
+	if nearSetPiece(ctx, position) then
+		return false
+	end
 	if kind == "jump" and math.abs(position.X - cx) < 1 then
 		return false
 	end
@@ -838,22 +896,16 @@ end
 
 -- A hump: one tilted slab up, a mirrored slab down, so it works from both directions and has no wall to wedge against.
 local function buildRamps(ctx: Ctx)
-	local length, height, width = 24, 6, 12
-	local angle = math.asin(height / length)
-	local run = length * math.cos(angle)
+	local angle = math.asin(HUMP_HEIGHT / HUMP_LENGTH)
 	local function slab(name: string, x: number, z: number, yaw: number)
-		local cf = CFrame.new(x, 0.2 + height / 2, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(angle, 0, 0)
-		makePart(name, Vector3.new(width, 0.6, length), cf, COLOR_RAMP, ctx.map, Tags.Ramp)
+		local cf = CFrame.new(x, 0.2 + HUMP_HEIGHT / 2, z) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(angle, 0, 0)
+		makePart(name, Vector3.new(HUMP_WIDTH, 0.6, HUMP_LENGTH), cf, COLOR_RAMP, ctx.map, Tags.Ramp)
 	end
-	local function hump(name: string, x: number, z: number, yaw: number)
-		local look = CFrame.Angles(0, yaw, 0).LookVector
-		slab(name .. "Up", x, z, yaw)
-		slab(name .. "Down", x + look.X * run, z + look.Z * run, yaw + math.pi)
+	for _, h in SMALL_HUMPS do
+		local look = CFrame.Angles(0, h.yaw, 0).LookVector
+		slab(h.name .. "Up", h.x, h.z, h.yaw)
+		slab(h.name .. "Down", h.x + look.X * HUMP_RUN, h.z + look.Z * HUMP_RUN, h.yaw + math.pi)
 	end
-	hump("RampNorth", -180, -120, 0)
-	hump("RampSouth", 180, 120, math.pi)
-	hump("RampWest", 120, 180, math.pi / 2)
-	hump("RampEast", -120, -180, -math.pi / 2)
 end
 
 -- The hill: a crest across a north-south road (solid wedges up and down, a flat top). At speed the top throws you.

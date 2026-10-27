@@ -1,9 +1,12 @@
 --!strict
--- Over-the-roof tags on rival taxis: name, "$value" and an HP bar while they carry a passenger,
--- visible within Config.Hud.WorldTagDistance. Driven by the snapshot; attached to the rival's chassis.
+-- Over-the-roof tags on rival taxis: "$value" and an HP bar while they carry a passenger, visible within
+-- Config.Hud.WorldTagDistance, and the name only within WorldTagNameDistance. Driven by the snapshot; attached to the
+-- rival's chassis. Also: while you carry a passenger, every waiting passenger's badge, words and bubble are hidden on
+-- your screen (you can't pick anyone up anyway; owner 2026-10-27: too many words at once).
 
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -18,6 +21,7 @@ local WorldTagController = {}
 
 local tags: { [number]: Tag } = {}
 local localPlayer = Players.LocalPlayer
+local npcCheckAt = 0
 
 local function findVehicle(userId: number): Model?
 	for _, inst in CollectionService:GetTagged(Config.Tags.Vehicle) do
@@ -73,6 +77,9 @@ local function onSnapshot(snapshot: Types.Snapshot)
 			seen[p.id] = true
 			local loaded = p.fare > 0
 			tag.name.Text = if p.bot then "BOT " .. p.name else string.format("%s%s  ·  LV %d", if p.vip then "VIP " else "", p.name, p.level or 1)
+			local camera = workspace.CurrentCamera
+			local chassis = tag.model.PrimaryPart
+			tag.name.Visible = camera ~= nil and chassis ~= nil and (chassis.Position - camera.CFrame.Position).Magnitude <= Config.Hud.WorldTagNameDistance
 			tag.value.Text = if loaded then UI.Money(p.fare) else ""
 			tag.value.TextColor3 = (Config.Fares.Tiers[p.tier] or Config.Fares.Tiers.Green).Color
 			tag.hp.back.Visible = loaded
@@ -88,10 +95,30 @@ local function onSnapshot(snapshot: Types.Snapshot)
 	end
 end
 
+-- Waiting passengers' billboards (badge, CARPOOL / TICK TOCK, speech) hide from you while you carry someone.
+local function hideWaitingPassengers()
+	local hideFrom = if State.fare then localPlayer else nil
+	for _, model in CollectionService:GetTagged(Config.Tags.Npc) do
+		for _, d in model:GetDescendants() do
+			if d:IsA("BillboardGui") and d.PlayerToHideFrom ~= hideFrom then
+				d.PlayerToHideFrom = hideFrom
+			end
+		end
+	end
+end
+
 function WorldTagController.Init()
 	State.SnapshotReceived:Connect(onSnapshot)
 end
 
-function WorldTagController.Start() end
+function WorldTagController.Start()
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now >= npcCheckAt then
+			npcCheckAt = now + Config.Hud.NpcHideCheckSeconds
+			hideWaitingPassengers()
+		end
+	end)
+end
 
 return WorldTagController

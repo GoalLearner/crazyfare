@@ -1345,6 +1345,8 @@ Config.Net = {
 
 Config.Hud = {
 	WorldTagDistance = 150, -- "$value" + HP bar over loaded rivals
+	WorldTagNameDistance = 70, -- a rival's name only this close (owner 2026-10-27: too many words at once)
+	NpcHideCheckSeconds = 0.25, -- how often waiting passengers' badges are hidden / shown as you pick up and drop off
 	MinimapSize = 190, -- px
 	-- Messages while driving sit in a small strip under the timer and leave fast (owner 2026-10-27: big center text hid
 	-- the road and he hit people and cars). Only the pre-round text (read the board, 3-2-1, GO, the winner) is big.
@@ -1353,7 +1355,7 @@ Config.Hud = {
 	CrashMessageSeconds = 0.7, -- "-20 HP" after a crash
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
-	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face
+	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face. Its only words: STOP in the ring, TURN AROUND past this angle
 	-- Slot-machine money counters (TOTAL top-left, FARE on the fare card): every digit is a reel that rolls up
 	CounterRollSeconds = 0.9, -- a counter covers any gap in about this long
 	CounterMinRate = 250, -- cents per second at the slowest, so a small tip still visibly rolls
@@ -1400,7 +1402,8 @@ Config.Destinations = {
 	SignWidth = 22, -- studs
 	SignHeightStuds = 5,
 	SignActiveScale = 1.35,
-	SignMaxDistance = 420, -- studs
+	SignMaxDistance = 420, -- studs: your destination's sign
+	SignIdleDistance = 110, -- every other drop-off's sign only this close
 }
 
 -- Delivery grade: how much of the fare timer was left at the drop-off. The tip already pays for speed; the stamp says it out loud.
@@ -1418,6 +1421,9 @@ Config.Grades = {
 -- Each map is a data entry. The blockout spec is shared by DevBlockout (builds it) and the minimap (draws it).
 Config.Map = {
 	Current = "City",
+	-- Pickups and drop-offs stand at least this far (studs) from ramps and humps, the hill, the drawbridge, boost pads,
+	-- hydrants and fruit stalls (owner 2026-10-27: a passenger stood inside a drawbridge tower; stops beside ramps jam up).
+	SpotClearance = 20,
 	Rotation = { "City", "Beach" }, -- one match per entry, in order
 	City = {
 		DisplayName = "City",
