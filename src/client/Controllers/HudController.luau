@@ -36,6 +36,7 @@ local arrowDistance: TextLabel
 local fareCard: Frame
 local fareDest: TextLabel
 local fareTier: TextLabel
+local fareRequest: TextLabel -- the passenger's request on the fare card: a checklist row
 local fareCounter: RollingCounter.Counter
 local fareTimer: UI.Bar
 local fareHp: UI.Bar
@@ -94,6 +95,15 @@ local rematchButton: TextButton
 local podiumBonus: TextLabel
 local frenzyShown = false -- the FRENZY! banner went up for the current Frenzy
 local eventShown: string? = nil -- the world event whose banner went up
+
+local function requestDef(id: string?): { Id: string, Stunt: string, Goal: number, Single: boolean, Unit: string, Label: string, Shout: string }?
+	for _, def in Config.Chaos.Requests.List do
+		if def.Id == id then
+			return def
+		end
+	end
+	return nil
+end
 
 local function eventDef(id: string?): { Id: string, Name: string, Sub: string, Weight: number, Maps: { [string]: boolean }? }?
 	for _, def in Config.Chaos.Events.List do
@@ -393,6 +403,7 @@ local function build()
 	fareTimer = UI.Bar({ Position = UDim2.fromOffset(12, 70), Size = UDim2.new(1, -24, 0, 12) }, UI.Warn, fareCard)
 	fareHp = UI.Bar({ Position = UDim2.fromOffset(12, 98), Size = UDim2.new(1, -24, 0, 14) }, UI.Danger, fareCard)
 	fareHpLabel = UI.Label({ Position = UDim2.fromOffset(12, 116), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "PASSENGER" }, fareCard)
+	fareRequest = UI.Label({ Position = UDim2.fromOffset(12, 138), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.FontMedium, Text = "", Visible = false }, fareCard)
 
 	-- Combo + boost + speed (bottom-center)
 	local center = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(260, 90), BackgroundTransparency = 1 }, screen)
@@ -640,6 +651,8 @@ local function onFare(payload: Types.FareEventPayload)
 	elseif payload.kind == "NewLeader" then
 		local b = Config.Chaos.Bounty
 		showMessage(b.Crown .. " " .. string.format(b.Banner, if payload.you then b.You else string.upper(payload.line or "")), b.Color, b.BannerSeconds)
+	elseif payload.kind == "Request" and payload.done then
+		addPopup("Request", payload.payout or 0) -- paid with the tip at the drop-off
 	elseif payload.kind == "Cash" then
 		addPopup("Cash", payload.payout or 0) -- a money-truck coin; the TOTAL rolls up with the snapshot
 	elseif payload.kind == "Taken" then
@@ -670,6 +683,18 @@ local function onFare(payload: Types.FareEventPayload)
 		RollingCounter.Snap(fareCounter, 0) -- the meter starts: it rolls up to the base fare
 		arrivalShown = false
 		local name = payload.destinationName or ""
+		local request = requestDef(payload.request)
+		if request then
+			-- the request comes right after the destination, in the same bubble
+			local id = request.Id
+			local shout = request.Shout
+			task.delay(Config.Hud.ShoutSeconds, function()
+				local fare = State.fare
+				if fare and fare.request == id then
+					showShout(shout)
+				end
+			end)
+		end
 		if name ~= "" then
 			showShout("TAKE ME TO " .. name .. "!")
 		else
@@ -787,6 +812,15 @@ local function update(dt: number)
 		UI.SetBar(fareHp, hpFrac, if hpFrac > 0.5 then UI.Cash else (if hpFrac > 0.25 then UI.Warn else UI.Danger))
 		local kindDef = Config.PassengerTypes.Kinds[fare.passenger] or Config.PassengerTypes.Kinds.Regular
 		fareHpLabel.Text = string.format("%s %d/%d", kindDef.Label, math.round(State.hp), State.maxHp)
+		local request = requestDef(fare.request)
+		fareRequest.Visible = request ~= nil
+		fareCard.Size = UDim2.fromOffset(240, if request then 164 else 142)
+		if request then
+			local shown = math.min(fare.requestProgress, request.Goal)
+			local amount = if request.Unit == "" then string.format("%d/%d", math.floor(shown), request.Goal) else string.format("%.1f/%g %s", shown, request.Goal, request.Unit)
+			fareRequest.Text = (if fare.requestDone then "\u{2714} " else "\u{25A1} ") .. request.Label .. "  " .. amount
+			fareRequest.TextColor3 = if fare.requestDone then UI.Cash elseif now > fare.deadline then UI.Muted else Config.Chaos.Requests.Color
+		end
 
 		-- Destination arrow relative to the camera heading
 		local ch = State.chassis

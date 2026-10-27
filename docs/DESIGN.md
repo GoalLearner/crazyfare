@@ -35,6 +35,7 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - Driving: server-steered like traffic, on the road center line over the grid, keeping right when another bot comes the other way, slowing for cars and people ahead and waiting for crossing traffic at junctions, then pulling over to the road edge to stop. They ghost through traffic (no collisions) and bump player cars.
 
 ### Passengers (NPCs)
+- **Requests** (Phase X, `Config.Chaos.Requests`): about one passenger in three asks for something on the way, right after "TAKE ME TO ...!": CATCH SOME AIR (one jump of 1.5 s), SCARE ME A LITTLE (3 near misses), DRIFT (4 s in all). A checklist row on the fare card counts it; done, it says REQUEST COMPLETE! with a ta-da and adds half the base fare to the tip at the drop-off (gone with the tip if you're late or they bail). Counted from the server-checked stunts. People only: bots do no stunts.
 - NPCs stand at curb **PickupPoints** with an icon colored by tier:
   - **Green**: short trip, small fare, 60 HP
   - **Yellow**: medium trip, medium fare, 80 HP

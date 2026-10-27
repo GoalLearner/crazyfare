@@ -64,7 +64,16 @@ local function onFareEvent(payload: Types.FareEventPayload)
 			stunts = 0,
 			passenger = payload.passenger or "Regular",
 			golden = payload.golden == true,
+			request = payload.request,
+			requestProgress = 0,
+			requestDone = false,
 		}
+	elseif payload.kind == "Request" then
+		local fare = State.fare
+		if fare and fare.request == payload.request then
+			fare.requestProgress = payload.progress or fare.requestProgress
+			fare.requestDone = payload.done == true
+		end
 	elseif payload.kind == "Stunt" then
 		local fare = State.fare
 		if fare and payload.stunts then

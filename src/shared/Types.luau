@@ -125,6 +125,7 @@ export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt
 
 -- FareEvent kinds: "Claimed" | "Delivered" | "Bailed" | "Taken" | "Expired" | "Hurt" | "HunterBonus" | "Stunt" | "ChainBroken"
 -- | "NewLeader" (to everyone: `line` = the new leader's name, `you` when it's you) | "Cash" (a money-truck pickup: `payout`)
+-- | "Request" (your passenger's request moved: `request`, `progress`, `done`, and `payout` = the bonus when done)
 -- | "Golden" (to everyone: a Golden Fare appeared at `position`)
 export type FareEventPayload = {
 	kind: string,
@@ -151,6 +152,9 @@ export type FareEventPayload = {
 	golden: boolean?, -- "Claimed": a Golden Fare
 	bonus: string?, -- "Delivered": what the passenger's rules did ("SMOOTH RIDE  TIP x2", "GOLDEN x3")
 	bounty: boolean?, -- "HunterBonus": the passenger was the leader's (paid times Config.Chaos.Bounty.Mult)
+	request: string?, -- "Claimed" / "Request": the passenger's request (Config.Chaos.Requests.List Id)
+	progress: number?, -- "Request": toward its Goal
+	done: boolean?, -- "Request": just completed
 	you: boolean?, -- "NewLeader": you took the lead
 }
 
@@ -185,6 +189,9 @@ export type Fare = {
 	stuntTips: number, -- cents of stunt cash this ride has earned so far
 	kind: string, -- the passenger's kind (Config.PassengerTypes.Kinds key)
 	golden: boolean,
+	request: string?, -- Config.Chaos.Requests.List Id the passenger asked for
+	requestProgress: number, -- toward its Goal (seconds or count)
+	requestDone: boolean,
 }
 
 return {}

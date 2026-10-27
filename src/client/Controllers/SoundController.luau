@@ -101,6 +101,8 @@ local function onFare(payload: Types.FareEventPayload)
 		end
 	elseif payload.kind == "Cash" then
 		SoundController.PlayOneShot("Coin", 1.25)
+	elseif payload.kind == "Request" and payload.done then
+		sting(Config.Chaos.Requests.Sting)
 	elseif payload.kind == "Claimed" then
 		play("Pickup")
 		play("Board")

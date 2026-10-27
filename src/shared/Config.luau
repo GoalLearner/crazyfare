@@ -856,7 +856,22 @@ Config.Chaos = {
 			Size = Vector3.new(7, 6, 13), -- the truck's body
 		},
 	},
-	Labels = { Ram = "RAMMED!", Cash = "CASH" } :: { [string]: string }, -- popups over your cab
+	-- Passenger requests: when a person (not a bot: bots do no stunts) picks someone up, a Chance they want something on
+	-- the way, counted from the server-checked stunts. Done before the drop-off, it adds BonusFrac of the base fare to
+	-- the tip (lost with the tip on a late arrival or a bail). Single: one stunt has to reach Goal; otherwise they add up.
+	Requests = {
+		Chance = 0.35,
+		BonusFrac = 0.5,
+		List = {
+			{ Id = "TakeTheJump", Stunt = "Airtime", Goal = 1.5, Single = true, Unit = "S", Label = "BIG AIR", Shout = "AND CATCH SOME AIR!" },
+			{ Id = "NearMisses", Stunt = "NearMiss", Goal = 3, Single = false, Unit = "", Label = "NEAR MISSES", Shout = "AND SCARE ME A LITTLE!" },
+			{ Id = "DriftSeconds", Stunt = "Drift", Goal = 4, Single = false, Unit = "S", Label = "DRIFT", Shout = "AND DRIFT! I LOVE A DRIFT!" },
+		} :: { { Id: string, Stunt: string, Goal: number, Single: boolean, Unit: string, Label: string, Shout: string } },
+		PayLine = "REQUEST DONE", -- under the payout
+		Sting = "NewBest", -- Config.Sounds.Stings key when one is done
+		Color = Color3.fromRGB(255, 170, 60), -- the fare card's request row while it's open (green when done)
+	},
+	Labels = { Ram = "RAMMED!", Cash = "CASH", Request = "REQUEST COMPLETE!" } :: { [string]: string }, -- popups over your cab
 }
 
 -- Live events: weekly windows (UTC) when something good happens in every server, so players have a time to come back

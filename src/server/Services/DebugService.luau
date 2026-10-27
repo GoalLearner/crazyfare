@@ -100,6 +100,12 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local pos = Vector3.new(d.X, MapService.GroundY(d, d.Y) + Config.Chassis.ResetLift, d.Z)
 		VehicleService.Teleport(entry, CFrame.lookAt(pos, pos + entry.chassis.CFrame.LookVector * Vector3.new(1, 0, 1)))
 	end,
+	-- The next passenger you pick up asks for this request (arg: its Config.Chaos.Requests.List Id).
+	Request = function(player, arg)
+		if typeof(arg) == "string" then
+			FareService.DebugForceRequest(player, arg)
+		end
+	end,
 	-- The nearest waiting passenger climbs in, wherever they are.
 	ClaimNearest = function(player)
 		FareService.DebugClaimNearest(player)

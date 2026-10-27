@@ -20,6 +20,9 @@ export type FareInfo = {
 	stunts: number, -- stunt cash riding in the fare (cents)
 	passenger: string, -- the passenger's kind (Config.PassengerTypes.Kinds key)
 	golden: boolean, -- a Golden Fare (triple pay, gold everything)
+	request: string?, -- what they asked for on the way (Config.Chaos.Requests.List Id)
+	requestProgress: number,
+	requestDone: boolean,
 }
 
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]

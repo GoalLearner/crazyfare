@@ -40,6 +40,7 @@ local delivered: { [Player]: number } = {}
 local bestTip: { [Player]: number } = {}
 local enabled = false
 local payMult = 1 -- Frenzy doubles delivery payouts
+local forcedRequest: { [Player]: string } = {} -- Studio debug: the next passenger asks for this
 local leader: Player? = nil -- this round's cash leader, wearing the bounty crown
 local announced: Player? = nil -- the leader the last NEW LEADER banner named
 local leaderBannerAt = -math.huge
@@ -280,6 +281,25 @@ local function pickDestination(npc: PassengerService.Npc): MapService.Point?
 	return closestToBand
 end
 
+-- A passenger request for this pickup (people only), or nil.
+local function rollRequest(player: Player): { Id: string, Stunt: string, Goal: number, Single: boolean, Unit: string, Label: string, Shout: string }?
+	local cfg = Config.Chaos.Requests
+	if Racers.IsBot(player) then
+		return nil
+	end
+	local forced = forcedRequest[player]
+	forcedRequest[player] = nil
+	if not forced and rng:NextNumber() >= cfg.Chance then
+		return nil
+	end
+	for _, def in cfg.List do
+		if def.Id == forced then
+			return def
+		end
+	end
+	return cfg.List[rng:NextInteger(1, #cfg.List)]
+end
+
 local function claim(player: Player, npc: PassengerService.Npc)
 	local destination: MapService.Point? = nil
 	if npc.destinationIndex then
@@ -310,7 +330,14 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		deadline = now + duration,
 		distance = distance,
 		stuntTips = 0,
+		request = nil,
+		requestProgress = 0,
+		requestDone = false,
 	}
+	local request = rollRequest(player)
+	if request then
+		fare.request = request.Id
+	end
 	local npcPosition = npc.position
 	PassengerService.Board(npc, player)
 	fares[player] = fare
@@ -327,6 +354,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		deadline = fare.deadline,
 		passenger = npc.kind,
 		golden = npc.golden,
+		request = fare.request,
 	})
 	-- Everyone else nearby and empty sees TAKEN.
 	for other, entry in VehicleService.GetAll() do
@@ -362,6 +390,29 @@ local function onStunt(player: Player, kind: string, units: number, chain: numbe
 		end
 	end
 	fire(player, { kind = "Stunt", stunt = kind, amount = amount, chain = chain, stunts = if fare then fare.stuntTips else nil })
+
+	-- The passenger's request: this stunt counts toward it (one big enough stunt, or a running total).
+	local id = if enabled and fare and not fare.expired and not fare.requestDone then fare.request else nil
+	if fare and id then
+		for _, def in Config.Chaos.Requests.List do
+			if def.Id == id and def.Stunt == kind then
+				local value = if kind == "NearMiss" then 1 else units * cfg.UnitSeconds
+				fare.requestProgress = if def.Single then math.max(fare.requestProgress, value) else fare.requestProgress + value
+				if fare.requestProgress >= def.Goal then
+					fare.requestDone = true
+				end
+				local bonus = math.round(fare.base * Config.Chaos.Requests.BonusFrac)
+				fire(player, { kind = "Request", request = id, progress = fare.requestProgress, done = fare.requestDone, payout = if fare.requestDone then bonus else nil })
+			end
+		end
+	end
+end
+
+-- Studio: the next passenger this driver picks up asks for this request.
+function FareService.DebugForceRequest(player: Player, id: string)
+	if RunService:IsStudio() then
+		forcedRequest[player] = id
+	end
 end
 
 local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerService.Npc, now: number, allowTip: boolean)
@@ -394,6 +445,12 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		end
 	end
 	local tipShown = math.round(tipRaw)
+	-- a request done on the way: BonusFrac of the base on top of the tip
+	if allowTip and fare.requestDone then
+		tipShown += math.round(fare.base * Config.Chaos.Requests.BonusFrac)
+		local line = Config.Chaos.Requests.PayLine
+		bonus = if bonus then bonus .. "  ·  " .. line else line
+	end
 	-- Stunt cash rides in the fare (Config.Stunts.HoldUntilDelivery) and is lost with the tip on a late arrival.
 	local stunts = if allowTip then fare.stuntTips else 0
 	local held = if Config.Stunts.HoldUntilDelivery then stunts else 0

@@ -467,7 +467,7 @@ function WorldEventService.DebugStart(id: string)
 	end
 end
 
--- Studio: this driver's car where the running event happens: on a coin, in a jet, on the drawbridge's north approach
+-- Studio: this driver's car where the running event happens: on a coin, 40 studs before a jet, on the drawbridge's north approach
 -- facing it, or on the parade road ahead of the floats.
 function WorldEventService.DebugTeleport(player: Player)
 	local entry = VehicleService.GetEntry(player)
@@ -480,8 +480,12 @@ function WorldEventService.DebugTeleport(player: Player)
 	local f = features()
 	if def.Id == "MoneyTruck" and coins[1] then
 		at = coins[1].position
-	elseif def.Id == "HydrantBurst" and jets[1] then
-		at = jets[1].at
+	elseif def.Id == "HydrantBurst" and jets[1] and f then
+		-- 40 studs before the first jet in its lane, facing it, so a run at it gets thrown with speed
+		local h = f.Hydrants[1]
+		local road = Vector3.new(-h.DZ, 0, h.DX)
+		at = jets[1].at - road * 40
+		look = road
 	elseif def.Id == "Drawbridge" and f then
 		local d = f.Drawbridge
 		at = Vector3.new(d.X - 6, 0, d.Z - d.LeafLength - 110) -- the southbound lane, north of the bridge
