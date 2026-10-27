@@ -1,5 +1,5 @@
 --!strict
--- Item boxes, the one-slot inventory, rank-weighted rolls, and every item's server-side effect:
+-- Item boxes and fruit stands, the one-slot inventory, rank-weighted rolls, and every item's server-side effect:
 -- Tomato (homing projectile), Banana + OilSlick (traps), LemonNitro (boost), Shield + Seatbelt (defense).
 -- Projectiles also knock tagged props. Clients only render what they are told.
 
@@ -21,6 +21,7 @@ local Racers = require(script.Parent.Parent.Racers)
 local FareService = require(script.Parent.FareService)
 
 type Box = { part: BasePart, activeAt: number }
+type Stand = { model: Model, pivot: CFrame, activeAt: number } -- a fruit stall; activeAt > 0 while it's smashed
 type Projectile = {
 	part: Part,
 	owner: Player,
@@ -43,11 +44,14 @@ local ItemService = {}
 
 local onTomatoHit: Signal.Signal<Player, Player> = Signal.new()
 ItemService.OnTomatoHit = onTomatoHit -- (attacker, victim) on a landed splat
+local onSmash: Signal.Signal<Player> = Signal.new()
+ItemService.OnSmash = onSmash -- (driver) drove through a fruit stand
 
 local held: { [Player]: string } = {}
 local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
 local boxRespawn: number? = nil -- Frenzy: boxes come back this fast
 local boxes: { Box } = {}
+local stands: { Stand } = {}
 local projectiles: { Projectile } = {}
 local traps: { Trap } = {}
 local enabled = false
@@ -134,6 +138,25 @@ end
 
 local function setBoxActive(box: Box, active: boolean)
 	box.part:SetAttribute("Active", active)
+end
+
+-- `dir`: the smasher's heading, so every client throws the fruit the way they were going.
+local function setStandActive(stand: Stand, active: boolean, dir: Vector3?)
+	if dir then
+		stand.model:SetAttribute("SmashDir", dir)
+	end
+	stand.model:SetAttribute("Active", active)
+end
+
+-- The fruit stalls still standing (bots swerve for them; Studio's "To stand" lines up on one).
+function ItemService.GetActiveStands(): { CFrame }
+	local list: { CFrame } = {}
+	for _, stand in stands do
+		if stand.activeAt == 0 then
+			table.insert(list, stand.pivot)
+		end
+	end
+	return list
 end
 
 -- Returns true when a shield absorbed the hit (and tells the victim).
@@ -581,6 +604,43 @@ local function stepBoxes()
 	end
 end
 
+-- Fruit stands: a racer through one at speed smashes it, and gets a free item when its slot is empty.
+local function stepStands()
+	local cfg = Config.Chaos.FruitStands
+	local t = now()
+	for _, stand in stands do
+		if stand.activeAt > 0 then
+			if t >= stand.activeAt then
+				stand.activeAt = 0
+				setStandActive(stand, true)
+			end
+			continue
+		end
+		for player, entry in VehicleService.GetAll() do
+			local velocity = entry.chassis.AssemblyLinearVelocity
+			if entry.chassis.Anchored or velocity.Magnitude < cfg.MinSpeed then
+				continue
+			end
+			if VecUtil.FlatDistance(entry.chassis.Position, stand.pivot.Position) <= cfg.Radius then
+				stand.activeAt = t + cfg.RespawnSeconds
+				setStandActive(stand, false, VecUtil.FlatUnit(velocity))
+				local item: string? = nil
+				if not held[player] then
+					local rolled = roll(FareService.GetRankBucket(player))
+					held[player] = rolled
+					item = rolled
+				end
+				fire(player, { kind = "Smash", item = item })
+				if item then
+					fire(player, { kind = "Granted", item = item })
+				end
+				onSmash:Fire(player)
+				break
+			end
+		end
+	end
+end
+
 function ItemService.ClearAll()
 	for _, p in projectiles do
 		p.part:Destroy()
@@ -604,6 +664,10 @@ function ItemService.ClearAll()
 		box.activeAt = 0
 		setBoxActive(box, true)
 	end
+	for _, stand in stands do
+		stand.activeAt = 0
+		setStandActive(stand, true)
+	end
 	MapService.ResetProps()
 	for _, player in Players:GetPlayers() do
 		fire(player, { kind = "Granted", item = "" })
@@ -616,12 +680,18 @@ function ItemService.Forget(player: Player)
 	shieldHits[player] = nil
 end
 
--- Re-read item boxes from the current map (after MapService.LoadMap).
+-- Re-read item boxes and fruit stands from the current map (after MapService.LoadMap).
 function ItemService.RefreshBoxes()
 	boxes = {}
 	for _, part in MapService.GetItemBoxes() do
 		table.insert(boxes, { part = part, activeAt = 0 })
 		setBoxActive(boxes[#boxes], true)
+	end
+	stands = {}
+	for _, model in MapService.GetFruitStands() do
+		local stand: Stand = { model = model, pivot = model:GetPivot(), activeAt = 0 }
+		table.insert(stands, stand)
+		setStandActive(stand, true)
 	end
 end
 
@@ -649,6 +719,7 @@ function ItemService.Start()
 			return
 		end
 		stepBoxes()
+		stepStands()
 		stepProjectiles(dt)
 		stepTraps()
 	end)

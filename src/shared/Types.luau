@@ -164,6 +164,7 @@ export type FareEventPayload = {
 }
 
 -- ItemEvent kinds: "Granted" | "Used" | "Splat" | "Spinout" | "Boost" | "HitConfirm" | "BoxTaken"
+-- | "Smash" (you drove through a fruit stand: `item` is the free item, nil when your slot was full)
 export type ItemEventPayload = {
 	kind: string,
 	item: string?,

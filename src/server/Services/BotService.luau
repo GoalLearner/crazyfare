@@ -480,6 +480,18 @@ local function wantedLateral(bot: Bot): number
 			end
 		end
 	end
+	-- An empty item slot: hug the curb past a fruit stand ahead on this road (it smashes into a free item).
+	if ItemService.GetHeld(bot.driver) == "" then
+		local fruit = Config.Chaos.FruitStands
+		for _, stand in ItemService.GetActiveStands() do
+			local rel = flat(stand.Position) - bot.rabbit
+			local ahead = rel:Dot(bot.dir)
+			local side = rel:Dot(rightOf(bot.dir))
+			if ahead > 0 and ahead < fruit.BotLook and math.abs(side) <= fruit.BotReach then
+				return math.clamp(side, -cfg.MaxCurbOffset, cfg.MaxCurbOffset)
+			end
+		end
+	end
 	return 0
 end
 

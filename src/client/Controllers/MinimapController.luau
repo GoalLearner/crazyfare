@@ -2,6 +2,7 @@
 -- Whole-map minimap (top-right): roads from the blockout spec, NPC dots by tier, every rival with its fare $
 -- and a mini HP bar (grey when empty), your own arrow, your destination. Reads only the 10 Hz snapshot.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -23,6 +24,7 @@ local map: Frame
 local selfArrow: TextLabel
 local destMarker: Frame
 local npcDots: { [number]: Frame } = {}
+local standDots: { [number]: Frame } = {} -- fruit stands by Index
 local rivals: { [number]: RivalMarker } = {}
 local localPlayer = Players.LocalPlayer
 
@@ -86,8 +88,14 @@ local function addStrip(x0: number, z0: number, x1: number, z1: number, width: n
 end
 
 local function drawFeatures(f: Config.MapFeatures?)
+	standDots = {}
 	if not f then
 		return
+	end
+	for i, s in f.FruitStands do
+		local dot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = toMap(s.X, s.Z), Size = UDim2.fromOffset(5, 5), BackgroundColor3 = Config.Chaos.FruitStands.MapColor, BackgroundTransparency = 0, ZIndex = 2 }, map)
+		standDots[i] = dot
+		table.insert(roadStrips, dot)
 	end
 	local half = B.CellSize / 2
 	for _, alley in f.Alleys do
@@ -249,6 +257,14 @@ end
 
 local function onSnapshot(snapshot: Types.Snapshot)
 	placeCrown(snapshot)
+	-- Fruit stands: faded while smashed
+	for _, model in CollectionService:GetTagged(Config.Tags.FruitStand) do
+		local index = model:GetAttribute("Index")
+		local dot = if typeof(index) == "number" then standDots[index] else nil
+		if dot then
+			dot.BackgroundTransparency = if model:GetAttribute("Active") == false then 0.65 else 0
+		end
+	end
 	-- NPCs
 	local seenNpc: { [number]: boolean } = {}
 	for _, npc in snapshot.npcs do

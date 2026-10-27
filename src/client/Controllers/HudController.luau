@@ -727,6 +727,8 @@ local function onItem(payload: Types.ItemEventPayload)
 		showMessage("OIL!", UI.Warn, 1.2, "no steering")
 	elseif payload.kind == "Rammed" or payload.kind == "Ram" then
 		addPopup("Ram", 0) -- both drivers, over their own cab
+	elseif payload.kind == "Smash" then
+		addPopup("Smash", 0) -- the free item's name follows with "Granted"
 	elseif payload.kind == "Immune" then
 		showMessage("NO EFFECT", UI.Accent, 0.8, "this ride shrugs it off")
 	elseif payload.kind == "Granted" and payload.item and payload.item ~= "" then

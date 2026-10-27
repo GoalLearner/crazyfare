@@ -969,6 +969,51 @@ local function buildHydrants(ctx: Ctx, f: Config.MapFeatures)
 	end
 end
 
+-- Market stalls straddling the curb, front to the road: three fruit crates on a counter under a striped awning.
+-- Nothing solid: cars drive through and smash them (ItemService), and the client hides the parts while one is down.
+local function buildFruitStands(ctx: Ctx, f: Config.MapFeatures)
+	local cfg = Config.Chaos.FruitStands
+	local folder = Instance.new("Folder")
+	folder.Name = "FruitStands"
+	folder.Parent = ctx.map
+	for i, s in f.FruitStands do
+		local model = Instance.new("Model")
+		model.Name = "FruitStand" .. i
+		model:SetAttribute("Index", i)
+		model:SetAttribute("Active", true)
+		-- -Z (the look) faces the road; the counter's bottom sits at road level, half of it over the sidewalk
+		local base = CFrame.lookAt(Vector3.new(s.X, 0.2, s.Z), Vector3.new(s.X + s.DX, 0.2, s.Z + s.DZ))
+		local counter = decor(makePart("Counter", Vector3.new(7, 2.4, 3), base * CFrame.new(0, 1.2, 0), cfg.CounterColor, model))
+		counter.Material = Enum.Material.WoodPlanks
+		model.PrimaryPart = counter
+		for k = 1, 3 do
+			local x = (k - 2) * 2.3
+			local crate = decor(makePart("Crate", Vector3.new(2.1, 0.7, 2.6), base * CFrame.new(x, 2.75, 0), cfg.CrateColor, model))
+			crate.Material = Enum.Material.Wood
+			local color = cfg.FruitColors[(i + k) % #cfg.FruitColors + 1]
+			for _, row in { -1, 1 } do
+				for _, col in { -1, 1 } do
+					local fruit = decor(makePart("Fruit", Vector3.one * 0.85, base * CFrame.new(x + col * 0.45, 3.35, row * 0.6), color, model))
+					fruit.Shape = Enum.PartType.Ball
+				end
+			end
+		end
+		for _, side in { -1, 1 } do
+			decor(makePart("Post", Vector3.new(0.3, 5.6, 0.3), base * CFrame.new(side * 3.3, 2.8, 1.3), cfg.CounterColor, model))
+		end
+		-- the awning: six stripes sloping from over the back posts down toward the road
+		local drop, depth, width = 1.2, 3.8, 7.2
+		local tilt = math.atan2(drop, depth)
+		local stripe = width / 6
+		for k = 1, 6 do
+			local cf = base * CFrame.new(-width / 2 + stripe * (k - 0.5), 5.6 - drop / 2, -0.4) * CFrame.Angles(-tilt, 0, 0)
+			decor(makePart("Awning", Vector3.new(stripe, 0.15, depth / math.cos(tilt)), cf, cfg.AwningColors[k % 2 + 1], model))
+		end
+		CollectionService:AddTag(model, Tags.FruitStand)
+		model.Parent = folder
+	end
+end
+
 -- Invisible barrier at the playable edge; the ground and skyline carry on behind it.
 local function buildWalls(ctx: Ctx)
 	local B = ctx.B
@@ -1084,6 +1129,7 @@ function DevBlockout.Generate(mapName: string?): Folder
 		buildBoostPads(ctx, f)
 		buildDrawbridge(ctx, f)
 		buildHydrants(ctx, f)
+		buildFruitStands(ctx, f)
 	end
 	buildWalls(ctx)
 	buildHorizon(ctx)

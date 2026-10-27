@@ -136,6 +136,28 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local pos = Vector3.new(p.X, MapService.GroundY(p, p.Y) + Config.Chassis.ResetLift, p.Z)
 		VehicleService.Teleport(entry, CFrame.lookAt(pos, Vector3.new(stand.Position.X, pos.Y, stand.Position.Z)))
 	end,
+	-- Lined up in the curb lane before the nearest fruit stand still standing: drive straight on to smash it.
+	ToStand = function(player)
+		local entry = VehicleService.GetEntry(player)
+		if not entry or entry.chassis.Anchored then
+			return
+		end
+		local cfg = Config.Chaos.FruitStands
+		local from = entry.chassis.Position
+		local best: CFrame? = nil
+		for _, pivot in ItemService.GetActiveStands() do
+			if not best or (pivot.Position - from).Magnitude < (best.Position - from).Magnitude then
+				best = pivot
+			end
+		end
+		if not best then
+			return
+		end
+		local along = best.RightVector
+		local p = best.Position + best.LookVector * cfg.DebugLane - along * cfg.DebugRunUp
+		local pos = Vector3.new(p.X, MapService.GroundY(p, p.Y) + Config.Chassis.ResetLift, p.Z)
+		VehicleService.Teleport(entry, CFrame.lookAt(pos, pos + along))
+	end,
 	-- A ticking fare appears and climbs in.
 	Ticking = function(player)
 		FareService.DebugTicking(player)

@@ -28,6 +28,7 @@ local dropoffs: { Point } = {}
 local startPads: { Point } = {}
 local itemBoxes: { BasePart } = {}
 local props: { { part: BasePart, cframe: CFrame } } = {}
+local fruitStands: { Model } = {}
 local center = Vector3.zero
 local currentMap = Config.Map.Current
 
@@ -71,6 +72,12 @@ local function discover()
 	for _, inst in CollectionService:GetTagged(Config.Tags.ItemBox) do
 		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
 			table.insert(itemBoxes, inst)
+		end
+	end
+	fruitStands = {}
+	for _, inst in CollectionService:GetTagged(Config.Tags.FruitStand) do
+		if inst:IsA("Model") and inst.PrimaryPart and inst:IsDescendantOf(workspace) then
+			table.insert(fruitStands, inst)
 		end
 	end
 	props = {}
@@ -148,6 +155,11 @@ end
 
 function MapService.GetItemBoxes(): { BasePart }
 	return itemBoxes
+end
+
+-- Fruit stall Models (Config.Chaos.FruitStands); none on maps without them.
+function MapService.GetFruitStands(): { Model }
+	return fruitStands
 end
 
 function MapService.GetCenter(): Vector3

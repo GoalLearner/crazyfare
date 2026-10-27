@@ -70,6 +70,7 @@ export type MapFeatures = {
 	Drawbridge: { X: number, Z: number, LeafLength: number, Width: number, Thickness: number }, -- two leaves on a north-south road meeting at Z; they rise in the Drawbridge event
 	Hydrants: { { X: number, Z: number, DX: number, DZ: number } }, -- curb hydrants; (DX, DZ) points into the road where the jet lands
 	HydrantSpray: number, -- studs from a hydrant to its jet
+	FruitStands: { { X: number, Z: number, DX: number, DZ: number } }, -- market stalls straddling the curb; (DX, DZ) points into the road
 }
 
 -- A passenger personality (Config.PassengerTypes.Kinds). Multipliers of 1 change nothing.
@@ -119,6 +120,7 @@ Config.Tags = {
 	BoostPad = "BoostPad", -- a glowing strip that launches your cab (VehicleController)
 	Drawbridge = "Drawbridge", -- a drawbridge leaf (attribute Side: -1 north, 1 south)
 	Hydrant = "Hydrant",
+	FruitStand = "FruitStand", -- a fruit stall Model (attributes Index, Active, SmashDir)
 }
 
 -- Pedestrians (PedestrianService): walk the sidewalk around each block and cross the street at the corners when no
@@ -908,7 +910,44 @@ Config.Chaos = {
 		TickPitch = 1.4, -- the countdown by the cab ticks every second while they ride
 		TickPunch = 1.15, -- and bumps this much on each tick (the last seconds keep their big punch)
 	},
-	Labels = { Ram = "RAMMED!", Cash = "CASH", Request = "REQUEST COMPLETE!" } :: { [string]: string }, -- popups over your cab
+	-- Fruit stands: market stalls straddling the curb (the map's Features.FruitStands). Drive through one at MinSpeed or
+	-- more and it bursts into flying fruit; with an empty item slot you get a free item, rolled by rank like an item
+	-- box. It's back RespawnSeconds later and at every round start. Nothing solid: no crash, no passenger damage. Bots
+	-- with an empty slot swerve to the curb for one ahead on their road.
+	FruitStands = {
+		Radius = 5.5, -- studs (flat) from the stall's center on the curb line: a car hugging the curb reaches it
+		MinSpeed = 25, -- studs/s
+		RespawnSeconds = 20,
+		BotLook = 60, -- a bot with an empty slot looks this far ahead on its road for one
+		BotReach = 13, -- studs off the bot's line a stall can be and still count as on its road
+		Lines = { "FREE FRUIT!", "SMOOTHIE TIME!", "I'M NOT PAYING FOR THAT!", "MANGO ON MY SHIRT!" } :: { string },
+		FruitColors = {
+			Color3.fromRGB(255, 150, 30),
+			Color3.fromRGB(220, 40, 40),
+			Color3.fromRGB(250, 220, 60),
+			Color3.fromRGB(90, 190, 70),
+			Color3.fromRGB(140, 70, 180),
+		} :: { Color3 },
+		CounterColor = Color3.fromRGB(150, 100, 60),
+		CrateColor = Color3.fromRGB(190, 140, 80),
+		AwningColors = { Color3.fromRGB(230, 50, 50), Color3.fromRGB(250, 250, 245) } :: { Color3 },
+		MapColor = Color3.fromRGB(255, 150, 30), -- its dot on the minimap (faded while it's smashed)
+		-- the smash, client only: fruit flying along the smasher's path, bouncing down the road
+		Pieces = 16,
+		PieceSizeMin = 0.6,
+		PieceSizeMax = 1.2,
+		FlySpeed = 40, -- studs/s along the smasher's path (plus a sideways spread of half that)
+		FlyUp = 45,
+		Spin = 10, -- radians/s, any axis
+		DebrisSeconds = 2.5,
+		Sound = "Splat", -- Config.Sounds.Ids key, played at the stall
+		SoundPitch = 0.85,
+		SoundRange = 150, -- studs: heard this far away
+		-- Studio "To stand": lined up this far before the nearest stall, this far into the road from the curb
+		DebugRunUp = 40,
+		DebugLane = 3,
+	},
+	Labels = { Ram = "RAMMED!", Cash = "CASH", Request = "REQUEST COMPLETE!", Smash = "FRUIT SMASH!" } :: { [string]: string }, -- popups over your cab
 }
 
 -- Live events: weekly windows (UTC) when something good happens in every server, so players have a time to come back
@@ -1373,6 +1412,18 @@ Config.Map = {
 					{ X = 240, Z = 193.5, DX = 0, DZ = -1 },
 				},
 				HydrantSpray = 7,
+				-- Fruit stalls on the curb a quarter of the way along a block (pickups stand mid-block, props on corners):
+				-- swerve to the curb to smash one for a free item.
+				FruitStands = {
+					{ X = -72, Z = 24, DX = 1, DZ = 0 },
+					{ X = 72, Z = -144, DX = -1, DZ = 0 },
+					{ X = -192, Z = 96, DX = 1, DZ = 0 },
+					{ X = 192, Z = -144, DX = -1, DZ = 0 },
+					{ X = 24, Z = 192, DX = 0, DZ = -1 },
+					{ X = -96, Z = -192, DX = 0, DZ = 1 },
+					{ X = 144, Z = 192, DX = 0, DZ = -1 },
+					{ X = -216, Z = -72, DX = 0, DZ = 1 },
+				},
 			} :: MapFeatures?,
 		},
 		Gimmicks = {} :: { [string]: number },

@@ -18,6 +18,7 @@ local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
 local ComboService = require(script.Parent.ComboService)
 local FareService = require(script.Parent.FareService)
+local ItemService = require(script.Parent.ItemService)
 
 local RiderService = {}
 
@@ -146,6 +147,16 @@ local function onStunt(player: Player)
 	end
 end
 
+-- Through a fruit stand: they love it (or panic), and always say so.
+local function onSmash(player: Player)
+	local rider = riders[player]
+	if not rider then
+		return
+	end
+	setPose(rider, if rider.npc.kind == "Nervous" then "panic" else "cheer")
+	say(rider, pick(Config.Chaos.FruitStands.Lines))
+end
+
 local function onDamaged(player: Player, _amount: number, source: string)
 	local rider = riders[player]
 	if not rider or source == "self" then
@@ -199,6 +210,7 @@ function RiderService.Init()
 	PassengerService.OnUnloaded:Connect(onUnloaded)
 	PassengerService.OnDamaged:Connect(onDamaged)
 	ComboService.OnStunt:Connect(onStunt)
+	ItemService.OnSmash:Connect(onSmash)
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
 		lineIds[player] = nil
 	end)

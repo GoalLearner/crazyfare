@@ -41,6 +41,7 @@ local BUTTONS: { Button } = {
 	{ label = "Carpool", command = "Carpool", arg = nil },
 	{ label = "Tick tock", command = "Ticking", arg = nil },
 	{ label = "To curb", command = "ToCurb", arg = nil },
+	{ label = "To stand", command = "ToStand", arg = nil },
 	{ label = "To drop-off", command = "ToDropoff", arg = nil },
 	{ label = "Ped ahead", command = "PedAhead", arg = nil },
 	{ label = "Ped clip", command = "PedAhead", arg = "clip" },
