@@ -93,16 +93,25 @@ local function fareColor(fare: State.FareInfo): Color3
 	return if fare.golden then Config.Golden.Color else tierColor(fare.tier)
 end
 
-local function showMessage(text: string, color: Color3, seconds: number, sub: string?)
+-- Two places for a message: a small strip under the timer while driving (keeps the road ahead clear), or big in the
+-- middle of the screen for the pre-round beats when every car is parked (`big`).
+local MESSAGE_SMALL = { pos = UDim2.fromScale(0.5, 0.135), size = UDim2.fromScale(0.36, 0.055), subPos = UDim2.fromScale(0.5, 0.165), subSize = UDim2.fromScale(0.36, 0.026) }
+local MESSAGE_BIG = { pos = UDim2.fromScale(0.5, 0.3), size = UDim2.fromScale(0.6, 0.11), subPos = UDim2.fromScale(0.5, 0.36), subSize = UDim2.fromScale(0.5, 0.04) }
+
+local function showMessage(text: string, color: Color3, seconds: number, sub: string?, big: boolean?)
+	local layout = if big then MESSAGE_BIG else MESSAGE_SMALL
 	message.Text = text
 	message.TextColor3 = color
 	message.Visible = true
+	message.Position = layout.pos
+	subMessage.Position = layout.subPos
+	subMessage.Size = layout.subSize
 	subMessage.Text = sub or ""
 	subMessage.Visible = sub ~= nil and sub ~= ""
 	messageUntil = os.clock() + seconds
-	message.Size = UDim2.fromScale(0.5, 0.05)
-	TweenService:Create(message, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromScale(0.6, 0.11),
+	message.Size = UDim2.new(layout.size.X.Scale * 0.8, 0, layout.size.Y.Scale * 0.6, 0)
+	TweenService:Create(message, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = layout.size,
 	}):Play()
 end
 
@@ -234,7 +243,7 @@ local function showStamp(grade: string)
 		stampStroke.Color = color
 		stampStroke.Transparency = 0
 		stampRoot.Visible = true
-		stampScale.Scale = 2.6
+		stampScale.Scale = 1.8
 		stampRoot.Rotation = -18
 		local slam = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		TweenService:Create(stampScale, slam, { Scale = 1 }):Play()
@@ -271,14 +280,14 @@ local function showArrival(name: string, color: Color3)
 	arrivalLabel.Text = name
 	arrivalLabel.TextColor3 = color
 	arrivalStroke.Color = color
-	arrivalRoot.Position = UDim2.fromScale(-0.5, 0.18)
+	arrivalRoot.Position = UDim2.fromScale(-0.5, 0.2)
 	arrivalRoot.Visible = true
-	TweenService:Create(arrivalRoot, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.18) }):Play()
+	TweenService:Create(arrivalRoot, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.2) }):Play()
 	task.delay(Config.Hud.ArrivalSeconds, function()
 		if token ~= arrivalToken then
 			return
 		end
-		local out = TweenService:Create(arrivalRoot, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.fromScale(1.5, 0.18) })
+		local out = TweenService:Create(arrivalRoot, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.fromScale(1.5, 0.2) })
 		out.Completed:Once(function()
 			if token == arrivalToken then
 				arrivalRoot.Visible = false
@@ -357,7 +366,7 @@ local function build()
 	popupLayer = UI.Frame({ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, screen)
 
 	-- Delivery grade stamp: an inked box slammed on screen under the payout
-	stampRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(330, 84), BackgroundTransparency = 1, Rotation = -8, Visible = false }, screen)
+	stampRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.25), Size = UDim2.fromOffset(220, 56), BackgroundTransparency = 1, Rotation = -8, Visible = false }, screen)
 	UI.Corner(12, stampRoot)
 	stampStroke = UI.Stroke(UI.White, 5, stampRoot)
 	stampStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -371,7 +380,7 @@ local function build()
 	shoutLabel = UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.new(1, -24, 1, -10), TextColor3 = UI.Black, TextStrokeTransparency = 1 }, shoutRoot)
 
 	-- Arrival banner: the destination's name slides across as you pull up
-	arrivalRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(-0.5, 0.18), Size = UDim2.fromOffset(520, 62), BackgroundColor3 = UI.Black, BackgroundTransparency = 0.12, Visible = false }, screen)
+	arrivalRoot = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(-0.5, 0.2), Size = UDim2.fromOffset(340, 42), BackgroundColor3 = UI.Black, BackgroundTransparency = 0.2, Visible = false }, screen)
 	UI.Corner(12, arrivalRoot)
 	arrivalStroke = UI.Stroke(UI.White, 4, arrivalRoot)
 	arrivalStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -453,7 +462,7 @@ local function onRound(payload: Types.RoundStatePayload)
 		podium.Visible = true
 		local winner = payload.results[1]
 		if winner and isMatchEnd then
-			showMessage(string.upper(winner.name) .. " WINS", UI.Warn, 3)
+			showMessage(string.upper(winner.name) .. " WINS", UI.Warn, 3, nil, true)
 		end
 	else
 		podium.Visible = false
@@ -463,24 +472,16 @@ local function onRound(payload: Types.RoundStatePayload)
 		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
 	end
 	if payload.phase == "PreCountdown" then
-		showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds)
+		showMessage("READ THE BOARD", UI.Accent, Config.Round.PreCountdownSeconds, nil, true)
 		lastCountdownShown = -1
 	elseif payload.phase == "Playing" then
-		showMessage("GO!", UI.Cash, 0.9)
+		showMessage("GO!", UI.Cash, 0.9, nil, true)
 	end
 end
 
 local function onFare(payload: Types.FareEventPayload)
 	if payload.kind == "Delivered" then
-		local tip = payload.tip or 0
-		local stunts = payload.stunts or 0
-		local parts = {}
-		if tip > 0 then
-			table.insert(parts, "TIP " .. UI.Money(tip))
-		end
-		if stunts > 0 then
-			table.insert(parts, "STUNTS " .. UI.Money(stunts))
-		end
+		local parts = {} -- the counters and the coin burst show tip and stunt cash; words only for the special cases
 		if payload.line then
 			table.insert(parts, payload.line)
 		end
@@ -582,7 +583,7 @@ local function update(dt: number)
 		phaseLabel.Text = ""
 		if n ~= lastCountdownShown and n >= 1 then
 			lastCountdownShown = n
-			showMessage(tostring(n), UI.White, 1.1)
+			showMessage(tostring(n), UI.White, 1.1, nil, true)
 		end
 	elseif phase == "PreCountdown" then
 		timerLabel.Text = UI.FormatTime(Config.Round.CapSeconds)

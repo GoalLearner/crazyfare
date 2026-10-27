@@ -223,7 +223,7 @@ Config.Golden = {
 	PayLine = "GOLDEN x3",
 	Announce = "GOLDEN FARE!",
 	AnnounceSub = "TRIPLE PAY",
-	AnnounceSeconds = 2.4,
+	AnnounceSeconds = 1.6,
 	BeamHeight = 90, -- studs: the gold pillar over the curb, seen from across the map
 	BeamWidth = 3,
 	RingRadius = 5,
@@ -886,9 +886,11 @@ Config.Net = {
 Config.Hud = {
 	WorldTagDistance = 150, -- "$value" + HP bar over loaded rivals
 	MinimapSize = 190, -- px
-	PayoutPunchSeconds = 1.6,
-	MessageSeconds = 1.6,
-	CrashMessageSeconds = 1.0, -- passenger yelp after a crash
+	-- Messages while driving sit in a small strip under the timer and leave fast (owner 2026-10-27: big center text hid
+	-- the road and he hit people and cars). Only the pre-round text (read the board, 3-2-1, GO, the winner) is big.
+	PayoutPunchSeconds = 1.1,
+	MessageSeconds = 1.1,
+	CrashMessageSeconds = 0.7, -- "-20 HP" after a crash
 	NpcBillboardDistance = 450,
 	BeaconHeight = 70, -- destination beacon part height
 	Arrow = { Height = 7.5, Length = 4.5, Width = 1.3, Thickness = 0.7, Pitch = 24, Transparency = 0.3, TurnAroundDegrees = 110, SideDegrees = 45 }, -- 3D destination arrow over the local cab; Pitch tilts the nose down (degrees) so the chase cam sees its face
@@ -908,11 +910,11 @@ Config.Hud = {
 	BurstSpread = 110, -- px
 	-- Delivery grade stamp
 	StampDelay = 0.25, -- after the payout punch
-	StampSeconds = 1.3, -- on screen before it fades
+	StampSeconds = 0.8, -- on screen before it fades
 	-- Where to: the passenger's shout, the arrival banner, the countdown by the cab, the drop-off ring on the ground
 	ShoutSeconds = 1.5, -- "TAKE ME TO THE STADIUM!" over the cab (your passenger's later lines use the same bubble)
 	ArrivalDistance = 70, -- studs from the destination where its name banner slides in
-	ArrivalSeconds = 1.6,
+	ArrivalSeconds = 1.1,
 	CountdownWarn = 10, -- seconds left: the countdown by the cab turns yellow
 	CountdownDanger = 5, -- and red, ticking every second
 	DropRing = { Segments = 32, Width = 0.7, Thickness = 0.2, Transparency = 0.1, DiscTransparency = 0.82, PulseSeconds = 0.8 },

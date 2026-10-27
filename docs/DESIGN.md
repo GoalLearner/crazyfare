@@ -55,6 +55,10 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game for up to 6 playe
 - Stunt cash per fare is capped at **2x the fare's base**, because stunts are reported by the client. The Tip Jar card boosts stunt cash too.
 - On screen: a popup just above the cab ("BIG AIR! +$6.24") that punches in, climbs and fades; the same stunt again tops up its popup; a COMBO xN counter with a bar for the time left; a coin ding whose pitch climbs with the chain.
 
+### Keep the road clear (owner rule, 2026-10-27)
+- While driving, words never sit over the road ahead: messages (payout, crash HP, item hits, quests, Golden Fare) go in a small strip under the timer for about a second; the payout says only the amount plus a special note (GOLDEN x3, SMOOTH RIDE...), since the counters and coins show tip and stunt cash. The grade stamp is small and above the cab; the arrival banner is small and quick; one speech bubble over your cab at most.
+- Big center text only for the pre-round beats when every car is parked: READ THE BOARD, 3-2-1, GO!, the round winner.
+
 ### Money you can hear
 - **TOTAL** (top-left) and the **FARE** meter (fare card) are slot-machine counters: every digit is a reel that rolls up like an odometer, cents always showing, with a mechanical tick as they roll. Going down (a new round) snaps.
 - The FARE meter starts at $0.00 when a passenger boards, rolls up to the base fare, and keeps rolling as stunt cash lands.
