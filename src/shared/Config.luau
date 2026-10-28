@@ -30,6 +30,7 @@ export type VehicleStats = {
 	Gimmick: string,
 	Color: Color3,
 	TintMesh: boolean?, -- imported mesh body takes Color and garage paint (VehicleRig marks it Paintable; wheels stay as imported)
+	PaintSkin: string?, -- imported mesh with a palette texture: Shared.PaintSkins.<name> goes on its body so paint shows
 	GemPrice: number, -- 0 = everyone owns it (unless RobuxOnly)
 	RobuxOnly: boolean?, -- sold only for Robux (Config.Monetization.VehicleProducts); never free, never for Gems
 	-- Gimmick flags; systems branch on these, never on the vehicle id.
@@ -907,7 +908,10 @@ Config.Vehicles = {
 			BoostTank = 4,
 			SteerMax = 32,
 			Gimmick = "none",
-			Color = Color3.fromRGB(250, 200, 40),
+			Color = Color3.fromRGB(255, 182, 72), -- the Kenney cab's own yellow (what shows with no paint)
+			-- the imported cab's palette with its yellow swatch see-through (assets/paint/taxi-colormap-paintable.png,
+			-- uploaded as image 85199325967163), so garage and drop paints color the body and nothing else
+			PaintSkin = "YellowCab",
 			GemPrice = 0,
 		},
 		GoKart = {

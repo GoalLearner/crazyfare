@@ -137,7 +137,12 @@ local function buildModel(vehicleId: string): Model
 	if template then
 		local problem = templateProblem(template)
 		if not problem then
-			return (template :: Model):Clone()
+			local model = (template :: Model):Clone()
+			local stats = Config.Vehicles.Stats[vehicleId]
+			if stats and stats.PaintSkin then
+				VehicleBuilder.ApplyPaintSkin(model, stats.PaintSkin)
+			end
+			return model
 		end
 		warn(string.format("[VehicleService] template %s unusable (%s); using the parts build. Re-import and run VehicleRig again.", vehicleId, problem))
 	end

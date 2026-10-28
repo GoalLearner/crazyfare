@@ -357,7 +357,30 @@ function VehicleBuilder.Build(vehicleId: string): Model
 end
 
 -- Recolour every Paintable part (nil restores the vehicle's own colour).
--- `material` (a drop paint like Chrome) swaps the painted parts' material; nil puts their own back.
+-- An imported mesh car that takes paint (Config.Vehicles.Stats.<Id>.PaintSkin): its body MeshParts get the skin, a
+-- SurfaceAppearance whose color map has the body swatch see-through (AlphaMode Overlay), so the part's Color (the
+-- paint) shows there while the windows, lights and trim keep the texture. Wheels stay as imported.
+function VehicleBuilder.ApplyPaintSkin(model: Model, skinName: string)
+	local skins = script.Parent:FindFirstChild("PaintSkins")
+	local skin = if skins then skins:FindFirstChild(skinName) else nil
+	if not skin or not skin:IsA("SurfaceAppearance") then
+		return
+	end
+	for _, part in model:GetDescendants() do
+		if part:IsA("MeshPart") and not string.find(string.lower(part.Name), "wheel", 1, true) then
+			local old = part:FindFirstChildOfClass("SurfaceAppearance")
+			if old then
+				old:Destroy()
+			end
+			skin:Clone().Parent = part
+			part:SetAttribute("Paintable", true)
+			part:SetAttribute("PaintSkin", true)
+		end
+	end
+end
+
+-- `material` (a drop paint like Chrome) swaps the painted parts' material; nil puts their own back. A skinned part
+-- (ApplyPaintSkin) shows its Color through the skin; its SurfaceAppearance is never tinted.
 function VehicleBuilder.ApplyPaint(model: Model, color: Color3?, material: Enum.Material?)
 	local vehicleId = model:GetAttribute("VehicleId")
 	local stats = if typeof(vehicleId) == "string" then Config.Vehicles.Stats[vehicleId] else nil
@@ -385,7 +408,7 @@ function VehicleBuilder.ApplyPaint(model: Model, color: Color3?, material: Enum.
 			end
 			-- Imported meshes carry their texture on a SurfaceAppearance; its Color is what tints them.
 			local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
-			if appearance then
+			if appearance and part:GetAttribute("PaintSkin") ~= true then
 				appearance.Color = target
 			end
 		end
