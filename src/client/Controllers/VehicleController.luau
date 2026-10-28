@@ -67,10 +67,16 @@ local resetVehicle: RemoteEvent
 local function refreshFilters(model: Model?)
 	local map = workspace:FindFirstChild("Map")
 	if map then
+		-- the wheels ride on the map and the Taxi Depot (its own folder beside the map)
+		local ground: { Instance } = { map }
+		local depot = workspace:FindFirstChild("Depot")
+		if depot then
+			table.insert(ground, depot)
+		end
 		raycastParams.FilterType = Enum.RaycastFilterType.Include
-		raycastParams.FilterDescendantsInstances = { map }
+		raycastParams.FilterDescendantsInstances = ground
 		overlapParams.FilterType = Enum.RaycastFilterType.Include
-		overlapParams.FilterDescendantsInstances = { map }
+		overlapParams.FilterDescendantsInstances = ground
 	else
 		local exclude: { Instance } = {}
 		for _, name in { "Vehicles", "NPCs", "Items" } do
@@ -519,7 +525,7 @@ function VehicleController.Init()
 		hopPressedAt = os.clock()
 	end)
 	workspace.ChildAdded:Connect(function(child: Instance)
-		if child.Name == "Map" then
+		if child.Name == "Map" or child.Name == "Depot" then
 			refreshFilters(State.vehicle)
 		end
 	end)

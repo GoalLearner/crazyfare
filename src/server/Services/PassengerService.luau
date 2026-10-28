@@ -2,6 +2,9 @@
 -- NPC passengers: spawning by tier weighting, personality (Config.PassengerTypes) and the rare Golden Fare, boarding,
 -- HP (damage and crashes; no regen), bailing and walking back, delivery thanks. FareService owns the money side and
 -- listens to OnBailed; RiderService puts the passenger in the cab on OnBoarded and takes them out on OnUnloaded.
+-- Player fares (Config.PlayerFare): a person on foot who hailed a cab is a passenger too (`rider` set). Their marker is a
+-- gold ring and a TAXI! sign at the curb; aboard, their own avatar rides along (the RidingWith attribute; every client
+-- seats it in that cab), and every way the ride ends puts them back on their feet beside the cab (OnRiderFreed).
 
 local TweenService = game:GetService("TweenService")
 local CollectionService = game:GetService("CollectionService")
@@ -36,6 +39,7 @@ export type Npc = {
 	riders: number, -- people in the group (2+ = a carpool, Config.Chaos.Carpool)
 	group: TextLabel?, -- "CARPOOL x3" over a waiting group
 	ticking: boolean, -- late, with an alarm clock: the fare drops every second (Config.Chaos.Ticking)
+	rider: Player?, -- a player fare: the person who hailed (their avatar rides; no NPC figure)
 }
 
 local PassengerService = {}
@@ -45,11 +49,15 @@ local onDamaged: Signal.Signal<Player, number, string> = Signal.new()
 local onBoarded: Signal.Signal<Player, Npc> = Signal.new()
 local onUnloaded: Signal.Signal<Player, Npc> = Signal.new()
 local onGoldenSpawned: Signal.Signal<Npc> = Signal.new()
+local onRiderFreed: Signal.Signal<Player, Player?, string> = Signal.new()
 PassengerService.OnBailed = onBailed -- (victim, npc, reason "hp" | "timeout", attacker when a rival caused it)
 PassengerService.OnDamaged = onDamaged -- (player, amount, source)
 PassengerService.OnBoarded = onBoarded -- (player, npc) the passenger got in
 PassengerService.OnUnloaded = onUnloaded -- (player, npc) the passenger got out (delivered, bailed, released)
 PassengerService.OnGoldenSpawned = onGoldenSpawned -- (npc) a Golden Fare just appeared at a curb
+-- (rider, driver or nil, reason) a player fare is over: "delivered" | "hp" | "timeout" | "left" | "released" | "roundover"
+-- | "cancelled" | "cleared"
+PassengerService.OnRiderFreed = onRiderFreed
 
 local npcs: { [number]: Npc } = {}
 local loadedByPlayer: { [Player]: Npc } = {}
@@ -323,6 +331,35 @@ local function destroyNpc(npc: Npc)
 	npc.model:Destroy()
 end
 
+-- A player fare's person back on their feet beside the cab (or where they hailed, if there's no cab): RidingWith
+-- cleared, so every client stops seating them. A bail also stamps EjectedAt, which the rider's client plays as a toss.
+local function freeRider(npc: Npc, driver: Player?, reason: string)
+	local rider = npc.rider
+	if not rider then
+		return
+	end
+	npc.rider = nil
+	if rider.Parent then
+		rider:SetAttribute("RidingWith", nil)
+		local character = rider.Character
+		if character and driver and npc.state == 1 then
+			local entry = VehicleService.GetEntry(driver)
+			if entry then
+				local cf = entry.chassis.CFrame
+				local right = VecUtil.FlatUnit(cf.RightVector, Vector3.new(1, 0, 0))
+				local flat = Vector3.new(cf.Position.X, 0, cf.Position.Z) + right * Config.PlayerFare.EjectSide
+				local y = MapService.GroundY(Vector3.new(flat.X, cf.Position.Y, flat.Z), 0.5)
+				local at = Vector3.new(flat.X, y + 3, flat.Z)
+				character:PivotTo(CFrame.lookAt(at, at + VecUtil.FlatUnit(cf.LookVector)))
+			end
+		end
+		if reason == "hp" or reason == "timeout" then
+			rider:SetAttribute("EjectedAt", workspace:GetServerTimeNow())
+		end
+	end
+	onRiderFreed:Fire(rider, driver, reason)
+end
+
 local function walkTo(npc: Npc, point: MapService.Point)
 	if npcAtPickup[npc.pickupIndex] == npc.id then
 		npcAtPickup[npc.pickupIndex] = nil
@@ -479,11 +516,122 @@ function PassengerService.SpawnGolden(): Npc?
 	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), true)
 end
 
+-- A player fare's marker at the curb: a gold ring at their feet and a TAXI! sign over them (the person is the fare).
+local function buildPlayerMarker(npc: Npc, groundPos: Vector3, look: Vector3): (Model, BasePart, TextLabel, TextLabel)
+	local cfg = Config.PlayerFare
+	local model = Instance.new("Model")
+	model.Name = "PlayerFare_" .. npc.id
+	model:SetAttribute("NpcId", npc.id)
+	model:SetAttribute("Tier", npc.tier)
+	model:SetAttribute("PlayerFare", true)
+	CollectionService:AddTag(model, Config.Tags.Npc)
+	local torsoCf = standCFrame(groundPos, look)
+	local torso = makePart("Torso", Vector3.new(1, 1, 1), torsoCf, cfg.Color, model)
+	torso.Anchored = true
+	torso.Transparency = 1
+	model.PrimaryPart = torso
+	local ring = makePart("Ring", Vector3.new(0.3, cfg.RingRadius * 2, cfg.RingRadius * 2), torsoCf * CFrame.new(0, -2.4, 0) * CFrame.Angles(0, 0, math.pi / 2), cfg.Color, model)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.35
+	ring.Anchored = true
+	local icon = makeLabel(torso, "Icon", UDim2.fromOffset(110, 40), Vector3.new(0, 5, 0))
+	icon.Text = cfg.Label
+	icon.TextColor3 = cfg.Color
+	local bubble = makeLabel(torso, "Bubble", UDim2.fromOffset(200, 34), Vector3.new(0, 7.5, 0))
+	bubble.Text = ""
+	;(bubble.Parent :: BillboardGui).Enabled = false
+	model.Parent = folder
+	return model, torso, icon, bubble
+end
+
+-- Player fares waiting or riding right now.
+function PassengerService.CountPlayerFares(): number
+	local n = 0
+	for _, npc in npcs do
+		if npc.rider then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- This person's fare (waiting at the curb or riding), if they hailed.
+function PassengerService.GetRiderFare(rider: Player): Npc?
+	for _, npc in npcs do
+		if npc.rider == rider then
+			return npc
+		end
+	end
+	return nil
+end
+
+-- A person hails: a fare at `spot` (on the curb, facing the road) with the tier its distance from the start gives,
+-- picked up like any passenger (bots too). nil when MaxOnBoard player fares are already out, or they already hailed.
+function PassengerService.SpawnPlayerFare(rider: Player, spot: Vector3, look: Vector3): Npc?
+	if PassengerService.CountPlayerFares() >= Config.PlayerFare.MaxOnBoard or PassengerService.GetRiderFare(rider) then
+		return nil
+	end
+	local tier = pickTier(VecUtil.FlatDistance(spot, MapService.GetCenter()))
+	local tierDef = Config.Fares.Tiers[tier]
+	local id = nextId
+	nextId += 1
+	local groundPos = Vector3.new(spot.X, MapService.GroundY(spot, spot.Y), spot.Z)
+	local npc = {
+		id = id,
+		tier = tier,
+		kind = "Regular",
+		golden = false,
+		state = 0,
+		pickupIndex = 0, -- not standing at a pickup point
+		position = groundPos,
+		hp = tierDef.Hp,
+		maxHp = tierDef.Hp,
+		riders = 1,
+		ticking = false,
+		rider = rider,
+	} :: any
+	local model, torso, icon, bubble = buildPlayerMarker(npc, groundPos, look)
+	npc.model = model
+	npc.torso = torso
+	npc.icon = icon
+	npc.bubble = bubble
+	local typed = npc :: Npc
+	npcs[id] = typed
+	return typed
+end
+
+-- The person called their hail off (walked away, tapped CANCEL, or a seat opened): only while nobody has picked them up.
+function PassengerService.CancelHail(rider: Player, reason: string)
+	local npc = PassengerService.GetRiderFare(rider)
+	if npc and npc.state == 0 then
+		freeRider(npc, nil, reason)
+		destroyNpc(npc)
+	end
+end
+
+-- Round over: people riding along step out beside their cab, and open hails are called off.
+function PassengerService.EndRides()
+	for driver, npc in loadedByPlayer do
+		if npc.rider then
+			unload(driver)
+			freeRider(npc, driver, "roundover")
+			destroyNpc(npc)
+		end
+	end
+	for _, npc in npcs do
+		if npc.rider and npc.state == 0 then
+			freeRider(npc, nil, "cleared")
+			destroyNpc(npc)
+		end
+	end
+end
+
 -- Which tiers are currently on the board (available or walking back).
 local function tiersOnBoard(): { [string]: boolean }
 	local present: { [string]: boolean } = {}
 	for _, npc in npcs do
-		if npc.state == 0 or npc.state == 2 then
+		if (npc.state == 0 or npc.state == 2) and not npc.rider then
 			present[npc.tier] = true
 		end
 	end
@@ -530,10 +678,11 @@ function PassengerService.SpawnWeighted(): Npc?
 	return PassengerService.SpawnAt(point, tier)
 end
 
+-- NPCs waiting or walking back (player fares are extra: they never count against the board).
 function PassengerService.CountOnBoard(): number
 	local n = 0
 	for _, npc in npcs do
-		if npc.state == 0 or npc.state == 2 then
+		if (npc.state == 0 or npc.state == 2) and not npc.rider then
 			n += 1
 		end
 	end
@@ -618,6 +767,10 @@ function PassengerService.Board(npc: Npc, player: Player)
 	loadedByPlayer[player] = npc
 	lastDamageAt[player] = nil
 	npc.model.Parent = nil
+	local rider = npc.rider
+	if rider then
+		rider:SetAttribute("RidingWith", player.UserId) -- every client seats them in this cab
+	end
 	onBoarded:Fire(player, npc)
 end
 
@@ -693,6 +846,13 @@ function PassengerService.Bail(player: Player, reason: string)
 	if not npc then
 		return
 	end
+	if npc.rider then
+		-- a person bails: tossed out beside the cab, the fare is over (no walking back to a curb)
+		onBailed:Fire(player, npc, reason, attacker)
+		freeRider(npc, player, reason)
+		destroyNpc(npc)
+		return
+	end
 	local exitPos, look = exitPose(player, npc.position)
 	npc.position = exitPos
 	npc.torso.CFrame = standCFrame(exitPos, look)
@@ -717,6 +877,11 @@ function PassengerService.Deliver(player: Player): Npc?
 	if not npc then
 		return nil
 	end
+	if npc.rider then
+		freeRider(npc, player, "delivered")
+		destroyNpc(npc)
+		return npc
+	end
 	local exitPos, look = exitPose(player, npc.position)
 	npc.position = exitPos
 	npc.state = 3
@@ -737,6 +902,11 @@ end
 function PassengerService.Release(player: Player)
 	local npc = unload(player)
 	if not npc then
+		return
+	end
+	if npc.rider then
+		freeRider(npc, player, "released")
+		destroyNpc(npc)
 		return
 	end
 	local occupied: { [number]: boolean } = {}
@@ -772,6 +942,7 @@ function PassengerService.ClearAll()
 		if npc.walkTween then
 			npc.walkTween:Cancel()
 		end
+		freeRider(npc, npc.boardedBy, "cleared")
 		npc.model:Destroy()
 	end
 	table.clear(npcs)
@@ -800,6 +971,7 @@ function PassengerService.Snapshot(): { Types.NpcSnap }
 				golden = npc.golden,
 				riders = npc.riders,
 				ticking = npc.ticking,
+				player = if npc.rider then true else nil,
 			})
 		end
 	end
@@ -826,6 +998,16 @@ function PassengerService.Init()
 	end)
 
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
+		-- a person who hailed left: their curb is empty, or their driver's fare is over
+		local fare = PassengerService.GetRiderFare(player)
+		if fare then
+			local driver = fare.boardedBy
+			if fare.state == 1 and driver then
+				PassengerService.Bail(driver, "left")
+			else
+				PassengerService.CancelHail(player, "left")
+			end
+		end
 		PassengerService.Release(player)
 		lastDamageAt[player] = nil
 		immuneUntil[player] = nil

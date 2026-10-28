@@ -20,6 +20,9 @@ local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
 local ComboService = require(script.Parent.ComboService)
+local GemService = require(script.Parent.GemService)
+local DataService = require(script.Parent.DataService)
+local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Racers = require(script.Parent.Parent.Racers)
 
 local FareService = {}
@@ -50,8 +53,30 @@ local leaderBannerAt = -math.huge
 local quota = Money.Cents(Config.Round.Quotas[1])
 local rng = Random.new()
 local fareEvent: RemoteEvent
+-- Player fares (Config.PlayerFare): the person riding with each driver, and tips waiting on a rider's stars.
+local riderOf: { [Player]: Player } = {}
+local pendingRatings: { [Player]: { driver: Player, tip: number, deadline: number } } = {}
+
+-- The trip events a rider sees too (their HUD shows the ride, not their money).
+local RIDE_KINDS: { [string]: boolean } = {
+	Claimed = true,
+	NextStop = true,
+	Stunt = true,
+	Request = true,
+	Hurt = true,
+	Expired = true,
+	Delivered = true,
+	Bailed = true,
+	ChainBroken = true,
+}
 
 local function fire(player: Player, payload: Types.FareEventPayload)
+	local rider = riderOf[player]
+	if rider and rider.Parent and RIDE_KINDS[payload.kind] then
+		local copy = table.clone(payload)
+		copy.ride = true
+		fareEvent:FireClient(rider, copy)
+	end
 	if Racers.IsBot(player) then
 		return -- bots have no client
 	end
@@ -66,6 +91,21 @@ end
 -- This round's progress toward the quota, in cents.
 function FareService.GetRoundEarned(player: Player): number
 	return roundEarned[player] or 0
+end
+
+-- The match total so far, in cents.
+function FareService.GetMatchEarned(player: Player): number
+	return matchEarned[player] or 0
+end
+
+-- A driver joining mid-match (MatchController): starts with this much round progress (also their cash) and match total.
+function FareService.StartDriver(player: Player, roundCents: number, matchCents: number)
+	fares[player] = nil
+	wallet[player] = roundCents
+	roundEarned[player] = roundCents
+	matchEarned[player] = matchCents
+	delivered[player] = 0
+	bestTip[player] = 0
 end
 
 -- Money earned (cents): banks it, counts toward this round's quota and toward the match total.
@@ -125,6 +165,11 @@ end
 
 function FareService.SetEnabled(value: boolean)
 	enabled = value
+end
+
+-- Fares can be claimed and delivered right now (a round is being played).
+function FareService.IsEnabled(): boolean
+	return enabled
 end
 
 function FareService.TargetNpcCount(): number
@@ -244,11 +289,16 @@ function FareService.GetResults(byMatch: boolean?): { Types.PodiumEntry }
 	return results
 end
 
--- New match: everything to zero.
+-- New match: everything to zero (people who drove before but sit this one out are forgotten too).
 function FareService.ResetMatch()
 	leader = nil
 	announced = nil
 	table.clear(fares)
+	table.clear(wallet)
+	table.clear(roundEarned)
+	table.clear(matchEarned)
+	table.clear(delivered)
+	table.clear(bestTip)
 	for _, player in Racers.All() do
 		wallet[player] = 0
 		roundEarned[player] = 0
@@ -373,7 +423,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		npcId = npc.id,
 		expired = false,
 		tier = npc.tier,
-		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult elseif npc.riders > 1 then Config.Chaos.Carpool.PayMult else 1),
+		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult elseif npc.rider then Config.PlayerFare.PayMult elseif npc.riders > 1 then Config.Chaos.Carpool.PayMult else 1),
 		kind = npc.kind,
 		golden = npc.golden,
 		pickupIndex = npc.pickupIndex,
@@ -395,6 +445,10 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		fare.request = request.Id
 	end
 	local npcPosition = npc.position
+	local rider = npc.rider
+	if rider then
+		riderOf[player] = rider
+	end
 	PassengerService.Board(npc, player)
 	fares[player] = fare
 	onClaimed:Fire(player, npc.tier)
@@ -556,6 +610,10 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	end
 	local grades = Config.Grades
 	local grade = if not allowTip then "Slow" elseif timeFrac >= grades.SpeedyFrac then "Speedy" elseif timeFrac >= grades.OnTimeFrac then "OnTime" else "Slow"
+	-- A person riding rates the trip first: their share of the tip waits for the stars (paid in resolveRating).
+	local rider = riderOf[player]
+	local ratedTip = if rider and rider.Parent then math.round(tipShown * payMult * weatherMult) else 0
+	payout -= ratedTip
 
 	fares[player] = nil
 	delivered[player] = (delivered[player] or 0) + 1
@@ -573,7 +631,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 		tier = fare.tier,
 		base = fareValue,
 		payout = payout,
-		tip = tipShown,
+		tip = if rider then 0 else tipShown,
 		stunts = stunts,
 		grade = grade,
 		line = if not allowTip then "LATE. NO TIP." else carpoolLine,
@@ -582,6 +640,17 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	FareService.AddCash(player, payout)
 	onDelivered:Fire(player, fare.tier, tipShown + stunts)
 	onGraded:Fire(player, grade)
+	if rider then
+		riderOf[player] = nil
+		if rider.Parent then
+			local cfg = Config.PlayerFare
+			local deadline = now + cfg.RatingSeconds
+			pendingRatings[rider] = { driver = player, tip = ratedTip, deadline = deadline }
+			GemService.Earn(rider, cfg.RiderGems)
+			DataService.AddStat(rider, "Rides", 1)
+			fareEvent:FireClient(rider, { kind = "Rate", line = player.DisplayName, deadline = deadline, payout = cfg.RiderGems })
+		end
+	end
 
 	if nextPoint then
 		-- A carpool: the rest ride on to the next stop, a fresh leg with its own base, timer and tip
@@ -621,6 +690,26 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 			PassengerService.EnsureCount(FareService.TargetNpcCount())
 		end
 	end)
+end
+
+-- The rider's stars came in (or the default did): the held tip, scaled by Config.PlayerFare.RatingTipRange, goes to
+-- the driver while the round still runs.
+local function resolveRating(rider: Player, stars: number)
+	local pending = pendingRatings[rider]
+	if not pending then
+		return
+	end
+	pendingRatings[rider] = nil
+	local range = Config.PlayerFare.RatingTipRange
+	local tip = math.round(pending.tip * (range[1] + (range[2] - range[1]) * (stars - 1) / 4))
+	local driver = pending.driver
+	if not driver.Parent or not enabled then
+		return
+	end
+	if tip > 0 then
+		FareService.AddCash(driver, tip)
+	end
+	fire(driver, { kind = "RideTip", payout = tip, stars = stars, line = rider.DisplayName })
 end
 
 local function handleBail(victim: Player, npc: PassengerService.Npc, reason: string, attacker: Player?)
@@ -733,6 +822,28 @@ function FareService.Init()
 		-- What the passenger yells about it comes from the rider in the cab (RiderService), where everyone sees it.
 		fire(player, { kind = "Hurt", amount = math.round(amount), source = source })
 	end)
+	-- A player fare ended some other way than arriving: the rider is told (their HUD drops the trip).
+	PassengerService.OnRiderFreed:Connect(function(rider: Player, driver: Player?, reason: string)
+		if reason == "delivered" then
+			return -- finishDelivery clears it after the rider has seen the arrival
+		end
+		if driver and riderOf[driver] == rider then
+			riderOf[driver] = nil
+		end
+		if rider.Parent and reason ~= "cancelled" and reason ~= "left" then
+			fareEvent:FireClient(rider, { kind = "RideOver", reason = reason })
+		end
+	end)
+	-- RateRide(stars): 1-5 after the ride arrived; the tip it scales goes to the driver.
+	Remotes.Get("RateRide").OnServerEvent:Connect(function(player: Player, stars: any)
+		if not RateLimiter.Allow(player, "RateRide", Config.Net.RateLimits.RateRide) then
+			return
+		end
+		if typeof(stars) ~= "number" or stars ~= stars then
+			return
+		end
+		resolveRating(player, math.clamp(math.round(stars), 1, 5))
+	end)
 	PassengerService.OnGoldenSpawned:Connect(function(npc: PassengerService.Npc)
 		for _, player in Players:GetPlayers() do
 			fire(player, { kind = "Golden", npcId = npc.id, position = npc.position, tier = npc.tier })
@@ -753,11 +864,22 @@ function FareService.Init()
 		delivered[player] = nil
 		bestTip[player] = nil
 		forcedRequest[player] = nil
+		riderOf[player] = nil
+		pendingRatings[player] = nil
 	end)
 end
 
 function FareService.Start()
 	RunService.Heartbeat:Connect(tick)
+	-- Riders who didn't tap a rating get the default when the prompt runs out.
+	RunService.Heartbeat:Connect(function()
+		local now = workspace:GetServerTimeNow()
+		for rider, pending in pendingRatings do
+			if now >= pending.deadline then
+				resolveRating(rider, Config.PlayerFare.RatingDefault)
+			end
+		end
+	end)
 end
 
 return FareService

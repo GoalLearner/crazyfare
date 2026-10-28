@@ -301,13 +301,19 @@ local function buildTouchControls()
 		hop.TextColor3 = if ready then UI.White else UI.Muted
 	end)
 
-	-- Only while you can drive
+	-- Only while you can drive (the depot's car always can)
 	local function showFor(phase: string)
-		screen.Enabled = cfg.ShowInPhases[phase] == true
+		screen.Enabled = State.chassis ~= nil and (cfg.ShowInPhases[phase] == true or State.sessionState == "Depot")
 	end
 	showFor(State.GetPhase())
 	State.RoundChanged:Connect(function(payload: Types.RoundStatePayload)
 		showFor(payload.phase)
+	end)
+	State.VehicleChanged:Connect(function()
+		showFor(State.GetPhase())
+	end)
+	State.SessionChanged:Connect(function()
+		showFor(State.GetPhase())
 	end)
 
 	-- The ITEM button names the item you hold, in its color
@@ -324,9 +330,27 @@ local function buildTouchControls()
 	end)
 end
 
+local function releaseAll()
+	keys.forward = false
+	keys.back = false
+	keys.left = false
+	keys.right = false
+	keys.drift = false
+	keys.boost = false
+	pad.steer = 0
+	pad.throttle = 0
+	pad.brake = 0
+	pad.drift = false
+	pad.boost = false
+end
+
 local function handle(_actionName: string, inputState: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
 	if UserInputService:GetFocusedTextBox() then
 		return Enum.ContextActionResult.Pass
+	end
+	if not State.chassis then
+		releaseAll()
+		return Enum.ContextActionResult.Pass -- on foot: WASD, Space and the stick walk and jump your character
 	end
 	local code = input.KeyCode
 	local down = inputState == Enum.UserInputState.Begin
@@ -427,14 +451,7 @@ function InputController.Init()
 			modeChanged:Fire(mode)
 		end
 	end)
-	UserInputService.WindowFocusReleased:Connect(function()
-		keys.forward = false
-		keys.back = false
-		keys.left = false
-		keys.right = false
-		keys.drift = false
-		keys.boost = false
-	end)
+	UserInputService.WindowFocusReleased:Connect(releaseAll)
 end
 
 function InputController.Start()

@@ -28,6 +28,8 @@ local onStunt: Signal.Signal<Player, string, number, number> = Signal.new()
 ComboService.OnStunt = onStunt -- (player, kind, units of pay, chain after this stunt)
 local onChainBroken: Signal.Signal<Player, number, string> = Signal.new()
 ComboService.OnChainBroken = onChainBroken -- (player, chain it reached, "crash" | "bail" | "idle")
+local onDepotStunt: Signal.Signal<Player, string, number> = Signal.new()
+ComboService.OnDepotStunt = onDepotStunt -- (player, "Drift" | "Airtime", seconds) in the Taxi Depot: records, no chain or cash
 
 local states: { [Player]: ChainState } = {}
 
@@ -94,6 +96,14 @@ function ComboService.Init()
 		local kind = payload.kind
 		local value = payload.value
 		if typeof(kind) ~= "string" or not isFiniteNumber(value) then
+			return
+		end
+		local depot = VehicleService.GetDepotEntry(player)
+		if depot then
+			-- the depot keeps records (DepotService), never a chain or cash
+			if depot.chassis.AssemblyLinearVelocity.Magnitude >= cfg.MinSpeedForEvents and (kind == "Drift" or kind == "Airtime") then
+				onDepotStunt:Fire(player, kind, math.clamp(value, 0, if kind == "Drift" then cfg.MaxDriftReport else cfg.MaxAirSeconds))
+			end
 			return
 		end
 		local speed = VehicleService.GetSpeed(player)

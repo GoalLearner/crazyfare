@@ -8,7 +8,7 @@ local StarterGui = game:GetService("StarterGui")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
--- No character, so the reset button has nothing to reset.
+-- Drivers have no character and walkers are respawned by the server, so the reset button stays off.
 task.spawn(function()
 	for _ = 1, 10 do
 		local ok = pcall(function()
@@ -42,6 +42,9 @@ local ordered: { Controller } = {
 	require(Controllers.CoachController),
 	require(Controllers.ArcadeController),
 	require(Controllers.InviteController),
+	require(Controllers.WalkerController),
+	require(Controllers.DepotController),
+	require(Controllers.CollectionController),
 	require(Controllers.EventController),
 	require(Controllers.PitStopController),
 	require(Controllers.GarageController),

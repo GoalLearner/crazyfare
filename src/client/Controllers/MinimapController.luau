@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Types = require(Shared:WaitForChild("Types"))
+local VecUtil = require(Shared:WaitForChild("VecUtil"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 
@@ -41,6 +42,11 @@ end
 
 local function build()
 	local screen = UI.Screen("CrazyFareMinimap", 5)
+	-- the Taxi Depot is off the map: no minimap there
+	screen.Enabled = State.sessionState ~= "Depot"
+	State.SessionChanged:Connect(function(state: string)
+		screen.Enabled = state ~= "Depot"
+	end)
 	map = UI.Frame({
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -24, 0, 24),
@@ -165,18 +171,19 @@ local function styleNpcDot(dot: Frame, npc: Types.NpcSnap)
 	local stroke = dot:FindFirstChildOfClass("UIStroke")
 	local carpool = npc.riders > 1
 	local ticking = npc.ticking == true
-	local size = if npc.golden then 13 elseif carpool or ticking then 11 else 8
+	local person = npc.player == true -- a person hailing a cab: a gold marker with a white rim
+	local size = if npc.golden or person then 13 elseif carpool or ticking then 11 else 8
 	dot.Size = UDim2.fromOffset(size, size)
 	dot.Rotation = if npc.kind == "ThrillSeeker" and not npc.golden then 45 else 0
 	if corner then
 		corner.CornerRadius = UDim.new(0, if npc.golden or npc.kind == "Regular" then size / 2 else 1)
 	end
 	if stroke then
-		stroke.Thickness = if npc.golden or carpool or ticking then 2 else 0
-		stroke.Color = if npc.golden then UI.White elseif carpool then Config.Chaos.Carpool.Color elseif ticking then Config.Chaos.Ticking.Color else UI.White
+		stroke.Thickness = if npc.golden or person or carpool or ticking then 2 else 0
+		stroke.Color = if npc.golden or person then UI.White elseif carpool then Config.Chaos.Carpool.Color elseif ticking then Config.Chaos.Ticking.Color else UI.White
 	end
-	dot.BackgroundColor3 = if npc.golden then Config.Golden.Color else tierColor(npc.tier)
-	dot.ZIndex = if npc.golden then 4 else 3
+	dot.BackgroundColor3 = if person then Config.PlayerFare.Color elseif npc.golden then Config.Golden.Color else tierColor(npc.tier)
+	dot.ZIndex = if npc.golden or person then 4 else 3
 end
 
 local function ensureRival(id: number): RivalMarker
@@ -283,10 +290,12 @@ local function onSnapshot(snapshot: Types.Snapshot)
 
 	-- Taxis
 	local seenRival: { [number]: boolean } = {}
+	local selfShown = false
 	for _, p in snapshot.players do
 		if p.id == localPlayer.UserId then
 			selfArrow.Position = toMap(p.x, p.z)
 			selfArrow.Rotation = math.deg(p.yaw)
+			selfShown = true
 			continue
 		end
 		seenRival[p.id] = true
@@ -306,6 +315,13 @@ local function onSnapshot(snapshot: Types.Snapshot)
 			marker.frame:Destroy()
 			rivals[id] = nil
 		end
+	end
+	-- on foot: you're where your character is
+	local character = localPlayer.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not selfShown and root and root:IsA("BasePart") then
+		selfArrow.Position = toMap(root.Position.X, root.Position.Z)
+		selfArrow.Rotation = math.deg(VecUtil.Yaw(root.CFrame.LookVector))
 	end
 
 	-- Destination

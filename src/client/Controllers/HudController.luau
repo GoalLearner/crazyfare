@@ -1,8 +1,9 @@
 --!strict
 -- The HUD: rolling TOTAL + quota, round timer, fare card with a rolling FARE, stunt popups and combo, boost tank, item
 -- slot, speed, center messages, coin burst + grade stamp on delivery, "TAKE ME TO ...!" over the cab, the destination
--- banner on arrival, the fare countdown by the cab, podium with gems, your license plate and the rematch vote.
--- Reads State; the only thing it sends is RematchVote.
+-- banner on arrival, the fare countdown by the cab, podium with gems, your license plate, STAY IN DEPOT and INVITE.
+-- Money, boost and items show only while you drive; riding along in someone's cab you see their trip (fare card,
+-- stunt popups, the stamp), not money. Reads State; the only thing it sends is DepotChoice.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -21,10 +22,14 @@ local UI = require(script.Parent.Parent.UI)
 local RollingCounter = require(script.Parent.Parent.RollingCounter)
 local SoundController = require(script.Parent.SoundController)
 local InputController = require(script.Parent.InputController)
+local Invite = require(script.Parent.Parent.Invite)
 
 local HudController = {}
 
 local screen: ScreenGui
+local cashBox: Frame -- TOTAL, quota, gems: drivers only
+local centerBox: Frame -- combo, boost, speed: drivers only
+local stayInDepot = false -- the podium's STAY IN DEPOT is on
 local totalCounter: RollingCounter.Counter
 local totalReady = false
 local quotaBar: UI.Bar
@@ -97,7 +102,7 @@ local plateGrade: TextLabel
 local plateStroke: UIStroke
 local plateBest: TextLabel
 local podiumTitle: TextLabel
-local rematchButton: TextButton
+local stayButton: TextButton -- the podium's STAY IN DEPOT toggle
 local podiumBonus: TextLabel
 local frenzyShown = false -- the FRENZY! banner went up for the current Frenzy
 local eventShown: string? = nil -- the world event whose banner went up
@@ -230,7 +235,7 @@ end
 -- Point just above the cab, or a spot above centre when the cab is off screen, as an offset in the (phone-scaled) HUD.
 local function popupAnchor(): Vector2
 	local camera = workspace.CurrentCamera
-	local ch = State.chassis
+	local ch = State.ViewChassis()
 	if camera and ch then
 		local point, onScreen = camera:WorldToViewportPoint(ch.Position + Vector3.new(0, 7, 0))
 		if onScreen then
@@ -394,7 +399,7 @@ local function build()
 	screen = UI.Screen("CrazyFareHud", 10)
 
 	-- Cash + quota (top-left)
-	local cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 76), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
+	cashBox = UI.Frame({ Position = UDim2.fromOffset(24, 76), Size = UDim2.fromOffset(220, 92), BackgroundTransparency = 1 }, screen)
 	UI.OnFit(function()
 		cashBox.Position = UDim2.fromOffset(24, UI.BelowTopbar(76))
 	end)
@@ -426,6 +431,7 @@ local function build()
 
 	-- Combo + boost + speed (bottom-center)
 	local center = UI.Frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(260, 90), BackgroundTransparency = 1 }, screen)
+	centerBox = center
 	comboLabel = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(200, 40), TextColor3 = UI.Warn, Text = "" }, center)
 	comboScale = UI.New("UIScale", {}, comboLabel) :: UIScale
 	comboBar = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 44), Size = UDim2.fromOffset(200, 8) }, UI.Warn, center)
@@ -480,7 +486,6 @@ local function build()
 			fareCardWidth = FARE_CARD_SIZE.X
 			fareCard.Size = UDim2.fromOffset(fareCardWidth, FARE_CARD_SIZE.Y)
 		end
-		itemSlot.Visible = inputMode ~= "Touch"
 		itemKey.Text = if inputMode == "Gamepad" then (Config.Keys.PadItem.Name:gsub("^Button", "")) else Config.Keys.Item.Name
 	end
 	fitInput(InputController.GetMode())
@@ -499,7 +504,7 @@ local function build()
 	podiumRows = UI.Frame({ Position = UDim2.fromOffset(20, 66), Size = UDim2.new(1, -40, 1, -110), BackgroundTransparency = 1 }, podium)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, podiumRows)
 	podiumFooter = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -40, 0, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, podium)
-	rematchButton = UI.New("TextButton", {
+	stayButton = UI.New("TextButton", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -40),
 		Size = UDim2.fromOffset(180, 38),
@@ -508,14 +513,44 @@ local function build()
 		Font = UI.Font,
 		TextSize = 18,
 		TextColor3 = UI.White,
-		Text = "REMATCH",
+		Text = Config.Depot.StayButton,
 		Visible = false,
 	}, podium) :: TextButton
-	UI.Corner(10, rematchButton)
-	rematchButton.Activated:Connect(function()
-		Remotes.Get("RematchVote"):FireServer()
-		rematchButton.Text = "READY"
-		rematchButton.BackgroundColor3 = Color3.fromRGB(40, 70, 48)
+	UI.Corner(10, stayButton)
+	-- STAY IN DEPOT: sit the next match out (tap again to drive it after all)
+	local function styleStay()
+		stayButton.Text = if stayInDepot then Config.Depot.Staying else Config.Depot.StayButton
+		stayButton.BackgroundColor3 = if stayInDepot then Color3.fromRGB(110, 70, 30) else Color3.fromRGB(60, 70, 90)
+	end
+	styleStay()
+	stayButton.Activated:Connect(function()
+		stayInDepot = not stayInDepot
+		Remotes.Get("DepotChoice"):FireServer(if stayInDepot then "stay" else "join")
+		styleStay()
+	end)
+	State.RoundChanged:Connect(function(payload: Types.RoundStatePayload)
+		if payload.phase ~= "MatchEnd" and stayInDepot then
+			stayInDepot = false -- the choice was for that podium's next match
+			styleStay()
+		end
+	end)
+	-- INVITE on the podium: bring a friend into the next match
+	local invite = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -16, 1, -40),
+		Size = UDim2.fromOffset(96, 38),
+		BackgroundColor3 = Color3.fromRGB(150, 80, 210),
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 16,
+		TextColor3 = UI.White,
+		Text = Config.Session.InviteButton,
+		Visible = false,
+	}, podium) :: TextButton
+	UI.Corner(10, invite)
+	invite.Activated:Connect(Invite.Prompt)
+	State.RoundChanged:Connect(function(payload: Types.RoundStatePayload)
+		invite.Visible = payload.phase == "MatchEnd" and payload.mode ~= "Arcade" and Invite.CanInvite()
 	end)
 
 	-- Your license for the match: a plate beside the podium
@@ -606,7 +641,7 @@ local function onRound(payload: Types.RoundStatePayload)
 	if (payload.phase == "RoundEnd" or isMatchEnd) and payload.results then
 		fillPodium(payload.results)
 		podiumTitle.Text = if arcade and isMatchEnd then Config.Arcade.Title elseif isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
-		rematchButton.Visible = isMatchEnd
+		stayButton.Visible = isMatchEnd and not arcade
 		local bonusLine = if isMatchEnd and not arcade then bonusText(payload.results) else ""
 		podiumBonus.Text = bonusLine
 		podiumBonus.Visible = bonusLine ~= ""
@@ -614,13 +649,6 @@ local function onRound(payload: Types.RoundStatePayload)
 			showPlate(payload.results)
 		else
 			plate.Visible = false
-		end
-		if isMatchEnd and rematchButton.Text == "READY" and (payload.votes or 0) == 0 then
-			rematchButton.Text = if arcade then Config.Arcade.PlayAgain else "REMATCH"
-			rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
-		end
-		if isMatchEnd and phaseChanged then
-			rematchButton.Text = if arcade then Config.Arcade.PlayAgain else "REMATCH"
 		end
 		podium.Visible = true
 		local winner = payload.results[1]
@@ -644,10 +672,6 @@ local function onRound(payload: Types.RoundStatePayload)
 		end
 	end
 	eventShown = eventNow
-	if payload.phase == "PreCountdown" and payload.round == 1 then
-		rematchButton.Text = "REMATCH"
-		rematchButton.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
-	end
 	if not phaseChanged then
 		return
 	end
@@ -666,6 +690,28 @@ local function onRound(payload: Types.RoundStatePayload)
 end
 
 local function onFare(payload: Types.FareEventPayload)
+	local ride = payload.ride == true -- the trip you're riding in someone's cab: no money is yours
+	if ride and payload.kind == "Delivered" then
+		if payload.grade then
+			showStamp(payload.grade)
+		end
+		return
+	elseif ride and payload.kind == "Bailed" then
+		return -- RideOver says what happened to you
+	elseif payload.kind == "RideTip" then
+		local stars = payload.stars or Config.PlayerFare.RatingDefault
+		local range = Config.PlayerFare.RatingTipRange
+		local mult = range[1] + (range[2] - range[1]) * (stars - 1) / 4
+		showMessage("+" .. UI.Money(payload.payout or 0), UI.Cash, Config.Hud.PayoutPunchSeconds, string.format(Config.PlayerFare.TipLine, string.upper(payload.line or ""), stars, mult))
+		burstCoins(payload.payout or 0)
+		return
+	elseif payload.kind == "RideOver" then
+		local line = Config.PlayerFare.RideOverLines[payload.reason or ""]
+		if line then
+			showMessage(line, UI.Warn, Config.Hud.MessageSeconds)
+		end
+		return
+	end
 	if payload.kind == "Delivered" then
 		local parts = {} -- the counters and the coin burst show tip and stunt cash; words only for the special cases
 		if payload.line then
@@ -777,6 +823,13 @@ local function update(dt: number)
 	local now = workspace:GetServerTimeNow()
 	local round = State.round
 	local phase = State.GetPhase()
+	-- money, boost and items are a driver's; the depot has its own board up top (DepotController)
+	local driving = State.sessionState == "Driver" or State.sessionState == ""
+	cashBox.Visible = driving
+	centerBox.Visible = driving
+	itemSlot.Visible = driving and InputController.GetMode() ~= "Touch"
+	timerLabel.Visible = State.sessionState ~= "Depot"
+	phaseLabel.Visible = State.sessionState ~= "Depot"
 
 	if not totalReady then
 		RollingCounter.Snap(totalCounter, State.cash)
@@ -834,7 +887,7 @@ local function update(dt: number)
 		timerLabel.Text = ""
 		phaseLabel.Text = ""
 		local left = math.max(0, math.ceil(round.endsAt - now))
-		podiumFooter.Text = if arcade then string.format("Next run in %d", left) else string.format("Rematch %d/%d  ·  next match in %d", round.votes or 0, round.voters or 0, left)
+		podiumFooter.Text = if arcade then string.format("Next run in %d", left) else string.format("Next match in %d", left)
 	else
 		timerLabel.Text = ""
 		phaseLabel.Text = "WAITING FOR PLAYERS"
@@ -875,7 +928,7 @@ local function update(dt: number)
 		end
 
 		-- Destination arrow relative to the camera heading
-		local ch = State.chassis
+		local ch = State.ViewChassis()
 		local camera = workspace.CurrentCamera
 		if ch and camera then
 			local toDest = VecUtil.Flat(fare.destination - ch.Position)

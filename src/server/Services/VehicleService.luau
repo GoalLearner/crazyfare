@@ -1,8 +1,11 @@
 --!strict
--- Spawns one taxi per player, hands physics to that player, freezes/releases cars with the round,
+-- Spawns one taxi per driver, hands physics to that player, freezes/releases cars with the round,
 -- and watches replicated velocity for crashes. Vehicle stats come from Config; the model from the template or VehicleBuilder.
+-- A person gets a grid car while their SessionService state is "Driver" and loses it when that changes.
 -- AI rival taxis get entries too (SpawnBot, keyed by their Racers stand-in): same grid, crash watch and item rules, but
 -- the server keeps their physics and BotService steers them.
+-- Depot cars (SpawnDepot, for people in the Taxi Depot) are kept apart in their own table: always released, never in
+-- GetAll, so fares, items, traffic and the snapshot never see them.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,6 +21,7 @@ local VehicleBuilder = require(ReplicatedStorage.Shared.VehicleBuilder)
 local VecUtil = require(ReplicatedStorage.Shared.VecUtil)
 local MapService = require(script.Parent.MapService)
 local DataService = require(script.Parent.DataService)
+local SessionService = require(script.Parent.SessionService)
 
 export type VehicleEntry = {
 	player: Player,
@@ -41,6 +45,8 @@ export type VehicleEntry = {
 	art: string?, -- a bot's Kenney car (Config.Art.BotCars), kept for respawns
 }
 
+export type DepotEntry = { player: Player, model: Model, chassis: BasePart, vehicleId: string }
+
 local VehicleService = {}
 
 local onCrash: Signal.Signal<Player, number> = Signal.new()
@@ -49,21 +55,9 @@ VehicleService.OnCrash = onCrash -- (player, horizontal speed lost in studs/s)
 VehicleService.OnSpawned = onSpawned
 
 local entries: { [Player]: VehicleEntry } = {}
+local depotEntries: { [Player]: DepotEntry } = {}
 local released = false
 local folder: Folder
-
-local function freeSlot(): number
-	local used: { [number]: boolean } = {}
-	for _, entry in entries do
-		used[entry.slot] = true
-	end
-	for i = 1, 64 do
-		if not used[i] then
-			return i
-		end
-	end
-	return 1
-end
 
 local function padCFrameForSlot(slot: number): CFrame
 	local pads = MapService.GetStartPads()
@@ -79,6 +73,35 @@ local function padCFrameForSlot(slot: number): CFrame
 	-- more drivers than pads: never two cars in one spot (they'd fling each other)
 	local side = if pad.cframe.Position.X >= MapService.GetCenter().X then 1 else -1
 	return base + Vector3.new(side * Config.Round.ExtraSlotOffset * ring, 0, 0)
+end
+
+-- The first grid slot no car holds. Mid-round (`clear`), also skip pads with any car parked on them right now.
+local function freeSlot(clear: boolean?): number
+	local used: { [number]: boolean } = {}
+	for _, entry in entries do
+		used[entry.slot] = true
+	end
+	local fallback: number? = nil
+	for i = 1, 64 do
+		if not used[i] then
+			if not clear then
+				return i
+			end
+			fallback = fallback or i
+			local pad = padCFrameForSlot(i).Position
+			local blocked = false
+			for _, entry in entries do
+				if VecUtil.FlatDistance(entry.chassis.Position, pad) < Config.Join.PadClearance then
+					blocked = true
+					break
+				end
+			end
+			if not blocked then
+				return i
+			end
+		end
+	end
+	return fallback or 1
 end
 
 -- Why a template cannot be used, or nil when it satisfies the VehicleBuilder contract.
@@ -137,6 +160,21 @@ end
 
 function VehicleService.GetEntry(player: Player): VehicleEntry?
 	return entries[player]
+end
+
+-- A person's car in the Taxi Depot (nil on the grid or on foot).
+function VehicleService.GetDepotEntry(player: Player): DepotEntry?
+	return depotEntries[player]
+end
+
+-- Whichever car this person drives right now, grid or depot.
+function VehicleService.GetModel(player: Player): Model?
+	local entry = entries[player]
+	if entry then
+		return entry.model
+	end
+	local depot = depotEntries[player]
+	return if depot then depot.model else nil
 end
 
 -- How big an OnCrash was for this player's car: the share of its top speed the hit took (0 when there's no car).
@@ -267,10 +305,8 @@ function VehicleService.Despawn(player: Player)
 	entry.model:Destroy()
 end
 
-function VehicleService.Spawn(player: Player)
-	if entries[player] then
-		VehicleService.Despawn(player)
-	end
+-- This person's selected car, painted, in the Vehicles collision group, tagged and named for them (not yet placed).
+local function buildPlayerCar(player: Player): (Model?, BasePart?, string)
 	local vehicleId = DataService.GetSelectedVehicle(player)
 	local model = buildModel(vehicleId)
 	for _, part in model:GetDescendants() do
@@ -283,13 +319,55 @@ function VehicleService.Spawn(player: Player)
 	if not chassis then
 		warn("[VehicleService] vehicle model has no PrimaryPart: " .. vehicleId)
 		model:Destroy()
-		return
+		return nil, nil, vehicleId
 	end
-	local slot = freeSlot()
 	model.Name = player.Name .. "_" .. vehicleId
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute("OwnerName", player.Name)
 	CollectionService:AddTag(model, Config.Tags.Vehicle)
+	return model, chassis, vehicleId
+end
+
+function VehicleService.DespawnDepot(player: Player)
+	local depot = depotEntries[player]
+	if not depot then
+		return
+	end
+	depotEntries[player] = nil
+	depot.model:Destroy()
+end
+
+-- A depot car at `cframe`: always released to its driver (the depot has no rounds), no crash watch, no fares.
+function VehicleService.SpawnDepot(player: Player, cframe: CFrame)
+	VehicleService.DespawnDepot(player)
+	local model, chassis, vehicleId = buildPlayerCar(player)
+	if not model or not chassis then
+		return
+	end
+	model:SetAttribute("Depot", true)
+	model:PivotTo(cframe)
+	model.Parent = folder
+	chassis.Anchored = false
+	local ok, err = pcall(function()
+		chassis:SetNetworkOwner(player)
+	end)
+	if not ok then
+		warn("[VehicleService] depot SetNetworkOwner failed for " .. player.Name .. ": " .. tostring(err))
+	end
+	depotEntries[player] = { player = player, model = model, chassis = chassis, vehicleId = vehicleId }
+	Remotes.Get("VehicleAssigned"):FireClient(player, model)
+end
+
+function VehicleService.Spawn(player: Player)
+	if entries[player] then
+		VehicleService.Despawn(player)
+	end
+	VehicleService.DespawnDepot(player)
+	local model, chassis, vehicleId = buildPlayerCar(player)
+	if not model or not chassis then
+		return
+	end
+	local slot = freeSlot(released)
 	chassis.Anchored = true
 	model:PivotTo(padCFrameForSlot(slot))
 	model.Parent = folder
@@ -441,6 +519,16 @@ end
 
 -- Reset request: stand the car upright a little above the ground where it is, keeping its heading.
 local function resetVehicle(player: Player)
+	local depot = depotEntries[player]
+	if depot then
+		local cf = depot.chassis.CFrame
+		local look = VecUtil.FlatUnit(cf.LookVector)
+		local pos = Vector3.new(cf.Position.X, MapService.GroundY(cf.Position, cf.Position.Y) + Config.Chassis.ResetLift, cf.Position.Z)
+		depot.chassis.AssemblyLinearVelocity = Vector3.zero
+		depot.chassis.AssemblyAngularVelocity = Vector3.zero
+		depot.model:PivotTo(CFrame.lookAt(pos, pos + look))
+		return
+	end
 	local entry = entries[player]
 	if not entry or entry.chassis.Anchored then
 		return
@@ -477,8 +565,17 @@ function VehicleService.Init()
 		resetVehicle(player)
 	end)
 
-	Players.PlayerAdded:Connect(function(player: Player)
-		VehicleService.Spawn(player)
+	-- A person drives a grid car only while their state is Driver (MatchController decides; the depot's cars are
+	-- DepotService's).
+	SessionService.OnStateChanged:Connect(function(player: Player, old: string, new: string)
+		if new == "Driver" then
+			VehicleService.Spawn(player)
+		elseif old == "Driver" then
+			VehicleService.Despawn(player)
+		end
+		if new ~= "Depot" then
+			VehicleService.DespawnDepot(player)
+		end
 	end)
 	Players.PlayerAdded:Connect(function(player: Player)
 		player:GetAttributeChangedSignal("WeeklyTrail"):Connect(function()
@@ -490,6 +587,11 @@ function VehicleService.Init()
 	end)
 	-- A garage change while the car is parked (lobby, pit stop) swaps it right away; mid-round it waits for the grid.
 	DataService.OnVehicleSelected:Connect(function(player: Player)
+		local depot = depotEntries[player]
+		if depot then
+			VehicleService.SpawnDepot(player, depot.chassis.CFrame + Vector3.new(0, Config.Chassis.ResetLift, 0))
+			return
+		end
 		local entry = entries[player]
 		if not entry then
 			return
@@ -502,16 +604,12 @@ function VehicleService.Init()
 	end)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		VehicleService.Despawn(player)
+		VehicleService.DespawnDepot(player)
 		RateLimiter.Clear(player)
 	end)
 end
 
 function VehicleService.Start()
-	for _, player in Players:GetPlayers() do
-		if not entries[player] then
-			VehicleService.Spawn(player)
-		end
-	end
 
 	-- Crash watch: horizontal speed lost over the last CrashWindow seconds (one frame is too fragile: replicated
 	-- velocity can spread a wall hit across several frames). Jumps and landings are free; walls are not.

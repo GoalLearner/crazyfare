@@ -1,6 +1,6 @@
 --!strict
--- AI rival taxis. With too few people they fill the match to Config.Bots.FillTo drivers, and give their seats up as real
--- players join (Rebalance runs at every round setup). A bot is a Racers stand-in with a real VehicleService entry, so
+-- AI rival taxis. With too few people driving they fill the match to Config.Server.BotFillTo drivers, and give their
+-- seats up as people join (Rebalance runs at every round setup, and after a late driver joins mid-round). A bot is a Racers stand-in with a real VehicleService entry, so
 -- the normal rules apply: it claims a passenger by stopping next to them, delivers by stopping at the drop-off, holds and
 -- uses items, gets hit, and shows up in the standings. This service only drives and decides.
 --
@@ -10,12 +10,12 @@
 -- Brain: go for the passenger worth the most per second of driving (Golden Fares above all), think again when they're
 -- taken, deliver, repeat; use items when there's a reason to. Every number is Config.Bots.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Racers = require(script.Parent.Parent.Racers)
+local SessionService = require(script.Parent.SessionService)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
 local ComboService = require(script.Parent.ComboService)
@@ -711,7 +711,6 @@ local function removeBot(driver: Player)
 	end
 end
 
--- Bots fill the match to FillTo drivers while at least MinHumans people are here; the newest leaves first.
 -- Studio: the first bot is put 40 studs ahead of this driver's car, either parked broadside with a passenger aboard
 -- ("park": ram it) or charging straight back at the car ("charge": get rammed).
 function BotService.DebugStage(player: Player, mode: string)
@@ -757,14 +756,23 @@ function BotService.SetSpeedMult(mult: number)
 	speedMult = mult
 end
 
-function BotService.Rebalance()
+-- How many bots a grid with this many people driving gets: up to BotFillTo drivers in all, never past the seats.
+function BotService.WantedFor(humans: number): number
 	local cfg = Config.Bots
-	local humans = #Players:GetPlayers()
-	local want = if cfg.Enabled and humans >= cfg.MinHumans then math.max(0, cfg.FillTo - humans) else 0
+	if not cfg.Enabled or humans < cfg.MinHumans then
+		return 0
+	end
+	return math.max(0, math.min(Config.Server.BotFillTo, SessionService.MaxDrivers()) - humans)
+end
+
+-- Bots fill the grid to BotFillTo drivers while at least MinHumans people drive; the newest leaves first.
+-- `onlyRemove` (a late driver mid-round): bots may leave but none join until the next round.
+function BotService.Rebalance(onlyRemove: boolean?)
+	local want = BotService.WantedFor(SessionService.CountDrivers())
 	while #order > want do
 		removeBot(order[#order])
 	end
-	while #order < want do
+	while not onlyRemove and #order < want do
 		addBot()
 	end
 end

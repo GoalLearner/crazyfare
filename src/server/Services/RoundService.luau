@@ -1,7 +1,9 @@
 --!strict
 -- Match state machine:
 --   Waiting -> PreCountdown (read the board) -> Countdown -> Playing -> RoundEnd -> PitStop -> PreCountdown ...
---   after the last round: Playing -> MatchEnd (podium, Gems, rematch vote) -> PreCountdown of a new match.
+--   after the last round: Playing -> MatchEnd (podium, Gems; STAY IN DEPOT opts out) -> PreCountdown of a new match.
+-- Who drives is MatchController's: it hears every phase change, picks each match's drivers and seats late joiners.
+-- Waiting is the Taxi Depot: its NEXT MATCH countdown runs while enough people want to play.
 -- Cash carries across rounds inside a match (unspent cash is quota progress) and resets with the match.
 -- Arcade mode (Config.Arcade): one run on the clock instead of rounds: PreCountdown -> Countdown -> Playing (the clock
 -- grows with pickups and arrivals) -> MatchEnd (the run's grade) -> the next run. A reserved Arcade server is always
@@ -22,14 +24,13 @@ local PassengerService = require(script.Parent.PassengerService)
 local FareService = require(script.Parent.FareService)
 local ItemService = require(script.Parent.ItemService)
 local PitStopService = require(script.Parent.PitStopService)
-local GemService = require(script.Parent.GemService)
 local ProgressionService = require(script.Parent.ProgressionService)
-local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 local BotService = require(script.Parent.BotService)
 local WorldEventService = require(script.Parent.WorldEventService)
 local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
+local MatchController = require(script.Parent.MatchController)
 
 local MapService = require(script.Parent.MapService)
 
@@ -41,7 +42,6 @@ local phaseStartsAt = 0
 local phaseEndsAt = 0
 local results: { Types.PodiumEntry }? = nil
 local waitingSince: number? = nil
-local rematchVotes: { [Player]: boolean } = {}
 local readyPlayers: { [Player]: boolean } = {} -- Pit Stop: who tapped READY
 local matchCount = 0
 local roundState: RemoteEvent
@@ -53,16 +53,6 @@ local retried: { [Player]: boolean } = {}
 
 local function now(): number
 	return workspace:GetServerTimeNow()
-end
-
-local function voteCount(): number
-	local n = 0
-	for player in rematchVotes do
-		if player.Parent then
-			n += 1
-		end
-	end
-	return n
 end
 
 local function readyCount(): number
@@ -77,18 +67,21 @@ end
 
 function RoundService.GetPayload(): Types.RoundStatePayload
 	local event, eventEnds, eventPlace = WorldEventService.GetActive()
+	local between = phase == "Waiting" or phase == "MatchEnd"
+	local since = waitingSince
 	return {
 		phase = phase,
 		round = roundIndex,
 		quota = if mode == "Arcade" then 0 else FareService.GetQuota(), -- 0: no quota (the clock ends an Arcade run)
 		startsAt = phaseStartsAt,
-		endsAt = phaseEndsAt,
+		-- Waiting: the depot's NEXT MATCH countdown while it runs (0 while too few want to play)
+		endsAt = if phase == "Waiting" then (if since then since + Config.Round.AutoStartDelay else 0) else phaseEndsAt,
 		results = results,
 		map = MapService.GetCurrentMap(),
-		votes = if phase == "MatchEnd" then voteCount() else nil,
-		voters = if phase == "MatchEnd" then #Players:GetPlayers() else nil,
 		ready = if phase == "PitStop" then readyCount() else nil,
-		readyOf = if phase == "PitStop" then #Players:GetPlayers() else nil,
+		readyOf = if phase == "PitStop" then SessionService.CountDrivers() else nil,
+		slots = if between then MatchController.Slots() else nil,
+		maxDrivers = SessionService.MaxDrivers(),
 		mode = mode,
 		frenzy = if frenzy then true else nil,
 		event = event,
@@ -134,6 +127,7 @@ local function setPhase(newPhase: Types.RoundPhase, duration: number)
 	phase = newPhase
 	phaseStartsAt = now()
 	phaseEndsAt = if duration > 0 then phaseStartsAt + duration else 0
+	MatchController.SetPhase(newPhase)
 	broadcast()
 end
 
@@ -145,17 +139,20 @@ function RoundService.GetRound(): number
 	return roundIndex
 end
 
--- Fresh round: bots fill (or give up) seats, board, items, cars on the grid, boosts from the Pit Stop applied.
+-- Fresh round: riders out of the cabs, waiting people take open seats (rounds 2 and 3), bots fill (or give up) the
+-- rest, board, items, cars on the grid, boosts from the Pit Stop applied.
 local function beginRoundSetup()
 	results = nil
-	BotService.Rebalance()
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
+	PassengerService.ClearAll()
+	local promoted = if roundIndex > 1 then MatchController.PromoteForRound() else {}
+	BotService.Rebalance()
 	FareService.ResetRound()
+	MatchController.CatchUp(promoted)
 	FareService.SetQuota(Config.Round.Quotas[math.min(roundIndex, #Config.Round.Quotas)])
 	ComboService.ResetAll()
 	ItemService.ClearAll()
-	PassengerService.ClearAll()
 	VehicleService.ResetAllToGrid()
 	PitStopService.ApplyBoosts()
 	PassengerService.EnsureCount(FareService.TargetNpcCount())
@@ -168,8 +165,8 @@ local function beginArcadeRun()
 	mode = "Arcade"
 	roundIndex = 1
 	results = nil
-	table.clear(rematchVotes)
 	BotService.RemoveAll()
+	MatchController.MatchStart(MatchController.PickRoster(), { mode = "Arcade" })
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
 	FareService.ResetMatch()
@@ -214,15 +211,14 @@ local function endArcade()
 		end
 	end
 	results = run
-	table.clear(rematchVotes)
+	SessionService.ReadyAll()
 	setPhase("MatchEnd", Config.Arcade.EndSeconds)
 end
 
 local function beginMatch()
 	mode = "Race"
 	roundIndex = 1
-	table.clear(rematchVotes)
-	FareService.ResetMatch()
+	waitingSince = nil
 	-- Map rotation: one match per entry.
 	local rotation = Config.Map.Rotation
 	local nextMap = rotation[(matchCount % #rotation) + 1]
@@ -234,6 +230,8 @@ local function beginMatch()
 		ItemService.RefreshBoxes()
 		VehicleService.RespawnAll()
 	end
+	MatchController.MatchStart(MatchController.PickRoster(), { mode = "Race" })
+	FareService.ResetMatch()
 	beginRoundSetup()
 end
 
@@ -261,23 +259,15 @@ local function endRound()
 	end
 	FareService.SetEnabled(false)
 	ItemService.SetEnabled(false)
+	PassengerService.EndRides() -- people riding along step out where their cab is before it goes back to the grid
 	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	PitStopService.ClearBoosts()
-	results = FareService.GetResults(roundIndex >= Config.Round.RoundsPerMatch) -- the last round shows the match total
+	local standings = FareService.GetResults(roundIndex >= Config.Round.RoundsPerMatch) -- the last round shows the match total
 	if roundIndex < Config.Round.RoundsPerMatch then
+		results = standings
 		setPhase("RoundEnd", Config.Round.RoundEndSeconds)
 	else
-		results = GemService.AwardMatch(results :: { Types.PodiumEntry })
-		ProgressionService.AwardMatch(results :: { Types.PodiumEntry })
-		ProgressionService.AwardLicense(results :: { Types.PodiumEntry })
-		QuestService.OnMatchEnd(results :: { Types.PodiumEntry })
-		for _, entry in results :: { Types.PodiumEntry } do
-			local player = Players:GetPlayerByUserId(entry.id)
-			if player then
-				LeaderboardService.AddWeeklyGems(player, entry.gems or 0)
-			end
-		end
-		table.clear(rematchVotes)
+		results = MatchController.MatchEnd(standings)
 		setPhase("MatchEnd", Config.Round.MatchEndSeconds)
 	end
 end
@@ -289,13 +279,13 @@ local function beginPitStop()
 	setPhase("PitStop", Config.PitStop.Seconds)
 end
 
--- Someone tapped READY, took it back or left: once everyone here is ready (bots never wait) the Pit Stop clock drops to
--- ReadySeconds (never up), and everyone sees the count.
+-- Someone tapped READY, took it back or left: once every driver here is ready (bots never wait) the Pit Stop clock
+-- drops to ReadySeconds (never up), and everyone sees the count.
 local function readyChanged()
 	if phase ~= "PitStop" then
 		return
 	end
-	local humans = #Players:GetPlayers()
+	local humans = SessionService.CountDrivers()
 	if humans > 0 and readyCount() >= humans and phaseEndsAt - now() > Config.PitStop.ReadySeconds then
 		phaseEndsAt = now() + Config.PitStop.ReadySeconds
 		PitStopService.SetEndsAt(phaseEndsAt)
@@ -310,7 +300,9 @@ local function beginWaiting()
 	ItemService.SetEnabled(false)
 	VehicleService.ResetAllToGrid() -- back on the plaza grid, out of the traffic lanes
 	PitStopService.Close()
+	PassengerService.ClearAll()
 	BotService.RemoveAll()
+	MatchController.AllToDepot()
 	WeatherService.Set("Clear")
 	setPhase("Waiting", 0)
 end
@@ -422,9 +414,9 @@ function RoundService.Init()
 			return
 		end
 		roundState:FireClient(player, RoundService.GetPayload())
-		local entry = VehicleService.GetEntry(player)
-		if entry then
-			Remotes.Get("VehicleAssigned"):FireClient(player, entry.model)
+		local model = VehicleService.GetModel(player)
+		if model then
+			Remotes.Get("VehicleAssigned"):FireClient(player, model)
 		end
 		local item = ItemService.GetHeld(player)
 		if item ~= "" then
@@ -432,21 +424,10 @@ function RoundService.Init()
 		end
 	end)
 
-	Remotes.Get("RematchVote").OnServerEvent:Connect(function(player: Player)
-		if not RateLimiter.Allow(player, "RematchVote", Config.Net.RateLimits.RematchVote) then
-			return
-		end
-		if phase ~= "MatchEnd" or rematchVotes[player] then
-			return
-		end
-		rematchVotes[player] = true
-		broadcast()
-		if voteCount() >= #Players:GetPlayers() then
-			if mode == "Arcade" then
-				beginArcadeRun()
-			else
-				beginMatch()
-			end
+	-- The depot board's line-up changed (someone arrived, left, or chose to stay or join).
+	MatchController.OnSlotsChanged:Connect(function()
+		if phase == "Waiting" or phase == "MatchEnd" then
+			broadcast()
 		end
 	end)
 
@@ -467,13 +448,11 @@ function RoundService.Init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player: Player)
-		rematchVotes[player] = nil
 		readyPlayers[player] = nil
 		task.defer(function()
-			if #Players:GetPlayers() == 0 then
-				if phase ~= "Waiting" then
-					beginWaiting()
-				end
+			-- nobody left driving (and nobody to take a seat): the match is over, back to the depot
+			if phase ~= "Waiting" and phase ~= "MatchEnd" and SessionService.CountDrivers() == 0 and not MatchController.HasQueued() then
+				beginWaiting()
 			else
 				readyChanged() -- the one still shopping may have left
 			end
@@ -492,21 +471,24 @@ end
 function RoundService.Start()
 	RunService.Heartbeat:Connect(function()
 		local t = now()
-		local playerCount = #Players:GetPlayers()
+		local ready = MatchController.CountReady() -- people who want the next match (the depot's STAY opts out)
 
 		if phase == "Waiting" then
-			if playerCount >= minPlayers() then
-				if not waitingSince then
+			if ready >= minPlayers() then
+				local since = waitingSince
+				if not since then
 					waitingSince = t
-				elseif t - (waitingSince :: number) >= Config.Round.AutoStartDelay then
+					broadcast() -- the depot's NEXT MATCH countdown starts
+				elseif t - since >= Config.Round.AutoStartDelay then
 					if arcadeServer then
 						beginArcadeRun()
 					else
 						beginMatch()
 					end
 				end
-			else
+			elseif waitingSince then
 				waitingSince = nil
+				broadcast()
 			end
 		elseif phase == "PreCountdown" then
 			if t >= phaseEndsAt then
@@ -535,7 +517,7 @@ function RoundService.Start()
 			end
 		elseif phase == "MatchEnd" then
 			if t >= phaseEndsAt then
-				if playerCount >= minPlayers() then
+				if ready >= minPlayers() then
 					if mode == "Arcade" then
 						beginArcadeRun()
 					else

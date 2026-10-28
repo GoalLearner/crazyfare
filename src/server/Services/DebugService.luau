@@ -15,6 +15,7 @@ local DataService = require(script.Parent.DataService)
 local VehicleService = require(script.Parent.VehicleService)
 local MapService = require(script.Parent.MapService)
 local WeatherService = require(script.Parent.WeatherService)
+local SessionService = require(script.Parent.SessionService)
 
 local DebugService = {}
 
@@ -119,13 +120,14 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		end
 		local from = entry.chassis.Position
 		local best: PassengerService.Npc? = nil
-		local bestSpecial, bestDist = false, math.huge
+		local bestRank, bestDist = 0, math.huge
 		for _, npc in PassengerService.GetAll() do
 			if npc.state == 0 then
-				local special = npc.ticking or npc.riders > 1 or npc.golden
+				-- a person hailing first, then the special fares, then the nearest
+				local rank = if npc.rider then 2 elseif npc.ticking or npc.riders > 1 or npc.golden then 1 else 0
 				local dist = (npc.position - from).Magnitude
-				if (special and not bestSpecial) or (special == bestSpecial and dist < bestDist) then
-					best, bestSpecial, bestDist = npc, special, dist
+				if rank > bestRank or (rank == bestRank and dist < bestDist) then
+					best, bestRank, bestDist = npc, rank, dist
 				end
 			end
 		end
@@ -133,7 +135,9 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			return
 		end
 		local stand = best.torso.CFrame
-		local p = (stand * CFrame.new(0, 0, -Config.Fares.DebugCurbDistance)).Position
+		-- a person: close enough that the cab claims them as it stops; an NPC: roll forward a little first
+		local distance = if best.rider then Config.PlayerFare.DebugCurbDistance else Config.Fares.DebugCurbDistance
+		local p = (stand * CFrame.new(0, 0, -distance)).Position
 		local pos = Vector3.new(p.X, MapService.GroundY(p, p.Y) + Config.Chassis.ResetLift, p.Z)
 		VehicleService.Teleport(entry, CFrame.lookAt(pos, Vector3.new(stand.Position.X, pos.Y, stand.Position.Z)))
 	end,
@@ -231,7 +235,17 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			DataService.BuyVehicle(player, nextId)
 		end
 		DataService.SelectVehicle(player, nextId)
-		VehicleService.Spawn(player)
+		if SessionService.IsDriver(player) then
+			VehicleService.Spawn(player)
+		end
+	end,
+	-- Grid seats cap (0 = Config.Server.MaxDrivers), to test a full server with two test players. Takes effect for the
+	-- next seat decision (a join, the next match).
+	Seats = function(_player, arg)
+		if typeof(arg) == "number" then
+			SessionService.DebugSetMaxDrivers(arg)
+			print(string.format("[DebugService] grid seats: %d", SessionService.MaxDrivers()))
+		end
 	end,
 }
 

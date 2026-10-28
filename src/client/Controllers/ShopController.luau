@@ -190,8 +190,9 @@ local function build()
 	end)
 end
 
+-- Parked: between rounds, or not driving at all (on foot, in the depot).
 local function onRound(payload: Types.RoundStatePayload)
-	local parked = payload.phase ~= "Playing" and payload.phase ~= "Countdown"
+	local parked = (payload.phase ~= "Playing" and payload.phase ~= "Countdown") or (State.sessionState ~= "Driver" and State.sessionState ~= "")
 	openButton.Visible = parked
 	if not parked and isOpen then
 		setOpen(false)
@@ -209,6 +210,12 @@ function ShopController.Init()
 		updateStarter()
 	end)
 	State.RoundChanged:Connect(onRound)
+	State.SessionChanged:Connect(function()
+		local round = State.round
+		if round then
+			onRound(round)
+		end
+	end)
 	MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId: number, _productId: number, purchased: boolean)
 		if purchased and userId == localPlayer.UserId then
 			shopAction:FireServer("Refresh")

@@ -19,17 +19,50 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
+-- The cab you ride in as a player fare (RidingWith = its owner's UserId), found by its OwnerUserId.
+local function findRide()
+	local id = localPlayer:GetAttribute("RidingWith")
+	local chassis: BasePart? = nil
+	if typeof(id) == "number" then
+		for _, inst in CollectionService:GetTagged(Config.Tags.Vehicle) do
+			if inst:IsA("Model") and inst:GetAttribute("OwnerUserId") == id and inst:GetAttribute("Depot") ~= true then
+				chassis = inst.PrimaryPart
+				break
+			end
+		end
+	end
+	local driverId = if typeof(id) == "number" then id else 0
+	if chassis ~= State.rideChassis or driverId ~= State.rideDriverId then
+		State.rideChassis = chassis
+		State.rideDriverId = driverId
+		State.RideChanged:Fire()
+	end
+end
+
 local function adoptIfMine(inst: Instance)
 	if inst:IsA("Model") and inst:GetAttribute("OwnerUserId") == localPlayer.UserId then
 		if State.vehicle ~= inst then
 			State.SetVehicle(inst)
 		end
 	end
+	if State.rideDriverId ~= 0 and not State.rideChassis then
+		findRide() -- your driver's cab was respawned
+	end
 end
 
 local function onSnapshot(snapshot: Types.Snapshot)
 	State.snapshot = snapshot
 	local me = State.GetSelfSnap()
+	-- riding along: the fare card's passenger HP is yours, which is the cab's
+	if State.rideDriverId ~= 0 then
+		for _, p in snapshot.players do
+			if p.id == State.rideDriverId then
+				State.hp = p.hp
+				State.maxHp = p.maxHp
+				State.combo = p.combo
+			end
+		end
+	end
 	if me then
 		State.cash = me.cash
 		State.hp = me.hp
@@ -81,7 +114,7 @@ local function onFareEvent(payload: Types.FareEventPayload)
 		if fare and payload.stunts then
 			fare.stunts = payload.stunts
 		end
-	elseif payload.kind == "Delivered" or payload.kind == "Bailed" then
+	elseif payload.kind == "Delivered" or payload.kind == "Bailed" or payload.kind == "RideOver" then
 		State.fare = nil
 	end
 	State.FareEvent:Fire(payload)
@@ -189,6 +222,32 @@ function NetController.Init()
 	CollectionService:GetInstanceRemovedSignal(Config.Tags.Vehicle):Connect(function(inst: Instance)
 		if State.vehicle == inst then
 			State.SetVehicle(nil)
+		end
+		if State.rideChassis and State.rideChassis:IsDescendantOf(inst) then
+			State.rideChassis = nil
+			State.RideChanged:Fire()
+		end
+	end)
+
+	-- Where you are (SessionService) and whose cab you ride in, from your own attributes.
+	local function readSession()
+		local state = localPlayer:GetAttribute("SessionState")
+		local current = if typeof(state) == "string" then state else ""
+		if current ~= State.sessionState then
+			State.sessionState = current
+			if current ~= "Driver" then
+				State.pitStop = nil -- the Pit Stop is for drivers
+			end
+			State.SessionChanged:Fire(current)
+		end
+	end
+	readSession()
+	localPlayer:GetAttributeChangedSignal("SessionState"):Connect(readSession)
+	findRide()
+	localPlayer:GetAttributeChangedSignal("RidingWith"):Connect(function()
+		findRide()
+		if State.rideDriverId == 0 then
+			State.fare = nil
 		end
 	end)
 end

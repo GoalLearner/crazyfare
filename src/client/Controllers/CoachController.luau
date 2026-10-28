@@ -58,7 +58,7 @@ end
 
 local function update(dt: number)
 	local profile = State.profile
-	if finished or not profile or profile.coachDone or State.GetPhase() ~= "Playing" then
+	if finished or not profile or profile.coachDone or State.GetPhase() ~= "Playing" or State.sessionState ~= "Driver" then
 		pill.Visible = false
 		return
 	end

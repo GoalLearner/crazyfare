@@ -30,8 +30,11 @@ export type FareInfo = {
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]
 
 local State = {
-	vehicle = nil :: Model?,
+	vehicle = nil :: Model?, -- the car you drive (grid or depot); nil on foot
 	chassis = nil :: BasePart?,
+	sessionState = "", -- "Driver" | "Passenger" | "Depot" | "Queued" (your SessionState attribute; "" until placed)
+	rideChassis = nil :: BasePart?, -- riding along in someone's cab (a player fare): its chassis
+	rideDriverId = 0, -- that cab's owner (0 when not riding)
 	stats = defaultStats,
 	snapshot = nil :: Types.Snapshot?,
 	round = nil :: Types.RoundStatePayload?,
@@ -86,6 +89,8 @@ local dashed: Signal.Signal<string> = Signal.new()
 local landed: Signal.Signal<number> = Signal.new()
 local hopped: Signal.Signal<nil> = Signal.new()
 local riderSaid: Signal.Signal<string> = Signal.new()
+local sessionChanged: Signal.Signal<string> = Signal.new()
+local rideChanged: Signal.Signal<nil> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -103,6 +108,17 @@ State.Dashed = dashed -- the local cab just launched: "Dash" (brake tap) or "Pad
 State.Landed = landed -- the local cab touched down after this many seconds of air
 State.Hopped = hopped -- the local cab just hopped (dust, a thump, the coach)
 State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's bubble over your cab, never stacked)
+State.SessionChanged = sessionChanged -- your session state changed (driving, on foot, in the depot)
+State.RideChanged = rideChanged -- you got into (or out of) someone's cab as their passenger
+
+-- The cab the camera, popups and arrow follow: the one you ride in, else your own.
+function State.ViewChassis(): BasePart?
+	return State.rideChassis or State.chassis
+end
+
+function State.IsDriver(): boolean
+	return State.sessionState == "Driver"
+end
 
 function State.SetVehicle(model: Model?)
 	State.vehicle = model

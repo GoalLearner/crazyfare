@@ -1,7 +1,10 @@
 --!strict
 -- Chase camera: sits behind and above the taxi, follows its heading smoothly, widens FOV with speed.
 -- Holds its heading during a spinout so the player sees the spin instead of becoming it.
+-- Riding along in someone's cab it chases that cab; on foot it hands over to Roblox's own camera on your character;
+-- with nothing to follow (loading in) it looks over the city.
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -30,7 +33,7 @@ local function overview(dt: number)
 end
 
 local function follow(dt: number)
-	local ch = State.chassis
+	local ch = State.ViewChassis()
 	if not ch or not ch:IsDescendantOf(workspace) then
 		overview(dt)
 		return
@@ -52,7 +55,8 @@ local function follow(dt: number)
 	end
 	camera.CFrame = CFrame.lookAt(camPos :: Vector3, aim) * CFrame.new(shakeOffset)
 
-	local speedFrac = math.clamp(State.speed / State.stats.TopSpeed, 0, 1)
+	local speed = if State.rideChassis then ch.AssemblyLinearVelocity.Magnitude else State.speed
+	local speedFrac = math.clamp(speed / State.stats.TopSpeed, 0, 1)
 	local targetFov = cfg.FovBase + cfg.FovSpeedBonus * speedFrac + (if State.boosting then cfg.FovBoostBonus else 0)
 	fov = fov + (targetFov - fov) * VecUtil.ExpAlpha(5, dt)
 	camera.FieldOfView = fov
@@ -66,13 +70,35 @@ function CameraController.Init()
 	State.VehicleChanged:Connect(function()
 		camPos = nil
 	end)
+	State.RideChanged:Connect(function()
+		camPos = nil
+	end)
 	State.Shake:Connect(function(strength: number)
 		shakeAmount = math.max(shakeAmount, strength)
 	end)
 end
 
+-- On foot (and not riding): your character's Humanoid, for Roblox's own camera.
+local function walkerHumanoid(): Humanoid?
+	if State.rideChassis or (State.sessionState ~= "Passenger" and State.sessionState ~= "Queued") then
+		return nil
+	end
+	local character = Players.LocalPlayer.Character
+	return if character then character:FindFirstChildOfClass("Humanoid") else nil
+end
+
 function CameraController.Start()
 	RunService:BindToRenderStep("CrazyFareCamera", Enum.RenderPriority.Camera.Value, function(dt: number)
+		local humanoid = walkerHumanoid()
+		if humanoid then
+			if camera.CameraType ~= Enum.CameraType.Custom or camera.CameraSubject ~= humanoid then
+				camera.CameraType = Enum.CameraType.Custom
+				camera.CameraSubject = humanoid
+				camera.FieldOfView = Config.Camera.FovBase
+			end
+			camPos = nil
+			return
+		end
 		camera.CameraType = Enum.CameraType.Scriptable
 		follow(dt)
 	end)

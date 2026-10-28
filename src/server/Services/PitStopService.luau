@@ -69,6 +69,9 @@ function PitStopService.Open(roundIndex: number, closesAt: number)
 	local ranks = FareService.GetRanks()
 	local playerCount = #Racers.All() -- bots count for "last place": losing to bots still earns the pity discount
 	for _, player in Players:GetPlayers() do
+		if player:GetAttribute("SessionState") ~= "Driver" then
+			continue -- the shop is for this match's drivers
+		end
 		local ids = cardIds()
 		for i = #ids, 2, -1 do
 			local j = rng:NextInteger(1, i)

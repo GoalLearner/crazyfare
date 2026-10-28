@@ -20,11 +20,11 @@ src/
     VehicleBuilder.luau parts-built vehicle models (Yellow Cab)
   server/              → ServerScriptService.Server
     Main.server.luau   boots services in a fixed order: Init() all, then Start() all
-    Services/*.luau    one module per concern (Map, Vehicle, Passenger, Fare, Combo, Item, Round, Replication, Debug)
+    Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Walker, Depot, Match, Round, Replication, Debug...)
     Studio/DevBlockout.luau  Studio-only city generator (parts, CollectionService-tagged)
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau   boots controllers the same way
-    Controllers/*.luau Input, Vehicle (raycast chassis), Camera, Hud, Minimap, WorldTags, Effects, DebugPanel
+    Controllers/*.luau Input, Vehicle (raycast chassis), Camera, Hud, Minimap, WorldTags, Effects, Walker, Depot, DebugPanel...
 docs/                  DESIGN.md, PLAN.md, GETTING-STARTED.html, OWNER-STEPS.html, LAUNCH.html (+ launch/ thumbnails, icon)
 ```
 
@@ -71,6 +71,10 @@ return Service
 ```
 
 `Main.server.luau` holds an ordered list; it calls every `Init()` first, then every `Start()`. Order matters only for `Start()` (Round starts last). Client controllers are identical (`Main.client.luau`). Nothing else starts loops on its own.
+
+## Player states (lobby flow)
+
+Every person is Driver, Passenger, Queued or Depot (`SessionService`, mirrored to the `SessionState` attribute). Only `MatchController` changes it; services react to `SessionService.OnStateChanged` (grid car, depot car, walking character). `Racers.All()` is the people driving plus bots, so per-match systems never see walkers or the depot. Depot cars live in their own VehicleService table and never appear in `GetAll()`.
 
 ## Ownership rules (non-negotiable)
 

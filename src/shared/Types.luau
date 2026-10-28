@@ -4,6 +4,9 @@
 export type Tier = "Green" | "Yellow" | "Red"
 export type RoundPhase = "Waiting" | "PreCountdown" | "Countdown" | "Playing" | "RoundEnd" | "PitStop" | "MatchEnd"
 export type RankBucket = "Leader" | "Mid" | "Last"
+-- Where a person is (SessionService; also the player's SessionState attribute): racing, riding/walking the city while
+-- every seat is taken, in the Taxi Depot between matches, or waiting for the next round's seat (walking meanwhile).
+export type SessionState = "Driver" | "Passenger" | "Depot" | "Queued"
 
 -- One taxi in the 10 Hz snapshot.
 export type PlayerSnap = {
@@ -37,6 +40,7 @@ export type NpcSnap = {
 	golden: boolean,
 	riders: number, -- people in the group (2+ = a carpool)
 	ticking: boolean, -- a ticking fare (Config.Chaos.Ticking)
+	player: boolean?, -- a person hailing a cab (Config.PlayerFare)
 }
 
 export type Snapshot = {
@@ -72,8 +76,6 @@ export type RoundStatePayload = {
 	endsAt: number, -- server time the phase ends (0 = open-ended)
 	results: { PodiumEntry }?,
 	map: string?, -- current map name
-	votes: number?, -- rematch votes so far (MatchEnd)
-	voters: number?, -- players present
 	ready: number?, -- Pit Stop: players who tapped READY
 	readyOf: number?, -- Pit Stop: players present (bots never count)
 	mode: string?, -- "Race" | "Arcade"
@@ -83,7 +85,11 @@ export type RoundStatePayload = {
 	eventEndsAt: number?, -- server time it ends
 	eventAt: Vector3?, -- where it is, when it has one place (the money truck)
 	weather: string?, -- this round's weather (Config.Chaos.Weather.List Id)
+	slots: { SlotEntry }?, -- Waiting / MatchEnd: who drives the next match, people first, then bots (the depot board)
+	maxDrivers: number?, -- seats on the grid
 }
+
+export type SlotEntry = { name: string, id: number, bot: boolean? } -- id: UserId (bots below 0)
 
 export type ProfilePayload = {
 	gems: number,
@@ -133,6 +139,11 @@ export type PitStopOfferPayload = { cards: { PitStopCard }, cash: number, endsAt
 -- | "Request" (your passenger's request moved: `request`, `progress`, `done`, and `payout` = the bonus when done)
 -- | "NextStop" (a carpool's next leg, shaped like "Claimed")
 -- | "Golden" (to everyone: a Golden Fare appeared at `position`)
+-- | "Rate" (to a rider whose ride just arrived: `line` = the driver's name, `deadline` = when the default rating lands)
+-- | "RideTip" (to the driver: the rider's stars came in, `payout` = the tip, `stars`, `line` = the rider's name)
+-- | "RideOver" (to a rider: out of the cab, `reason` = "delivered" | "hp" | "timeout" | "released", `payout` = gems)
+-- Every ride event a player-fare driver gets is mirrored to the rider with `ride` = true (the rider's HUD shows the
+-- trip, not their money).
 export type FareEventPayload = {
 	kind: string,
 	npcId: number?,
@@ -164,6 +175,8 @@ export type FareEventPayload = {
 	riders: number?, -- "Claimed" / "NextStop": people aboard (2+ = a carpool)
 	ticking: boolean?, -- "Claimed": a ticking fare (the fare drops every second)
 	you: boolean?, -- "NewLeader": you took the lead
+	ride: boolean?, -- mirrored to a rider: the trip you're riding, not your own fare
+	stars: number?, -- "RideTip": the rating
 }
 
 -- ItemEvent kinds: "Granted" | "Used" | "Splat" | "Spinout" | "Boost" | "HitConfirm" | "BoxTaken"

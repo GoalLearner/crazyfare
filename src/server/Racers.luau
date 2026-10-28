@@ -1,5 +1,6 @@
 --!strict
--- Who is racing: the real Players plus the AI rival taxis (BotService). A bot is a plain table standing in for a Player
+-- Who is racing: the people driving (SessionState attribute "Driver", set by SessionService) plus the AI rival taxis
+-- (BotService). People on foot or in the depot are not racers. A bot is a plain table standing in for a Player
 -- wherever services key their state by driver (cars, fares, passengers, items, standings). It carries the few Player
 -- fields those services read (UserId below 0, Name, DisplayName, Parent) and GetAttribute / SetAttribute, but it is
 -- never a real Instance: anything that talks to a client (FireClient) or to saved data must skip it (Racers.IsBot).
@@ -17,9 +18,14 @@ function Racers.IsBot(driver: Player): boolean
 	return typeof(driver) ~= "Instance"
 end
 
--- Every driver in the race: real players first, then bots.
+-- Every driver in the race: people first, then bots.
 function Racers.All(): { Player }
-	local list = Players:GetPlayers()
+	local list: { Player } = {}
+	for _, player in Players:GetPlayers() do
+		if player:GetAttribute("SessionState") == "Driver" then
+			table.insert(list, player)
+		end
+	end
 	for _, bot in bots do
 		table.insert(list, bot)
 	end

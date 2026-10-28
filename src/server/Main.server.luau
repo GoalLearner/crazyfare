@@ -24,6 +24,7 @@ local ordered: { Service } = {
 	require(Services.GemService),
 	require(Services.FareService),
 	require(Services.RiderService),
+	require(Services.WalkerService),
 	require(Services.ItemService),
 	require(Services.RamService),
 	require(Services.PedestrianService),
@@ -37,7 +38,9 @@ local ordered: { Service } = {
 	require(Services.LeaderboardService),
 	require(Services.QuestService),
 	require(Services.ReplicationService),
+	require(Services.DepotService),
 	require(Services.DebugService),
+	require(Services.MatchController),
 	require(Services.RoundService),
 }
 

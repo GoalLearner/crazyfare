@@ -138,7 +138,7 @@ local function build()
 		Font = UI.Font,
 		TextSize = 16,
 		TextColor3 = UI.White,
-		Text = "PROGRESS",
+		Text = "QUESTS",
 		Visible = false,
 	}, screen) :: TextButton
 	UI.Corner(8, openButton)
@@ -189,8 +189,9 @@ local function build()
 	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(176, 232), Size = UDim2.fromOffset(170, 40), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
 end
 
+-- Parked: between rounds, or not driving at all (on foot, in the depot).
 local function onRound(payload: Types.RoundStatePayload)
-	local parked = payload.phase ~= "Playing" and payload.phase ~= "Countdown"
+	local parked = (payload.phase ~= "Playing" and payload.phase ~= "Countdown") or (State.sessionState ~= "Driver" and State.sessionState ~= "")
 	openButton.Visible = parked
 	if not parked and isOpen then
 		setOpen(false)
@@ -216,6 +217,12 @@ function ProgressController.Init()
 		end
 	end)
 	State.RoundChanged:Connect(onRound)
+	State.SessionChanged:Connect(function()
+		local round = State.round
+		if round then
+			onRound(round)
+		end
+	end)
 end
 
 function ProgressController.Start() end

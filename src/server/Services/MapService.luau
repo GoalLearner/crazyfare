@@ -81,8 +81,9 @@ local function discover()
 		end
 	end
 	props = {}
+	local depot = workspace:FindFirstChild("Depot")
 	for _, inst in CollectionService:GetTagged(Config.Tags.Prop) do
-		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) and not (depot and inst:IsDescendantOf(depot)) then
 			table.insert(props, { part = inst, cframe = inst.CFrame })
 		end
 	end
@@ -219,12 +220,18 @@ function MapService.GetMapFolder(): Instance?
 	return workspace:FindFirstChild("Map")
 end
 
--- RaycastParams that only see static map geometry.
+-- RaycastParams that only see static map geometry (the map and the Taxi Depot).
 function MapService.StaticRaycastParams(): RaycastParams
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	local map = MapService.GetMapFolder()
-	params.FilterDescendantsInstances = if map then { map } else {}
+	local include: { Instance } = {}
+	for _, name in { "Map", "Depot" } do
+		local folder = workspace:FindFirstChild(name)
+		if folder then
+			table.insert(include, folder)
+		end
+	end
+	params.FilterDescendantsInstances = include
 	return params
 end
 

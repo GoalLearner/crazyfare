@@ -98,6 +98,9 @@ local function kindLines(category: string, kind: string): { string }
 end
 
 local function onBoarded(player: Player, npc: PassengerService.Npc)
+	if npc.rider then
+		return -- a player fare: their own avatar rides along (WalkerController seats it), no NPC figure
+	end
 	local rider: Rider = {
 		player = player,
 		npc = npc,

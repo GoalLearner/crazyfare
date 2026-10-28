@@ -267,8 +267,9 @@ function GarageController.Unmount()
 	openButton.Visible = parked
 end
 
+-- Parked: between rounds, or not driving at all (on foot, in the depot).
 local function onRound(payload: Types.RoundStatePayload)
-	parked = payload.phase ~= "Playing" and payload.phase ~= "Countdown"
+	parked = (payload.phase ~= "Playing" and payload.phase ~= "Countdown") or (State.sessionState ~= "Driver" and State.sessionState ~= "")
 	openButton.Visible = parked and not mounted
 	if not parked and isOpen then
 		setOpen(false)
@@ -278,6 +279,12 @@ end
 function GarageController.Init()
 	action = Remotes.Get("GarageAction")
 	build()
+	State.SessionChanged:Connect(function()
+		local round = State.round
+		if round then
+			onRound(round)
+		end
+	end)
 	State.ProfileChanged:Connect(function()
 		if isOpen or mounted then
 			render()

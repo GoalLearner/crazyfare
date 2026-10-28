@@ -51,6 +51,8 @@ local BUTTONS: { Button } = {
 	{ label = "Rival spin", command = "RivalSpin", arg = nil },
 	{ label = "Bot park", command = "BotStage", arg = "park" },
 	{ label = "Bot charge", command = "BotStage", arg = "charge" },
+	{ label = "Seats 1", command = "Seats", arg = 1 },
+	{ label = "Seats 6", command = "Seats", arg = 0 },
 }
 
 function DebugPanel.Init()

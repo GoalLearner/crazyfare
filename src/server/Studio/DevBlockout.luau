@@ -1506,6 +1506,125 @@ local function buildVehicleTemplate()
 	cab.Parent = templates
 end
 
+export type DepotBuild = {
+	folder: Folder,
+	spawns: { CFrame }, -- where a depot car sits (on the floor, facing north into the yard)
+	cones: { BasePart },
+	jumpLabel: TextLabel, -- the board's LONGEST JUMP line
+	driftLabel: TextLabel,
+}
+
+-- The Taxi Depot (Config.Depot) in workspace.Depot, beside the map and never replaced with it: floor, low walls (and a
+-- tall invisible fence so nothing flies out), a cone ring to drift around, two kicker ramps launching north, a cone
+-- slalom down the east side, a row of parking bays along the south wall, and the records board on the north wall.
+-- Cones are loose Props (knock them over; DepotService stands them back up) and near-miss targets like the city's.
+function DevBlockout.BuildDepot(): DepotBuild
+	local cfg = Config.Depot
+	local old = workspace:FindFirstChild("Depot")
+	if old then
+		old:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Depot"
+	local C = cfg.Center
+	local halfX, halfZ = cfg.Size.X / 2, cfg.Size.Y / 2
+	local at = function(x: number, y: number, z: number): CFrame
+		return CFrame.new(C.X + x, C.Y + y, C.Z + z)
+	end
+
+	local floor = makePart("Floor", Vector3.new(cfg.Size.X, 2, cfg.Size.Y), at(0, -1, 0), cfg.FloorColor, folder, Tags.Ground)
+	floor.Material = Enum.Material.Asphalt
+	-- walls you can bump (and near-miss), and a tall clear fence above them
+	for _, w in {
+		{ x = 0, z = -halfZ - 1, sx = cfg.Size.X + 4, sz = 2 },
+		{ x = 0, z = halfZ + 1, sx = cfg.Size.X + 4, sz = 2 },
+		{ x = -halfX - 1, z = 0, sx = 2, sz = cfg.Size.Y + 4 },
+		{ x = halfX + 1, z = 0, sx = 2, sz = cfg.Size.Y + 4 },
+	} do
+		local wall = makePart("Wall", Vector3.new(w.sx, cfg.WallHeight, w.sz), at(w.x, cfg.WallHeight / 2, w.z), cfg.WallColor, folder, Tags.Wall)
+		wall.Material = Enum.Material.Concrete
+		local fence = makePart("Fence", Vector3.new(w.sx, cfg.FenceHeight, w.sz), at(w.x, cfg.WallHeight + cfg.FenceHeight / 2, w.z), cfg.WallColor, folder)
+		fence.Transparency = 1
+		fence.CanQuery = false
+	end
+
+	-- parking bays along the south wall, facing north
+	local spawns: { CFrame } = {}
+	local spawnZ = halfZ - cfg.SpawnInset
+	for i = 1, cfg.Spawns do
+		local x = (i - (cfg.Spawns + 1) / 2) * cfg.SpawnSpacing
+		local pos = Vector3.new(C.X + x, C.Y, C.Z + spawnZ)
+		table.insert(spawns, CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1)))
+		for _, side in { -1, 1 } do
+			decor(makePart("Bay", Vector3.new(0.4, 0.06, 12), at(x + side * cfg.SpawnSpacing / 2, 0.03, spawnZ), cfg.LineColor, folder))
+		end
+	end
+
+	local cones: { BasePart } = {}
+	local function cone(x: number, z: number)
+		local part = makePart("Cone", cfg.ConeSize, at(x, cfg.ConeSize.Y / 2, z), cfg.ConeColor, folder, Tags.Prop)
+		part.Anchored = false
+		part.CustomPhysicalProperties = PhysicalProperties.new(0.2, 0.5, 0.2)
+		table.insert(cones, part)
+	end
+
+	-- drift loop: a painted ring around a low island, cones on the outside
+	local loop = cfg.DriftLoop
+	local ring = decor(makePart("DriftRing", Vector3.new(0.06, loop.Radius * 2 + 2, loop.Radius * 2 + 2), at(loop.X, 0.03, loop.Z) * CFrame.Angles(0, 0, math.pi / 2), cfg.LineColor, folder))
+	ring.Shape = Enum.PartType.Cylinder
+	local inner = decor(makePart("DriftInner", Vector3.new(0.08, loop.Radius * 2 - 2, loop.Radius * 2 - 2), at(loop.X, 0.04, loop.Z) * CFrame.Angles(0, 0, math.pi / 2), cfg.FloorColor, folder))
+	inner.Shape = Enum.PartType.Cylinder
+	local island = makePart("Island", Vector3.new(1.2, loop.Island * 2, loop.Island * 2), at(loop.X, 0.6, loop.Z) * CFrame.Angles(0, 0, math.pi / 2), cfg.WallColor, folder, Tags.Wall)
+	island.Shape = Enum.PartType.Cylinder
+	for k = 1, loop.Cones do
+		local a = (k / loop.Cones) * math.pi * 2
+		cone(loop.X + math.cos(a) * (loop.Radius + loop.ConeGap), loop.Z + math.sin(a) * (loop.Radius + loop.ConeGap))
+	end
+
+	-- kicker ramps, launching north (the tall end of each wedge faces -Z)
+	for i, r in cfg.Ramps do
+		makeWedge("Ramp" .. i, Vector3.new(r.Width, r.Height, r.Length), at(r.X, r.Height / 2, r.Z) * CFrame.Angles(0, math.rad(r.Yaw) + math.pi, 0), COLOR_RAMP, folder, Tags.Ramp)
+	end
+
+	-- cone slalom down the east side, alternating either side of its line
+	local slalom = cfg.Slalom
+	for k = 0, slalom.Count - 1 do
+		cone(slalom.X + (if k % 2 == 0 then -slalom.Offset else slalom.Offset), slalom.ZFrom - k * slalom.Spacing)
+	end
+
+	-- records board over the north wall, facing the yard
+	local b = cfg.Board
+	local boardCf = at(0, cfg.WallHeight + b.Lift + b.Height / 2, -halfZ - 1)
+	local board = makePart("Board", Vector3.new(b.Width, b.Height, 1), CFrame.lookAt(boardCf.Position, boardCf.Position + Vector3.new(0, 0, 1)), Color3.fromRGB(28, 30, 38), folder)
+	board.CanCollide = false
+	board.CanQuery = false
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 20
+	gui.LightInfluence = 0
+	gui.Parent = board
+	local function line(name: string, y: number, h: number, text: string, color: Color3): TextLabel
+		local label = Instance.new("TextLabel")
+		label.Name = name
+		label.BackgroundTransparency = 1
+		label.Position = UDim2.fromScale(0.05, y)
+		label.Size = UDim2.fromScale(0.9, h)
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.Text = text
+		label.Parent = gui
+		return label
+	end
+	line("Title", 0.06, 0.3, cfg.BoardTitle, cfg.LineColor)
+	local jumpLabel = line("Jump", 0.42, 0.24, "", Color3.new(1, 1, 1))
+	local driftLabel = line("Drift", 0.7, 0.24, "", Color3.new(1, 1, 1))
+
+	folder.Parent = workspace
+	return { folder = folder, spawns = spawns, cones = cones, jumpLabel = jumpLabel, driftLabel = driftLabel }
+end
+
 function DevBlockout.Generate(mapName: string?): Folder
 	local name = mapName or Config.Map.Current
 	local mapCfg = (Config.Map :: any)[name]

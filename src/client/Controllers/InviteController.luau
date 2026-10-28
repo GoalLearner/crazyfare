@@ -1,28 +1,25 @@
 --!strict
--- INVITE in the side stack (under ARCADE), between matches: Roblox's own friend-invite prompt (SocialService). Someone
--- new who joins through it pays you both once (SessionService). Hidden where invites can't be sent and in Arcade (a
--- server of your own). Config.Session.
+-- INVITE in the side stack (under ARCADE), between matches and all the time in the Taxi Depot: Roblox's own
+-- friend-invite prompt (Invite). Hidden where invites can't be sent and in Arcade (a server of your own).
+-- Config.Session.
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local SocialService = game:GetService("SocialService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
+local Invite = require(script.Parent.Parent.Invite)
 
 local InviteController = {}
 
 local button: TextButton
-local canInvite = false
 
 local function refresh()
 	local round = State.round
 	local phase = State.GetPhase()
-	local between = phase == "Waiting" or phase == "PreCountdown" or phase == "MatchEnd"
-	button.Visible = canInvite and between and not (round ~= nil and round.mode == "Arcade")
+	local between = phase == "Waiting" or phase == "PreCountdown" or phase == "MatchEnd" or State.sessionState == "Depot"
+	button.Visible = Invite.CanInvite() and between and not (round ~= nil and round.mode == "Arcade")
 end
 
 function InviteController.Init()
@@ -40,27 +37,12 @@ function InviteController.Init()
 		Visible = false,
 	}, screen) :: TextButton
 	UI.Corner(8, button)
-	button.Activated:Connect(function()
-		local options = Instance.new("ExperienceInviteOptions")
-		options.PromptMessage = Config.Session.InvitePrompt
-		local ok, err = pcall(function()
-			SocialService:PromptGameInvite(Players.LocalPlayer, options)
-		end)
-		if not ok and RunService:IsStudio() then
-			warn("[InviteController] " .. tostring(err))
-		end
-	end)
+	button.Activated:Connect(Invite.Prompt)
 	State.RoundChanged:Connect(refresh)
+	State.SessionChanged:Connect(refresh)
+	Invite.Known:Connect(refresh)
 end
 
-function InviteController.Start()
-	task.spawn(function()
-		local ok, result = pcall(function()
-			return SocialService:CanSendGameInviteAsync(Players.LocalPlayer)
-		end)
-		canInvite = (ok and result == true) or RunService:IsStudio() -- Studio shows it so the layout can be checked
-		refresh()
-	end)
-end
+function InviteController.Start() end
 
 return InviteController

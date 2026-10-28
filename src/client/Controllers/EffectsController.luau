@@ -278,7 +278,7 @@ end
 
 local function updateArrow()
 	local fare = State.fare
-	local ch = State.chassis
+	local ch = State.ViewChassis() -- riding along, the arrow floats over the cab you're in
 	if not fare or not ch or not ch:IsDescendantOf(workspace) then
 		if arrowFolder then
 			destroyArrow()

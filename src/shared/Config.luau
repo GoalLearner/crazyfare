@@ -234,6 +234,7 @@ Config.CollisionGroups = {
 	Vehicles = "Vehicles", -- player cars
 	Traffic = "Traffic",
 	Bots = "Bots", -- AI rival taxis: bump player cars and each other, float over the map and ghost through traffic
+	Walkers = "Walkers", -- people on foot (passenger mode): the map only, never cars, traffic or bots
 }
 
 Config.Keys = {
@@ -261,18 +262,151 @@ Config.Keys = {
 Config.Round = {
 	MinPlayers = 2, -- live servers wait for this many before a match starts
 	StudioMinPlayers = 1, -- so a solo Studio run plays
-	-- Servers should allow at most 6 players (one per grid pad: Creator Hub > Configure > Places > Max Players). If more
-	-- ever get in, each extra lap of drivers parks this many studs farther out to the side instead of on top of a car.
+	-- More drivers than grid pads (Config.Server caps them at the pad count, so only a debug cap gets here): each extra
+	-- lap of drivers parks this many studs farther out to the side instead of on top of a car.
 	ExtraSlotOffset = 20,
-	AutoStartDelay = 4, -- seconds after MinPlayers is met before PreCountdown
+	AutoStartDelay = 10, -- seconds the depot's NEXT MATCH countdown runs once MinPlayers want to play
 	PreCountdownSeconds = 3, -- "read the board": NPCs visible, cars frozen
 	CountdownSeconds = 3, -- 3-2-1
 	CapSeconds = 180, -- round time cap; highest earnings this round win at the cap
 	Quotas = { 75, 100, 125 }, -- dollars earned THIS round (round 1, 2, 3); paced for 6-9 fares by a good player
 	RoundsPerMatch = 3,
 	RoundEndSeconds = 5, -- placements shown between a round and its Pit Stop
-	MatchEndSeconds = 20, -- final podium + rematch vote
+	MatchEndSeconds = 12, -- final podium; with PreCountdown and Countdown the gap to the next match stays under 20 s
 	PodiumSeconds = 10, -- unused since Phase 3; kept for the solo loop
+}
+
+-- Server and lobby flow (owner spec 2026-10-27). One place, up to MaxPlayers people per server: MaxDrivers race, the
+-- rest walk the city as passengers and hail cabs. Bots fill the grid to BotFillTo drivers, people always first.
+-- The place's Max Players (Creator Hub > Configure > Places) must equal MaxPlayers.
+Config.Server = {
+	MaxPlayers = 10,
+	MaxDrivers = 6, -- one per grid pad
+	BotFillTo = 4, -- drivers per match, people + bots
+}
+
+-- Who drives when (MatchController). Priority for a free seat: a pre-assigned roster (TeleportData), then someone who
+-- followed or was invited by a friend here, then whoever sat out the last match, then whoever has waited longest.
+Config.Join = {
+	LateJoinPenalty = 10, -- dollars: a late driver starts this far behind last place's round earnings (never below $0)
+	PadClearance = 10, -- studs: a late driver's start pad has no car this close
+	Driver = "YOU'RE IN! CATCH UP!",
+	Rider = "RIDE ALONG UNTIL A SEAT OPENS",
+	Queued = "YOU DRIVE NEXT ROUND. HAIL A CAB MEANWHILE",
+	SeatOpened = "A SEAT OPENED. YOU'RE DRIVING!",
+	NextRound = "YOUR SEAT IS READY",
+}
+
+-- People on foot (Passenger and Queued): a Roblox character on the sidewalk that cars pass straight through.
+Config.Walkers = {
+	SpawnOffset = 7, -- studs along the sidewalk from a pickup point, so a walker never stands on a waiting passenger
+	CheckSeconds = 0.25, -- how often the server checks lanes and hail leashes
+	RespawnSeconds = 3, -- after falling off the world
+	LanePushSeconds = 2, -- this long in a traffic lane and you're put back on the sidewalk
+	SidewalkInset = 3, -- studs in from the curb where you're put back
+	DodgeDistance = 1.5, -- studs beside a car's path that still count as in its way...
+	DodgeAhead = 10, -- ...within this far ahead of its front bumper: you dive out of the way
+	DodgeMinSpeed = 8, -- only cars faster than this
+	DodgeJump = 40, -- studs/s up...
+	DodgeShove = 32, -- ...and away from the car
+	DodgeCooldown = 1.2,
+	DodgeLines = { "WHOA!", "YIKES!", "MISSED ME!", "HEY!" },
+}
+
+-- Player fares (owner spec 2026-10-27): someone on foot taps HAIL CAB at a curb and becomes a fare any cab can claim,
+-- bots included. The ride pays the normal tier rules times PayMult; the rider rates the trip, which scales the tip.
+Config.PlayerFare = {
+	PayMult = 1.5,
+	MaxOnBoard = 2, -- player fares waiting or riding at once, server-wide
+	HailCooldown = 6, -- seconds between hails per person (a cancelled hail counts)
+	HailCurbDistance = 6, -- studs from the road edge (on the sidewalk) where HAIL CAB shows
+	HailLeash = 10, -- walk this far from where you hailed and the hail is off
+	CurbInset = 1.5, -- the fare's spot: this far in from the curb, facing the road
+	RatingSeconds = 8,
+	RatingDefault = 4, -- stars when the rider doesn't tap
+	RatingTipRange = { 0.8, 1.3 }, -- 1 star .. 5 stars: the tip times this
+	RiderGems = 3, -- per ride delivered
+	Color = Color3.fromRGB(255, 205, 50), -- the gold ring and minimap marker
+	RingRadius = 3.5,
+	Label = "TAXI!",
+	HailButton = "HAIL CAB",
+	CancelButton = "CANCEL",
+	Busy = "CABS ARE BUSY. TRY AGAIN IN A BIT",
+	SeatOffset = Vector3.new(1.1, 1.9, 0.9), -- the rider's root part from the cab's chassis (right, up, back)
+	EjectSide = 7, -- studs beside the cab where a rider steps out
+	DebugCurbDistance = 8, -- Studio "To curb" with a person hailing: the cab parks this far out, inside PickupRadius
+	EjectHop = 30, -- studs/s up when a passenger bails (the cartoon toss)...
+	EjectShove = 18, -- ...and sideways
+	EjectSpin = 14, -- radians/s while tossed
+	RideOverLines = { -- what a rider is told when the trip ends early (nothing when they called it off)
+		hp = "THROWN OUT!",
+		timeout = "TOO SLOW! YOU HOPPED OUT",
+		released = "RIDE OVER",
+		roundover = "RIDE OVER",
+		cleared = "ROUND OVER",
+	} :: { [string]: string },
+	Thanks = "THANKS FOR THE RIDE! +%d GEMS",
+	RatePrompt = "RATE YOUR DRIVER",
+	TipLine = "%s RATED %d★  TIP x%.2f",
+}
+
+-- The Taxi Depot (owner spec 2026-10-27): free-roam yard beside the City (outside its walls and skyline, off the
+-- minimap) where people drive their own car between matches: a drift loop, two ramps, a cone slalom, and a board with
+-- this server's longest jump and best drift. No items, no passengers.
+Config.Depot = {
+	Center = Vector3.new(0, 0, -800), -- both maps; past the skyline ring (Config.Map.*.Blockout.SkylineOuter)
+	Size = Vector2.new(260, 200), -- studs: X, Z
+	WallHeight = 6,
+	FenceHeight = 60, -- an invisible fence above the walls: nothing flies out of the yard
+	FloorColor = Color3.fromRGB(70, 74, 82),
+	LineColor = Color3.fromRGB(240, 200, 60),
+	WallColor = Color3.fromRGB(230, 120, 40),
+	ConeColor = Color3.fromRGB(255, 130, 30),
+	Spawns = 10, -- parking bays, one per possible player, along the south wall facing north
+	SpawnSpacing = 16,
+	SpawnInset = 20, -- studs in from the south wall
+	SpawnLift = 3.2, -- a parked car's center above the floor (as on the grid pads)
+	FallDepth = 30, -- a depot car this far below the floor goes back to its bay
+	-- Offsets from Center (+Z is south): a cone ring to drift around its island, two kickers launching north (Yaw 0)
+	-- with the whole yard to land in, and a slalom down the east side.
+	DriftLoop = { X = -75, Z = -25, Radius = 26, Island = 8, ConeGap = 4, Cones = 14 },
+	Ramps = {
+		{ X = 10, Z = 25, Yaw = 0, Height = 5, Length = 22, Width = 16 },
+		{ X = 45, Z = 25, Yaw = 0, Height = 8, Length = 30, Width = 16 },
+	},
+	Slalom = { X = 105, ZFrom = 60, Count = 7, Spacing = 14, Offset = 5 }, -- cones alternating either side of X, northward
+	ConeSize = Vector3.new(1.6, 3, 1.6),
+	ConeResetSeconds = 20, -- knocked cones go back this often...
+	ConeMoved = 1, -- ...when they've moved more than this many studs
+	Board = { Width = 44, Height = 18, Lift = 2 }, -- over the north wall, facing the yard
+	BoardTitle = "TAXI DEPOT",
+	JumpLabel = "LONGEST JUMP",
+	DriftLabel = "BEST DRIFT",
+	NoRecord = "-",
+	DriftGap = 0.8, -- seconds between drift reports that still count as one drift
+	NextMatch = "NEXT MATCH IN %d:%02d",
+	WaitingFor = "WAITING FOR DRIVERS",
+	MatchRunning = "MATCH IN PROGRESS",
+	SlotOpen = "OPEN",
+	StayButton = "STAY IN DEPOT",
+	JoinButton = "JOIN THE MATCH",
+	Staying = "STAYING IN DEPOT",
+	SlotBot = "BOT",
+}
+
+-- The COLLECTION panel (side stack): what you've unlocked and done, from your profile.
+Config.Collection = {
+	Button = "COLLECTION",
+	Title = "COLLECTION",
+	Cars = "CARS %d/%d",
+	BestLicense = "BEST LICENSE",
+	Stats = { -- lifetime stats shown, in order (DataService Stats keys)
+		{ Key = "Matches", Label = "MATCHES" },
+		{ Key = "Wins", Label = "WINS" },
+		{ Key = "Fares", Label = "FARES" },
+		{ Key = "Knockouts", Label = "KNOCKOUTS" },
+		{ Key = "Rides", Label = "RIDES TAKEN" },
+	},
 }
 
 Config.Fares = {
@@ -369,15 +503,14 @@ Config.Rider = {
 	} :: { [string]: any },
 }
 
--- AI rival taxis. With too few people, bots fill the match to FillTo drivers, and give their seats up as real players
--- join (at the next round). They follow every rule a player does (stop to claim, stop to deliver, items, standings) but
+-- AI rival taxis. With too few people, bots fill the match to Config.Server.BotFillTo drivers, and give their seats up
+-- as real players join (a late driver takes a bot's seat at once). They follow every rule a player does (stop to claim, stop to deliver, items, standings) but
 -- earn no stunt cash, gems or XP, and are always named with a BOT tag. Server-steered over the road grid.
 Config.Bots = {
 	Enabled = true,
 	DebugChargeSpeed = 55, -- Studio "Bot charge": studs/s straight at you
 	DebugStageSeconds = 6, -- how long a staged bot stays parked or charging
 	IdBase = -1000, -- bot UserIds count down from here (Studio's test players are -1, -2...)
-	FillTo = 4, -- drivers per match, people + bots
 	MinHumans = 1, -- a live match starts with this many people when bots fill the rest
 	Names = { "REX", "DOT", "ZIPPY", "MAMA CAB", "BOLT", "PICKLE" },
 	Colors = {
@@ -1344,11 +1477,13 @@ Config.Net = {
 		PitStopBuy = 6,
 		PitStopReady = 4,
 		GarageAction = 5,
-		RematchVote = 2,
 		CoachDone = 1,
 		ArcadeRequest = 2,
 		RequestLeaderboards = 1,
 		ShopAction = 4,
+		HailCab = 2,
+		RateRide = 2,
+		DepotChoice = 2,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.
