@@ -1,9 +1,11 @@
 --!strict
 -- Whole-map minimap (top-right): roads from the blockout spec, NPC dots by tier, every rival with its fare $
--- and a mini HP bar (grey when empty), your own arrow, your destination. Reads only the 10 Hz snapshot.
+-- and a mini HP bar (grey when empty), your own arrow, your destination, a pulsing ring on every Phantom. Reads only
+-- the 10 Hz snapshot.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -27,7 +29,9 @@ local destMarker: Frame
 local npcDots: { [number]: Frame } = {}
 local standDots: { [number]: Frame } = {} -- fruit stands by Index
 local rivals: { [number]: RivalMarker } = {}
+local phantomRings: { [number]: { ring: Frame, stroke: UIStroke } } = {}
 local localPlayer = Players.LocalPlayer
+local PHANTOM = Config.Vehicles.Phantom
 
 local function toMap(x: number, z: number): UDim2
 	local px = (x + B.Half) / (2 * B.Half) * SIZE
@@ -203,6 +207,19 @@ local function ensureRival(id: number): RivalMarker
 	return marker
 end
 
+-- A Mythic car (yours too) wears a purple ring on every minimap: it's everyone's target.
+local function ensureRing(id: number): Frame
+	local existing = phantomRings[id]
+	if existing then
+		return existing.ring
+	end
+	local ring = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(PHANTOM.MarkerSize, PHANTOM.MarkerSize), BackgroundTransparency = 1, ZIndex = 8 }, map)
+	UI.Corner(PHANTOM.MarkerSize, ring)
+	local stroke = UI.Stroke(PHANTOM.MarkerColor, PHANTOM.MarkerStroke, ring)
+	phantomRings[id] = { ring = ring, stroke = stroke }
+	return ring
+end
+
 local crown: TextLabel? = nil
 local eventMarks: { GuiObject } = {}
 local shownEvent: string? = nil
@@ -291,8 +308,13 @@ local function onSnapshot(snapshot: Types.Snapshot)
 
 	-- Taxis
 	local seenRival: { [number]: boolean } = {}
+	local seenPhantom: { [number]: boolean } = {}
 	local selfShown = false
 	for _, p in snapshot.players do
+		if p.phantom then
+			seenPhantom[p.id] = true
+			ensureRing(p.id).Position = toMap(p.x, p.z)
+		end
 		if p.id == localPlayer.UserId then
 			selfArrow.Position = toMap(p.x, p.z)
 			selfArrow.Rotation = math.deg(p.yaw)
@@ -315,6 +337,12 @@ local function onSnapshot(snapshot: Types.Snapshot)
 		if not seenRival[id] then
 			marker.frame:Destroy()
 			rivals[id] = nil
+		end
+	end
+	for id, ring in phantomRings do
+		if not seenPhantom[id] then
+			ring.ring:Destroy()
+			phantomRings[id] = nil
 		end
 	end
 	-- on foot: you're where your character is
@@ -347,6 +375,19 @@ function MinimapController.Init()
 	State.RoundChanged:Connect(showEvent)
 end
 
-function MinimapController.Start() end
+function MinimapController.Start()
+	-- the Phantom rings breathe out and fade, once per MarkerPulseSeconds
+	RunService.RenderStepped:Connect(function()
+		if next(phantomRings) == nil then
+			return
+		end
+		local t = (os.clock() / PHANTOM.MarkerPulseSeconds) % 1
+		local size = PHANTOM.MarkerSize * (1 + PHANTOM.MarkerPulseGrow * t)
+		for _, ring in phantomRings do
+			ring.ring.Size = UDim2.fromOffset(size, size)
+			ring.stroke.Transparency = t
+		end
+	end)
+end
 
 return MinimapController

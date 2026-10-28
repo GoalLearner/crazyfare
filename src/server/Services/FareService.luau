@@ -752,7 +752,12 @@ local function handleBail(victim: Player, npc: PassengerService.Npc, reason: str
 	end
 	if attacker and fare and attacker ~= victim and attacker.Parent then
 		local bounty = victim == leader
-		local bonus = math.round(lost * Config.Items.HunterBonusFrac * (if bounty then Config.Chaos.Bounty.Mult else 1))
+		-- a Mythic car (the Phantom) is a target: its passenger pays HunterMult times (on top of the leader bounty)
+		local victimEntry = VehicleService.GetEntry(victim)
+		local victimStats = if victimEntry then Config.Vehicles.Stats[victimEntry.vehicleId] else nil
+		local mythic = victimStats ~= nil and victimStats.Mythic == true
+		local bonus = math.round(lost * Config.Items.HunterBonusFrac * (if bounty then Config.Chaos.Bounty.Mult else 1) * (if mythic then Config.Vehicles.Phantom.HunterMult else 1))
+		bounty = bounty or mythic
 		if bonus > 0 then
 			fire(attacker, { kind = "HunterBonus", payout = bonus, line = victim.DisplayName, bounty = if bounty then true else nil })
 			FareService.AddCash(attacker, bonus)

@@ -35,6 +35,7 @@ local ordered: { Controller } = {
 	require(Controllers.MinimapController),
 	require(Controllers.WorldTagController),
 	require(Controllers.BountyController),
+	require(Controllers.PhantomController),
 	require(Controllers.EffectsController),
 	require(Controllers.FruitStandController),
 	require(Controllers.WeatherController),

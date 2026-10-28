@@ -108,8 +108,12 @@ local function attach(model: Model?)
 	end
 	local size = chassis.Size
 
-	-- Two exhaust flames out the back (models face -Z, so the back is +Z and EmissionDirection Back points out of it)
+	-- Two exhaust flames out the back (models face -Z, so the back is +Z and EmissionDirection Back points out of it);
+	-- a car with its own FlameColor (the Phantom's purple) burns in that color
 	local f = Config.SpeedFx.Flames
+	local vehicleId = model and model:GetAttribute("VehicleId")
+	local stats = if typeof(vehicleId) == "string" then Config.Vehicles.Stats[vehicleId] else nil
+	local flameColor = if stats then stats.FlameColor else nil
 	for _, side in { -1, 1 } do
 		local att = attachment(chassis, "BoostFlame", Vector3.new(side * size.X * 0.22, -size.Y * 0.2, size.Z / 2 + 0.2))
 		local emitter = Instance.new("ParticleEmitter")
@@ -121,7 +125,7 @@ local function attach(model: Model?)
 		emitter.SpreadAngle = Vector2.new(f.Spread, f.Spread)
 		emitter.Size = sequence(f.Size, f.Size * 0.15)
 		emitter.Transparency = sequence(0.05, 1)
-		emitter.Color = FLAME_COLORS
+		emitter.Color = if flameColor then ColorSequence.new(Color3.new(1, 1, 1), flameColor) else FLAME_COLORS
 		emitter.LightEmission = 1
 		emitter.LightInfluence = 0
 		emitter.EmissionDirection = Enum.NormalId.Back
@@ -129,7 +133,7 @@ local function attach(model: Model?)
 		table.insert(flames, emitter)
 		if not flameLight then
 			local light = Instance.new("PointLight")
-			light.Color = FLAME_GLOW
+			light.Color = flameColor or FLAME_GLOW
 			light.Range = f.LightRange
 			light.Brightness = f.LightBrightness
 			light.Enabled = false

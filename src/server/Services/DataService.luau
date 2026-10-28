@@ -39,6 +39,7 @@ export type ProfileData = {
 	DropCount: number,
 	PityCounter: number,
 	Inventory: { [string]: { [string]: number } },
+	PhantomSerial: number,
 }
 
 local DataService = {}
@@ -112,6 +113,7 @@ function DataService.Sync(player: Player)
 		inventory = d.Inventory,
 		dropCount = d.DropCount,
 		pity = d.PityCounter,
+		phantomSerial = d.PhantomSerial,
 	}
 	syncEvent:FireClient(player, payload)
 end

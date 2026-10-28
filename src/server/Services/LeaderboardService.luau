@@ -2,6 +2,8 @@
 -- Leaderboards on OrderedDataStores: weekly Gems (resets Monday 00:00 UTC), Biggest Tip Ever, Most Passengers
 -- Knocked Out, plus a friends view of the weekly board. Falls back to in-memory boards when DataStores are
 -- unavailable (Studio without API access). This week's top players get the exclusive trail (attribute WeeklyTrail).
+-- The Phantom Owners board: every new owner (a Mythic drop or the Robux offer) gets the next serial number, #1 first;
+-- the count of owners is a workspace attribute every client reads (Config.Vehicles.Phantom).
 
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
@@ -13,6 +15,8 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Racers = require(script.Parent.Parent.Racers)
+local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local LeaderboardService = {}
 
@@ -32,6 +36,10 @@ local syncEvent: RemoteEvent
 local nameCache: { [number]: string } = {}
 local friendsCache: { [Player]: { entries: { Types.BoardEntry }, at: number } } = {}
 local lastRefresh = 0
+local serialStore: DataStore? = nil
+local memorySerial = 0 -- Studio / no DataStores: serials handed out this server
+local lastOwnerCount = 0
+local PHANTOM = Config.Vehicles.Phantom
 
 local function weekKey(): string
 	return "w" .. tostring(math.floor((os.time() - WEEK_OFFSET) / WEEK))
@@ -97,13 +105,13 @@ local function submit(board: Board, player: Player, value: number, mode: string)
 	end
 end
 
-local function refreshBoard(board: Board)
+local function refreshBoard(board: Board, ascending: boolean?)
 	local top: { Types.BoardEntry } = {}
 	local store = board.store
 	local ok = false
 	if store then
 		ok = pcall(function()
-			local pages = store:GetSortedAsync(false, Config.Leaderboards.Top)
+			local pages = store:GetSortedAsync(ascending == true, Config.Leaderboards.Top)
 			for _, item in pages:GetCurrentPage() do
 				local id = tonumber(item.key)
 				if id then
@@ -119,6 +127,9 @@ local function refreshBoard(board: Board)
 			table.insert(ids, id)
 		end
 		table.sort(ids, function(a, b)
+			if ascending then
+				return (board.memory[a] or 0) < (board.memory[b] or 0)
+			end
 			return (board.memory[a] or 0) > (board.memory[b] or 0)
 		end)
 		for i = 1, math.min(Config.Leaderboards.Top, #ids) do
@@ -185,6 +196,7 @@ function LeaderboardService.Send(player: Player)
 		bestTip = getBoard("bestTip", "CF_BestTip").top,
 		knockouts = getBoard("knockouts", "CF_Knockouts").top,
 		arcade = getBoard("arcade", "CF_ArcadeBest").top,
+		phantom = getBoard("phantom", PHANTOM.OwnersStore).top,
 		weekResetsIn = secondsToWeekReset(),
 	}
 	syncEvent:FireClient(player, payload)
@@ -215,7 +227,71 @@ function LeaderboardService.AddKnockout(player: Player)
 	submit(getBoard("knockouts", "CF_Knockouts"), player, 1, "add")
 end
 
+local function setOwnerCount(count: number)
+	lastOwnerCount = math.max(lastOwnerCount, count)
+	workspace:SetAttribute(PHANTOM.CountAttribute, lastOwnerCount)
+end
+
+-- The owners so far (the last serial handed out).
+local function readOwnerCount()
+	local store = serialStore
+	if not store then
+		setOwnerCount(memorySerial)
+		return
+	end
+	local ok, value = pcall(function()
+		return store:GetAsync("count")
+	end)
+	setOwnerCount(if ok and typeof(value) == "number" then value else memorySerial)
+end
+
+-- A new Phantom owner: the next serial, saved on their profile and the board. Does nothing if they already have one.
+function LeaderboardService.RegisterPhantom(player: Player)
+	local d = DataService.Get(player)
+	if not d or d.PhantomSerial > 0 or Racers.IsBot(player) then
+		return
+	end
+	d.PhantomSerial = -1 -- taken while the number is fetched (a second grant can't ask twice)
+	task.spawn(function()
+		local serial = 0
+		local store = serialStore
+		if store then
+			pcall(function()
+				store:UpdateAsync("count", function(old: any)
+					serial = (if typeof(old) == "number" then old else 0) + 1
+					return serial
+				end)
+			end)
+		end
+		if serial <= 0 then
+			memorySerial += 1
+			serial = memorySerial
+		end
+		local profile = DataService.Get(player)
+		if profile then
+			profile.PhantomSerial = serial
+			DataService.Sync(player)
+		end
+		submit(getBoard("phantom", PHANTOM.OwnersStore), player, serial, "max")
+		setOwnerCount(serial)
+		if RunService:IsStudio() then
+			print(string.format("[LeaderboardService] %s is Phantom owner #%d", player.Name, serial))
+		end
+	end)
+end
+
+-- Owners who got theirs before serials existed (or whose number never saved) get one when they join.
+local function checkPhantomOwner(player: Player)
+	local d = DataService.Get(player)
+	if d and d.OwnedVehicles[Config.Drops.PhantomRef] == true and d.PhantomSerial <= 0 then
+		d.PhantomSerial = 0
+		LeaderboardService.RegisterPhantom(player)
+	end
+end
+
 local function refreshAll()
+	readOwnerCount()
+	refreshBoard(getBoard("phantom", PHANTOM.OwnersStore), true)
 	refreshBoard(weeklyBoard())
 	refreshBoard(getBoard("bestTip", "CF_BestTip"))
 	refreshBoard(getBoard("knockouts", "CF_Knockouts"))
@@ -228,6 +304,23 @@ end
 
 function LeaderboardService.Init()
 	syncEvent = Remotes.Get("LeaderboardSync")
+	-- Studio tests never take a real serial or touch the real owners board
+	if RunService:IsStudio() then
+		getBoard("phantom", PHANTOM.OwnersStore).store = nil
+	else
+		local ok, store = pcall(function()
+			return DataStoreService:GetDataStore(PHANTOM.SerialStore)
+		end)
+		serialStore = if ok then store else nil
+	end
+	DataService.OnLoaded:Connect(checkPhantomOwner)
+	-- the Robux offer's Phantom
+	MonetizationService.OnVehicleGranted:Connect(function(player: Player, vehicleId: string)
+		local stats = Config.Vehicles.Stats[vehicleId]
+		if stats and stats.Mythic then
+			LeaderboardService.RegisterPhantom(player)
+		end
+	end)
 	Remotes.Get("RequestLeaderboards").OnServerEvent:Connect(function(player: Player)
 		if not RateLimiter.Allow(player, "RequestLeaderboards", Config.Net.RateLimits.RequestLeaderboards, 2) then
 			return
@@ -240,6 +333,7 @@ function LeaderboardService.Init()
 end
 
 function LeaderboardService.Start()
+	workspace:SetAttribute(PHANTOM.CountAttribute, 0)
 	task.spawn(refreshAll)
 	RunService.Heartbeat:Connect(function()
 		if os.clock() - lastRefresh >= Config.Leaderboards.RefreshSeconds then

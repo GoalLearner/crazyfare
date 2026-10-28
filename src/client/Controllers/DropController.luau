@@ -183,6 +183,7 @@ end
 local function mythicBanner(payload: Types.DropEventPayload)
 	local who = string.upper(payload.who or "")
 	banner.Text = string.format(if payload.phantom then cfg.MythicBanner else cfg.MythicPrizeBanner, who)
+	banner.TextColor3 = cfg.Colors.Legendary
 	task.delay(DropController.RevealDelay(), function()
 		banner.Visible = true
 		flash.BackgroundTransparency = R.FlashAlpha
@@ -191,6 +192,19 @@ local function mythicBanner(payload: Types.DropEventPayload)
 		task.wait(R.BannerSeconds)
 		banner.Visible = false
 		flash.Visible = false
+	end)
+end
+
+-- A line for the whole server right now (A PHANTOM HAS ENTERED THE MATCH), in the Phantom's glow, no flash.
+local function lineBanner(payload: Types.DropEventPayload)
+	banner.Text = payload.text or ""
+	banner.TextColor3 = Config.Vehicles.Phantom.Glow
+	banner.Visible = true
+	local text = banner.Text
+	task.delay(R.BannerSeconds, function()
+		if banner.Text == text then
+			banner.Visible = false
+		end
 	end)
 end
 
@@ -279,6 +293,8 @@ function DropController.Init()
 			reveal(payload)
 		elseif payload.kind == "Mythic" then
 			mythicBanner(payload)
+		elseif payload.kind == "Banner" then
+			lineBanner(payload)
 		end
 	end)
 	-- the next match is on its way: the card goes

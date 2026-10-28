@@ -200,11 +200,31 @@ function ItemService.GetActiveStands(): { CFrame }
 	return list
 end
 
--- Returns true when a shield absorbed the hit (and tells the victim).
-local function consumeShield(victim: Player, position: Vector3): boolean
+-- A built-in shield (the Phantom: Config.Vehicles.Stats.<Id>.BuiltInShield) that is charged now takes the hit and
+-- starts recharging; the ready time is a player attribute every client reads for the bubble.
+local function consumeBuiltInShield(victim: Player, position: Vector3): boolean
+	local entry = VehicleService.GetEntry(victim)
+	local stats = if entry then Config.Vehicles.Stats[entry.vehicleId] else nil
+	if not stats or not stats.BuiltInShield then
+		return false
+	end
+	local p = Config.Vehicles.Phantom
+	local readyAt = victim:GetAttribute(p.ShieldAttribute)
+	if typeof(readyAt) == "number" and now() < readyAt then
+		return false
+	end
+	victim:SetAttribute(p.ShieldAttribute, now() + p.ShieldRecharge)
+	fire(victim, { kind = "ShieldBreak", item = "Shield" })
+	broadcast({ kind = "Burst", item = "Shield", position = position })
+	return true
+end
+
+-- Returns true when a shield absorbed the hit (and tells the victim). `source` "Tomato" or "ram": a charged built-in
+-- shield takes it when there's no Shield item up (pedestrians and traps get past it).
+local function consumeShield(victim: Player, position: Vector3, source: string?): boolean
 	local left = shieldHits[victim] or 0
 	if left <= 0 then
-		return false
+		return (source == "Tomato" or source == "ram") and consumeBuiltInShield(victim, position)
 	end
 	left -= 1
 	if left > 0 then
@@ -234,9 +254,10 @@ function ItemService.SetBoxRespawn(seconds: number?)
 	end
 end
 
--- A non-item hit (a pedestrian clip) a raised Shield can take instead of the passenger. True when it did.
-function ItemService.AbsorbHit(victim: Player, position: Vector3): boolean
-	return consumeShield(victim, position)
+-- A non-item hit a raised Shield can take instead of the passenger (`source` "ram" also lets a built-in shield take
+-- it; a pedestrian clip passes nothing). True when it did.
+function ItemService.AbsorbHit(victim: Player, position: Vector3, source: string?): boolean
+	return consumeShield(victim, position, source)
 end
 
 -- Nearest rival inside LockRange; a loaded rival wins over an empty one at any distance.
@@ -482,7 +503,7 @@ end
 local function hitWithTomato(projectile: Projectile, victim: Player, victimEntry: VehicleService.VehicleEntry)
 	local cfg = Config.Items.Tomato
 	local at = victimEntry.chassis.Position
-	if consumeShield(victim, at) then
+	if consumeShield(victim, at, "Tomato") then
 		fire(projectile.owner, { kind = "HitConfirm", item = "Shield", attacker = victim.DisplayName })
 		return
 	end
@@ -698,6 +719,9 @@ function ItemService.ClearAll()
 	table.clear(traps)
 	table.clear(held)
 	table.clear(spare)
+	for _, player in Players:GetPlayers() do
+		player:SetAttribute(Config.Vehicles.Phantom.ShieldAttribute, 0) -- built-in shields start each round charged
+	end
 	for player in shieldHits do
 		VehicleService.SetHighlight(player, nil, 0)
 	end

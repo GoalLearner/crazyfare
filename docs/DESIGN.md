@@ -206,18 +206,26 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - Phones first: the whole HUD and every panel shrink to fit a phone screen under Roblox's top bar; the touch pads stay thumb-sized.
 - Seasons later (new map + pass + limited event every 6–8 weeks). No ranked MMR.
 
-## 9b. Post-match drops (owner spec 2026-10-28; D1 built)
+## 9b. Post-match drops (owner spec 2026-10-28; D1 and D3 built)
 - Every person who finishes a match opens one free crate on the podium. Placement picks the crate: 1st Gold, 2nd-3rd Silver, the rest Bronze. Each crate's odds pick the rarity (Bronze 70 / 22 / 6.4 / 1.5 / 0.1 % Common / Rare / Epic / Legendary / Mythic; Silver and Gold shift up), then weights pick the prize.
 - Prizes: Gems, paints (the six shop colors and four drop-only ones), one-match item tokens (you start your next match holding that item), the Gem cars at Epic, Rocket Cab and Armored Limo at Legendary, 2,500 Gems or the Phantom at Mythic (the Phantom is about 1 in 10,000 drops). Trails, horns and Weirdo cards join in D2.
 - A car or paint you already own pays Gems instead (10 / 30 / 100 / 400 / 1,500 by rarity). Pity: an Epic or better by the 30th drop since the last one.
 - The reveal: the crate falls in beside the podium, shakes, bursts in the rarity color and shows the prize. The i button shows every tier's odds and the Phantom's chance per tier. A Mythic pull puts a gold banner and a flash on every screen in the server.
 - Free and earned only: no Gems or Robux can buy, reroll or improve a drop, and no purchase multiplies drop Gems. Bots get none. Numbers: `Config.Drops`.
 
+## 9c. The Phantom (mythic ghost horse; owner decisions 2026-10-28; built D3)
+- The top OP pick kids recognize at a glance: a matte-black horse with glowing purple eyes, a purple fire mane and tail, sparks off the hooves and a purple glow under it. It keeps the Horse's hop. The plain Horse stays the cheap Gem car.
+- Stats: top speed 115 (the fastest), the biggest boost tank, passengers +60 HP and 60% less damage, Bananas and Oil do nothing to it, purple boost flames.
+- Phantom Shield: blocks one Tomato or ram, then recharges for 20 s. Everyone sees the bubble while it's charged.
+- A target: its passenger pays a triple Hunter Bonus when knocked out (stacks with the leader bounty), it wears a pulsing purple ring on every minimap, and "A PHANTOM HAS ENTERED THE MATCH" crosses every screen at each round's countdown.
+- Owners get a serial number (#1, #2, ...) on the PHANTOM OWNERS board in QUESTS. The Garage and the shop show how many own one ("ONLY 3 OWN THE PHANTOM") and yours ("YOURS IS #3").
+- How to get it: a Mythic drop (about 1 in 10,000), or 999 R$ only inside a limited offer window (`Config.Monetization.PhantomOffer`, start and end in UTC). Outside the window it reads MYTHIC DROP ONLY and can't be bought. Numbers: `Config.Vehicles.Stats.Phantom` and `Config.Vehicles.Phantom`.
+
 ## 10. Monetization
 
 - Gem packs (dev products) with a one-time Starter Pack offered in the first 2 sessions (300 Gems, the Go-Kart, every upgrade to level 3).
 - Game passes: VIP (2x Gems, +25% cash on every delivery, a gold VIP tag), Turbo Tank (double boost tank, refills 50% faster), Armored Seats (passengers take half damage), Double Item (hold 2), Head Start (+$10 toward the quota every round), Fare Radar (a beacon over every Golden and long fare, through buildings), Pit Stop Plus (6 cards), 2x XP.
-- Robux cars: Night Cab and Ice Cream Truck (also for Gems), Rocket Cab and Armored Limo (Robux only).
+- Robux cars: Night Cab and Ice Cream Truck (also for Gems), Rocket Cab and Armored Limo (Robux only), the Phantom (999 R$, only inside its limited offer window; otherwise a Mythic drop).
 - Max Upgrades (developer product): every upgrade to level 10, for every car; already maxed pays 500 Gems instead.
 - **No temporary upgrades** (owner decision 2026-10-28): the in-match boosts (Item Drop, Tomato Barrage, Nitro Refill, Patch Up, Cash Boost) were cut and their products set off sale. Everything sold lasts forever.
 - Private servers and Premium Payouts via engagement.

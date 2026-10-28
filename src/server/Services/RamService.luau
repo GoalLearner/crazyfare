@@ -97,7 +97,7 @@ local function ram(attacker: Player, aEntry: VehicleService.VehicleEntry, victim
 	local lost = 0
 	local shielded = false
 	if PassengerService.GetLoaded(victim) and not PassengerService.IsImmune(victim) then
-		shielded = ItemService.AbsorbHit(victim, vEntry.chassis.Position)
+		shielded = ItemService.AbsorbHit(victim, vEntry.chassis.Position, "ram")
 		if not shielded then
 			lost = PassengerService.ApplyDamage(victim, damage, "ram", attacker)
 		end

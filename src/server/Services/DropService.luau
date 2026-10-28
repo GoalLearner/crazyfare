@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local DataService = require(script.Parent.DataService)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local DropService = {}
 
@@ -123,6 +124,10 @@ local function grant(player: Player, d: DataService.ProfileData, entry: Config.D
 			duplicate = true
 		else
 			d.OwnedVehicles[ref] = true
+			local stats = Config.Vehicles.Stats[ref]
+			if stats and stats.Mythic then
+				LeaderboardService.RegisterPhantom(player) -- the next serial on the owners board
+			end
 		end
 	elseif entry.Kind == "Boost" then
 		d.Inventory.Boosts[ref] = (d.Inventory.Boosts[ref] or 0) + 1
@@ -197,6 +202,11 @@ function DropService.AwardMatch(results: { Types.PodiumEntry })
 			open(player, place)
 		end
 	end
+end
+
+-- A line on every screen (RoundService: A PHANTOM HAS ENTERED THE MATCH).
+function DropService.Banner(text: string)
+	dropEvent:FireAllClients({ kind = "Banner", text = text })
 end
 
 -- Round 1 setup (RoundService): uses one boost token, the one you hold most of. Returns the item to start with.

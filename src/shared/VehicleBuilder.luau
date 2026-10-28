@@ -221,6 +221,65 @@ local function buildIceCreamTruck(model: Model, color: Color3)
 	finish(model, chassis, -5.5, 5.5)
 end
 
+-- A glowing particle source (the Phantom's mane fire and hoof sparks).
+local function glowEmitter(parent: Instance, texture: string, color: Color3, rate: number, size: number, speed: number, lifetime: number): ParticleEmitter
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = texture
+	emitter.Color = ColorSequence.new(Color3.new(1, 1, 1), color)
+	emitter.LightEmission = 1
+	emitter.LightInfluence = 0
+	emitter.Rate = rate
+	emitter.Lifetime = NumberRange.new(lifetime * 0.6, lifetime)
+	emitter.Speed = NumberRange.new(speed * 0.5, speed)
+	emitter.Size = NumberSequence.new(size, 0)
+	emitter.Transparency = NumberSequence.new(0.1, 1)
+	emitter.SpreadAngle = Vector2.new(25, 25)
+	emitter.Parent = parent
+	return emitter
+end
+
+-- The Phantom (mythic, owner 2026-10-28): the Horse's body as a ghost horse. Matte black, glowing eyes, a mane and
+-- tail of purple fire, sparks off the hooves, a purple glow underneath. Glow color: Config.Vehicles.Phantom.
+local function buildPhantom(model: Model, color: Color3)
+	local cfg = Config.Vehicles.Phantom
+	local glow = cfg.Glow
+	local chassis = makeChassis(model, Vector3.new(3.6, 1.6, 8), color)
+	local neck = paintable(makePart("Neck", Vector3.new(1.6, 3, 1.6), CFrame.new(0, 1.8, -3.4) * CFrame.Angles(math.rad(25), 0, 0), color, model))
+	weld(chassis, neck)
+	local head = paintable(makePart("Head", Vector3.new(1.5, 1.4, 2.8), CFrame.new(0, 3.3, -4.9), color, model))
+	weld(chassis, head)
+	for _, side in { -1, 1 } do
+		local ear = makePart("Ear", Vector3.new(0.4, 0.8, 0.4), CFrame.new(0.5 * side, 4.2, -4.2), color, model)
+		weld(chassis, ear)
+		neon("Eye", Vector3.new(0.25, 0.35, 0.5), CFrame.new(0.76 * side, 3.5, -5.3), glow, chassis, model)
+	end
+	local mane = neon("Mane", Vector3.new(0.5, 3.2, 0.6), CFrame.new(0, 2.1, -2.8) * CFrame.Angles(math.rad(25), 0, 0), glow, chassis, model)
+	glowEmitter(mane, "rbxasset://textures/particles/fire_main.dds", glow, 30, 1.4, 3, 0.5)
+	local tail = neon("Tail", Vector3.new(0.5, 2.4, 0.5), CFrame.new(0, 0.4, 4.3) * CFrame.Angles(math.rad(-30), 0, 0), glow, chassis, model)
+	glowEmitter(tail, "rbxasset://textures/particles/fire_main.dds", glow, 20, 1.1, 2.5, 0.45)
+	local saddle = makePart("Saddle", Vector3.new(2.4, 0.6, 2.4), CFrame.new(0, 1.1, 0.6), DARK, model)
+	weld(chassis, saddle)
+	neon("SaddleTrim", Vector3.new(2.5, 0.15, 2.5), CFrame.new(0, 1.42, 0.6), glow, chassis, model)
+	-- the glow underneath and a light that paints the road purple
+	local under = neon("Underglow", Vector3.new(3.2, 0.1, 7.2), CFrame.new(0, -0.85, 0), glow, chassis, model)
+	under.Transparency = 0.25
+	local light = Instance.new("PointLight")
+	light.Color = glow
+	light.Range = cfg.GlowRange
+	light.Brightness = 2
+	light.Parent = under
+	makeWheels(model, chassis, 1.4, 2.8, true, color)
+	-- sparks off each hoof
+	for _, name in { "WheelFL", "WheelFR", "WheelRL", "WheelRR" } do
+		local hoof = model:FindFirstChild(name)
+		if hoof and hoof:IsA("BasePart") then
+			local spark = glowEmitter(hoof, "rbxasset://textures/particles/sparkles_main.dds", glow, cfg.SparkRate, 0.5, 4, 0.4)
+			spark.EmissionDirection = Enum.NormalId.Bottom
+		end
+	end
+	finish(model, chassis, -4, 4)
+end
+
 -- Rocket Cab (Robux only): a low cab with twin rocket boosters, glowing nozzles and a tail fin.
 local function buildRocketCab(model: Model, color: Color3)
 	local chassis = makeChassis(model, Vector3.new(6, 1.4, 11.5), color)
@@ -289,6 +348,8 @@ function VehicleBuilder.Build(vehicleId: string): Model
 		buildRocketCab(model, stats.Color)
 	elseif vehicleId == "ArmoredLimo" then
 		buildArmoredLimo(model, stats.Color)
+	elseif vehicleId == "Phantom" then
+		buildPhantom(model, stats.Color)
 	else
 		buildCab(model, stats.Color, Color3.fromRGB(255, 140, 30))
 	end

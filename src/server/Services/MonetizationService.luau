@@ -13,9 +13,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local DataService = require(script.Parent.DataService)
 
 local MonetizationService = {}
+
+local onVehicleGranted: Signal.Signal<Player, string> = Signal.new()
+MonetizationService.OnVehicleGranted = onVehicleGranted -- (player, vehicleId) a Robux car product was granted
 
 local passes: { [Player]: { [string]: boolean } } = {}
 local debugPasses: { [Player]: { [string]: boolean } } = {} -- Studio: passes granted by the Debug remote
@@ -107,6 +111,7 @@ local function grantKey(player: Player, key: string): boolean
 	end
 	if Config.Monetization.VehicleProducts[key] ~= nil and Config.Vehicles.Stats[key] then
 		d.OwnedVehicles[key] = true
+		onVehicleGranted:Fire(player, key)
 		return true
 	end
 	if Config.Monetization.Boosts[key] then

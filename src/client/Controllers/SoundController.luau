@@ -239,6 +239,19 @@ function SoundController.Init()
 		end
 	end
 	engine = make("Engine", ids.Engine, true, volume * 0.6)
+	-- a car with its own engine loop (Config.Vehicles.Stats.<Id>.EngineSound, the Phantom's slot) swaps it in
+	State.VehicleChanged:Connect(function()
+		local eng = engine
+		if not eng then
+			return
+		end
+		local own = State.stats.EngineSound
+		local id = if own and own > 0 then own else ids.Engine
+		local soundId = "rbxassetid://" .. tostring(id)
+		if eng.SoundId ~= soundId then
+			eng.SoundId = soundId
+		end
+	end)
 	drift = make("Drift", ids.Drift, true, volume * 0.8)
 	boostLoop = make("BoostLoop", ids.BoostLoop or 0, true, volume * 0.7)
 	if boostLoop then
@@ -273,6 +286,8 @@ function SoundController.Init()
 		local at = r.Delay + r.DropSeconds + r.ShakeSeconds
 		if payload.kind == "Mythic" then
 			task.delay(at, sting, "Mythic")
+		elseif payload.kind == "Banner" then
+			sting("Mythic")
 		elseif payload.kind == "Drop" then
 			local rarity = table.find(Config.Drops.Rarities, payload.rarity or "") or 1
 			if rarity >= (table.find(Config.Drops.Rarities, "Epic") or 3) and payload.rarity ~= "Mythic" then

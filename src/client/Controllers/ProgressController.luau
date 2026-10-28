@@ -63,7 +63,8 @@ local function renderQuests(quests: Types.QuestPayload)
 	streakLabel.Text = if quests.streakDays > 0 then string.format("%d-DAY STREAK", quests.streakDays) else ""
 end
 
-local function renderBoard(parent: Frame, title: string, entries: { Types.BoardEntry }, money: boolean)
+-- `serials`: the value is the owner's number (#1 first), shown in front of the name instead of a rank.
+local function renderBoard(parent: Frame, title: string, entries: { Types.BoardEntry }, money: boolean, serials: boolean?)
 	for _, child in parent:GetChildren() do
 		if child:IsA("TextLabel") then
 			child:Destroy()
@@ -75,8 +76,14 @@ local function renderBoard(parent: Frame, title: string, entries: { Types.BoardE
 		local entry = entries[i]
 		local y = 20 + (i - 1) * 16
 		local isMe = entry ~= nil and entry.id == me
-		UI.Label({ Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, -60, 0, 16), Text = if entry then string.format("%d  %s", i, entry.name) else string.format("%d  -", i), TextColor3 = if isMe then UI.Warn else UI.White, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 13 }, parent)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, y), Size = UDim2.fromOffset(60, 16), Text = if entry then (if money then UI.Money(entry.value) else tostring(entry.value)) else "", TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 13 }, parent)
+		local left = if entry then string.format("%d  %s", i, entry.name) else string.format("%d  -", i)
+		local right = if entry then (if money then UI.Money(entry.value) else tostring(entry.value)) else ""
+		if serials then
+			left = if entry then string.format(Config.Vehicles.Phantom.SerialLine .. "  %s", entry.value, entry.name) else "-"
+			right = ""
+		end
+		UI.Label({ Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, if serials then 0 else -60, 0, 16), Text = left, TextColor3 = if isMe then UI.Warn else UI.White, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 13 }, parent)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, y), Size = UDim2.fromOffset(60, 16), Text = right, TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 13 }, parent)
 	end
 end
 
@@ -86,6 +93,7 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	local tip = boardsFrame:FindFirstChild("BestTip")
 	local ko = boardsFrame:FindFirstChild("Knockouts")
 	local arcade = boardsFrame:FindFirstChild("Arcade")
+	local phantom = boardsFrame:FindFirstChild("Phantom")
 	if weekly and weekly:IsA("Frame") then
 		renderBoard(weekly, "THIS WEEK · GEMS", boards.weekly, false)
 	end
@@ -100,6 +108,9 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	end
 	if arcade and arcade:IsA("Frame") then
 		renderBoard(arcade, "BEST ARCADE RUN", boards.arcade or {}, true)
+	end
+	if phantom and phantom:IsA("Frame") then
+		renderBoard(phantom, Config.Vehicles.Phantom.BoardTitle, boards.phantom or {}, false, true)
 	end
 end
 
@@ -182,11 +193,13 @@ local function build()
 		{ name = "BestTip", x = 0, y = 106 },
 		{ name = "Knockouts", x = 176, y = 106 },
 		{ name = "Arcade", x = 0, y = 212 },
+		{ name = "Phantom", x = 176, y = 212 },
 	}
 	for _, slot in slots do
 		UI.Frame({ Name = slot.name, Position = UDim2.fromOffset(slot.x, slot.y), Size = UDim2.fromOffset(170, 104), BackgroundTransparency = 1 }, boardsFrame)
 	end
-	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(176, 232), Size = UDim2.fromOffset(170, 40), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12, TextWrapped = true }, boardsFrame)
+	-- beside the LEADERBOARDS header (the Phantom board took its old spot)
+	UI.Label({ Name = "TrailNote", Position = UDim2.fromOffset(120, -22), Size = UDim2.fromOffset(226, 18), Text = string.format("Top %d this week earn the gold trail.", Config.Leaderboards.WeeklyTrailTop), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 11 }, boardsFrame)
 end
 
 -- Parked: between rounds, or not driving at all (on foot, in the depot).

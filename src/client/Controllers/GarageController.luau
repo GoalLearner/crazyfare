@@ -15,6 +15,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
+local PhantomOffer = require(script.Parent.Parent.PhantomOffer)
 
 local GarageController = {}
 
@@ -75,8 +76,15 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		UI.Corner(10, row)
 		local swatch = UI.Frame({ Position = UDim2.fromOffset(12, 10), Size = UDim2.fromOffset(14, 52), BackgroundColor3 = stats.Color, BackgroundTransparency = 0 }, row)
 		UI.Corner(4, swatch)
-		UI.Label({ Position = UDim2.fromOffset(36, 8), Size = UDim2.fromOffset(200, 22), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if owned then UI.White else UI.Muted }, row)
-		UI.Label({ Position = UDim2.fromOffset(36, 34), Size = UDim2.fromOffset(200, 30), Text = stats.Description, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
+		local mythic = stats.Mythic == true
+		UI.Label({ Position = UDim2.fromOffset(36, 8), Size = UDim2.fromOffset(200, 22), Text = string.upper(stats.DisplayName), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if mythic then Config.Vehicles.Phantom.Glow elseif owned then UI.White else UI.Muted }, row)
+		-- a Mythic car shows how rare it is (and your serial) instead of its blurb; the shop has the blurb
+		local detail = stats.Description
+		if mythic then
+			local serial = profile.phantomSerial
+			detail = PhantomOffer.OwnersText() .. "\n" .. (if owned and serial > 0 then string.format(Config.Vehicles.Phantom.YoursLine, serial) elseif owned then "" else PhantomOffer.StatusText())
+		end
+		UI.Label({ Position = UDim2.fromOffset(36, 34), Size = UDim2.fromOffset(200, 30), Text = detail, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13, TextWrapped = true }, row)
 		local stat = UI.Frame({ Position = UDim2.fromOffset(244, 10), Size = UDim2.fromOffset(140, 56), BackgroundTransparency = 1 }, row)
 		statBar(stat, 0, "SPEED", stats.TopSpeed / 100)
 		statBar(stat, 18, "ACCEL", stats.Accel / 70)
@@ -85,8 +93,10 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		local robux = Config.Monetization.VehicleRobux[id] or 0
 		-- Robux-only cars: the button buys with Robux (TEST in Studio while the id is 0)
 		if stats.RobuxOnly and not owned then
-			local canBuy = productId > 0 or RunService:IsStudio()
-			local text = if productId > 0 then string.format("R$ %d", robux) elseif canBuy then "TEST" else "SOON"
+			-- a Mythic car is for sale only inside its offer window
+			local onSale = not mythic or PhantomOffer.SecondsLeft() > 0
+			local canBuy = onSale and (productId > 0 or RunService:IsStudio())
+			local text = if not onSale then Config.Vehicles.Phantom.DropOnlyButton elseif productId > 0 then string.format("R$ %d", robux) elseif canBuy then "TEST" else "SOON"
 			local rb = button(text, Color3.fromRGB(60, 140, 80), UDim2.fromOffset(88, 30), row, canBuy)
 			rb.AnchorPoint = Vector2.new(1, 0.5)
 			rb.Position = UDim2.new(1, -12, 0.5, 0)
@@ -341,6 +351,11 @@ function GarageController.Init()
 		end
 	end)
 	State.ProfileChanged:Connect(function()
+		if isOpen or mounted then
+			render()
+		end
+	end)
+	PhantomOffer.OnOwnersChanged(function()
 		if isOpen or mounted then
 			render()
 		end

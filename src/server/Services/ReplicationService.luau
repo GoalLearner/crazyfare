@@ -37,6 +37,7 @@ local function buildSnapshot(): Types.Snapshot
 		local cf = entry.chassis.CFrame
 		local fare = FareService.GetFare(player)
 		local npc = PassengerService.GetLoaded(player)
+		local stats = Config.Vehicles.Stats[entry.vehicleId]
 		table.insert(players, {
 			id = player.UserId,
 			name = player.DisplayName,
@@ -55,6 +56,7 @@ local function buildSnapshot(): Types.Snapshot
 			level = levelOf(player),
 			vip = player:GetAttribute("VIP") == true,
 			bot = Racers.IsBot(player),
+			phantom = if stats and stats.Mythic then true else nil, -- a target: every minimap marks it
 		})
 	end
 	local leader = FareService.GetLeader()

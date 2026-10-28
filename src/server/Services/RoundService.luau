@@ -32,6 +32,7 @@ local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
 local MatchController = require(script.Parent.MatchController)
 local DropService = require(script.Parent.DropService)
+local Racers = require(script.Parent.Parent.Racers)
 
 local MapService = require(script.Parent.MapService)
 
@@ -247,6 +248,14 @@ end
 
 local function beginCountdown()
 	setPhase("Countdown", Config.Round.CountdownSeconds)
+	-- a Mythic car on the grid is everyone's business
+	for player, entry in VehicleService.GetAll() do
+		local stats = Config.Vehicles.Stats[entry.vehicleId]
+		if stats and stats.Mythic and not Racers.IsBot(player) then
+			DropService.Banner(Config.Vehicles.Phantom.EnteredBanner)
+			break
+		end
+	end
 end
 
 local function beginPlaying()

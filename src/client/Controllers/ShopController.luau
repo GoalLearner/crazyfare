@@ -15,6 +15,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
+local PhantomOffer = require(script.Parent.Parent.PhantomOffer)
 
 local ShopController = {}
 
@@ -130,8 +131,15 @@ local function renderCars(profile: Types.ProfilePayload?)
 		if not stats.RobuxOnly then
 			detail ..= string.format(" Or %d Gems in the garage.", stats.GemPrice)
 		end
-		local frame = row(order, stats.DisplayName, stats.Color:Lerp(UI.White, 0.35), detail)
-		rightButton(frame, if owned then "OWNED" else priceText(productId, M.VehicleRobux[id] or 0), not owned and buyable(productId), function()
+		-- a Mythic car: how rare it is, and on sale only inside its offer window
+		local mythic = stats.Mythic == true
+		local onSale = not mythic or PhantomOffer.SecondsLeft() > 0
+		if mythic then
+			detail = string.format("%s  ·  %s  ·  Top speed %d.", PhantomOffer.OwnersText(), PhantomOffer.StatusText(), stats.TopSpeed)
+		end
+		local frame = row(order, stats.DisplayName, if mythic then Config.Vehicles.Phantom.Glow else stats.Color:Lerp(UI.White, 0.35), detail)
+		local price = if onSale then priceText(productId, M.VehicleRobux[id] or 0) else Config.Vehicles.Phantom.DropOnlyButton
+		rightButton(frame, if owned then "OWNED" else price, not owned and onSale and buyable(productId), function()
 			buy(id, productId, false)
 		end)
 	end
@@ -295,6 +303,11 @@ function ShopController.Init()
 			render()
 		end
 		updateStarter()
+	end)
+	PhantomOffer.OnOwnersChanged(function()
+		if isOpen then
+			render()
+		end
 	end)
 	State.RoundChanged:Connect(onRound)
 	State.SessionChanged:Connect(function()

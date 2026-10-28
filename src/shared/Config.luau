@@ -39,6 +39,10 @@ export type VehicleStats = {
 	PassengerDamageMult: number?, -- scales every hit the passenger takes
 	PassengerHpBonus: number?, -- extra HP on boarding
 	Wobble: number?, -- random steering noise (0..1)
+	BuiltInShield: boolean?, -- blocks one Tomato or ram hit, recharging (Config.Vehicles.Phantom.ShieldRecharge)
+	Mythic: boolean?, -- a target: triple Hunter Bonus on its passenger, a minimap marker, a round banner, a serial number
+	FlameColor: Color3?, -- boost flames in this color instead of fire
+	EngineSound: number?, -- its own engine loop (0 / nil = the shared one)
 }
 
 export type TierWeightBand = { MaxDistance: number, Green: number, Yellow: number, Red: number }
@@ -886,7 +890,7 @@ Config.Items = {
 Config.Vehicles = {
 	Default = "YellowCab",
 	-- Sidegrades: roughly equal budgets, one gimmick each. Order here is the garage order.
-	Order = { "YellowCab", "GoKart", "ShoppingCart", "Horse", "NightCab", "IceCreamTruck", "RocketCab", "ArmoredLimo" },
+	Order = { "YellowCab", "GoKart", "ShoppingCart", "Horse", "NightCab", "IceCreamTruck", "RocketCab", "ArmoredLimo", "Phantom" },
 	Stats = {
 		YellowCab = {
 			DisplayName = "Yellow Cab",
@@ -1012,7 +1016,63 @@ Config.Vehicles = {
 			PassengerDamageMult = 0.7,
 			PassengerHpBonus = 40,
 		},
+		-- The mythic ghost horse (owner 2026-10-28: "a horse to be a top OP pick ... kids will easily recognize that it
+		-- is valuable"). About 1 in 10,000 drops, or Robux during an offer window. Strong, and painted as a target.
+		Phantom = {
+			DisplayName = "The Phantom",
+			Description = "Mythic. Fastest thing in town. Passengers +60 HP, 60% less damage. Bananas and Oil? Never heard of them.",
+			WheelType = "legs",
+			TopSpeed = 115,
+			Accel = 66,
+			Handling = 8.5,
+			DriftGrip = 0.3,
+			BoostTank = 8,
+			SteerMax = 36,
+			Gimmick = "phantom",
+			Color = Color3.fromRGB(22, 20, 30),
+			GemPrice = 0,
+			RobuxOnly = true,
+			Hop = true,
+			HopPower = 48,
+			ImmuneTo = { Banana = true, OilSlick = true },
+			PassengerDamageMult = 0.4,
+			PassengerHpBonus = 60,
+			BuiltInShield = true,
+			Mythic = true,
+			FlameColor = Color3.fromRGB(170, 80, 255),
+			EngineSound = 0, -- slot: its own engine loop
+		},
 	} :: { [string]: VehicleStats },
+	-- The Phantom's rules and looks (its stats are Stats.Phantom; systems read the Mythic / BuiltInShield flags)
+	Phantom = {
+		ShieldRecharge = 20, -- seconds after the shield blocks a hit
+		HunterMult = 3, -- Hunter Bonus times this when a Phantom's passenger bails (on top of the leader bounty)
+		Glow = Color3.fromRGB(170, 80, 255), -- eyes, mane, tail, hooves, underglow
+		GlowRange = 14, -- studs: the underglow light
+		SparkRate = 14, -- hoof sparks per second
+		BubbleColor = Color3.fromRGB(190, 120, 255),
+		BubbleTransparency = 0.72,
+		BubblePadding = 2.5, -- studs around the body
+		MarkerColor = Color3.fromRGB(200, 100, 255), -- the pulsing ring on every minimap
+		MarkerSize = 24, -- px
+		MarkerStroke = 2, -- px
+		MarkerPulseGrow = 0.6, -- the ring grows by this fraction as it fades
+		MarkerPulseSeconds = 1.2,
+		EnteredBanner = "A PHANTOM HAS ENTERED THE MATCH",
+		OwnersLine = "ONLY %d OWN THE PHANTOM",
+		OneOwnerLine = "ONLY 1 OWNS THE PHANTOM",
+		NoOwnersLine = "NOBODY OWNS ONE YET",
+		DropOnlyLine = "MYTHIC DROP ONLY",
+		DropOnlyButton = "DROP ONLY", -- the buy button outside the offer window
+		OfferLine = "R$ OFFER: %s LEFT",
+		YoursLine = "YOURS IS #%d", -- the Garage row once you own it
+		SerialLine = "#%d",
+		BoardTitle = "PHANTOM OWNERS",
+		OwnersStore = "CF_PhantomOwners", -- OrderedDataStore: UserId -> serial
+		SerialStore = "CF_PhantomSerial", -- DataStore: the last serial handed out (= owners so far; reread with the boards)
+		CountAttribute = "PhantomOwners", -- workspace attribute every client reads
+		ShieldAttribute = "PhantomShieldAt", -- player attribute: server time the shield is charged again (0 = now)
+	},
 }
 
 -- Permanent upgrades (Gems), global across vehicles in v1. Applied as player attributes Up_<Name> = 1 + Per * level.
@@ -1392,8 +1452,12 @@ Config.Monetization = {
 		IceCreamTruck = 3723347372,
 		RocketCab = 3723347470,
 		ArmoredLimo = 3723347558,
+		Phantom = 3723363979, -- sold only inside PhantomOffer
 	} :: { [string]: number },
-	VehicleRobux = { NightCab = 149, IceCreamTruck = 149, RocketCab = 499, ArmoredLimo = 399 } :: { [string]: number },
+	VehicleRobux = { NightCab = 149, IceCreamTruck = 149, RocketCab = 499, ArmoredLimo = 399, Phantom = 999 } :: { [string]: number },
+	-- The Phantom's limited-time Robux offer: unix seconds (UTC). Outside the window it reads MYTHIC DROP ONLY and can't
+	-- be bought; set both to 0 for no offer.
+	PhantomOffer = { StartUtc = 0, EndUtc = 0 },
 	-- Permanent upgrades sold for Robux (developer products), applied by StoreService once Roblox confirms the purchase.
 	-- (The in-match boosts Item Drop, Tomato Barrage, Nitro Refill, Patch Up and Cash Boost were cut 2026-10-28, owner:
 	-- no temporary upgrades. Their products are off sale in Creator Hub.)
@@ -1634,6 +1698,7 @@ Config.Data = {
 		DropCount = 0, -- post-match drops opened, ever
 		PityCounter = 0, -- drops since the last Epic or better (Config.Drops.PityEpic)
 		Inventory = { Paints = {}, Boosts = {} } :: { [string]: { [string]: number } }, -- owned paints (1), boost tokens (count)
+		PhantomSerial = 0, -- your Phantom's number among all owners (0 = none yet)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)
 	},

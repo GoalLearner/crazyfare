@@ -28,6 +28,7 @@ export type PlayerSnap = {
 	level: number,
 	vip: boolean,
 	bot: boolean, -- an AI rival taxi
+	phantom: boolean?, -- drives a Mythic car (the Phantom): a target, marked on every minimap
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking
@@ -115,11 +116,12 @@ export type ProfilePayload = {
 	inventory: { [string]: { [string]: number } }, -- Paints (owned = 1), Boosts (tokens: next match starts holding one)
 	dropCount: number,
 	pity: number, -- drops since the last Epic or better
+	phantomSerial: number, -- your Phantom's number among all owners (0 = none)
 }
 
 -- A post-match drop (DropService -> the player who opened it), or a Mythic pull told to everyone (kind "Mythic").
 export type DropEventPayload = {
-	kind: string, -- "Drop" | "Mythic"
+	kind: string, -- "Drop" | "Mythic" | "Banner"
 	tier: string?, -- "Gold" | "Silver" | "Bronze"
 	rarity: string?,
 	prize: string?, -- Config.Drops.Pool Id
@@ -128,6 +130,7 @@ export type DropEventPayload = {
 	pity: number?, -- drops since the last Epic or better, after this one
 	who: string?, -- "Mythic": the puller's display name
 	phantom: boolean?, -- "Mythic": the prize was the Phantom
+	text: string?, -- "Banner": a line for every screen (A PHANTOM HAS ENTERED THE MATCH)
 }
 
 -- OPTIONS: volume steps index Config.Options.VolumeSteps (1 = off); the switches turn camera shake and speed effects off.
@@ -150,6 +153,7 @@ export type LeaderboardPayload = {
 	bestTip: { BoardEntry },
 	knockouts: { BoardEntry },
 	arcade: { BoardEntry }, -- best Arcade run (cents)
+	phantom: { BoardEntry }?, -- Phantom owners, lowest serial first (value = serial)
 	weekResetsIn: number,
 }
 
