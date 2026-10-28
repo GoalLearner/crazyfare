@@ -41,10 +41,10 @@ th { color:var(--muted); font-weight:600; font-size:13px; }
 <section>
 <h2><b>1</b> What players can buy</h2>
 <ul>
-<li><b>SHOP</b> now has four tabs: PASSES, CARS, BOOSTS, GEMS.</li>
+<li><b>SHOP</b> now has four tabs: PASSES, CARS, UPGRADES, GEMS. Everything sold is permanent.</li>
 <li><b>Passes:</b> VIP (2x Gems, +25% cash on every delivery, gold name tag), Turbo Tank (double boost tank, fills 50% faster), Armored Seats (passengers take half damage), Double Item (hold 2), Head Start ($10 toward the quota every round), Fare Radar (a $$ beacon over every golden and long fare, through buildings), Pit Stop Plus, 2x XP.</li>
 <li><b>Robux cars:</b> Rocket Cab (fastest car: top speed 105, the best free one is 90) and Armored Limo (+40 HP, 30% less damage). Night Cab and Ice Cream Truck can still be bought with Gems too.</li>
-<li><b>Boosts while you drive:</b> a strip on the left of the screen (under the map on phones): ITEM, TOMATO x3, NITRO, PATCH UP, +$15. A boost that wouldn't do anything right now is greyed out. If one can't apply anyway (say the round ended mid-purchase), the player gets Gems instead, so nobody pays for nothing.</li>
+<li><b>In-match boosts were cut</b> (Oct 28, your call: no temporary upgrades). Item Drop, Tomato Barrage, Nitro Refill, Patch Up and Cash Boost are gone from the game and off sale in Creator Hub (Roblox doesn't let products be deleted).</li>
 <li><b>Upgrades</b> go to level 10 now, so Gem packs and the Max Upgrades product (199 R$) are the fast way up. The Starter Pack also raises every upgrade to level 3.</li>
 </ul>
 </section>
@@ -56,7 +56,6 @@ th { color:var(--muted); font-weight:600; font-size:13px; }
 <li>NITRO filled an empty boost tank; PATCH UP took a passenger from 20/60 to 60/60; TOMATO x3 gave three Tomatoes; +$15 showed $15.00.</li>
 <li>Head Start gave $10.00 at the start of round 2; Max Upgrades maxed the car; Fare Radar put beacons on the 3 golden and long fares; a VIP delivery paid 25% more ($9.00 became $11.25).</li>
 <li>The Rocket Cab (red, twin rocket boosters) and the Armored Limo (black, gold trim) built and drove.</li>
-<li>On a small phone the boost strip fits under the map, clear of the BOOST button.</li>
 <li>Fixed while testing: TOMATO x3 and +$15 couldn't be bought mid-round, the Starter Pack card covered the Pit Stop, the radar beacon hid behind the fare's badge, the limo's trim covered its roof, and maxed handling could roll the car in a hard turn (now a little lower).</li>
 </ul>
 </section>
@@ -65,7 +64,6 @@ th { color:var(--muted); font-weight:600; font-size:13px; }
 <h2><b>3</b> Your Studio test</h2>
 <ol>
 <li>Test, then PLAY. Open SHOP: every price reads <b>TEST</b> in Studio, and tapping it gives you the item as if you bought it (no Robux).</li>
-<li>Join a match: the boost strip appears on the left once the round starts.</li>
 <li>Once you paste real ids, Studio shows Roblox's purchase dialog instead (Studio purchases are free test buys).</li>
 </ol>
 </section>
@@ -79,9 +77,7 @@ th { color:var(--muted); font-weight:600; font-size:13px; }
 <tr><td><code>TurboTankMult / TurboFillMult</code></td><td>2 / 1.5</td><td>Turbo Tank size and refill</td></tr>
 <tr><td><code>ArmoredSeatsDamageMult</code></td><td>0.5</td><td>Armored Seats damage</td></tr>
 <tr><td><code>HeadStartDollars</code></td><td>$10</td><td>Head Start each round</td></tr>
-<tr><td><code>BarrageCount / CashBoostDollars</code></td><td>3 / $15</td><td>Tomato Barrage and the cash boost</td></tr>
 <tr><td><code>Boosts.*.FallbackGems</code></td><td>35 to 500</td><td>Gems paid when a boost can't apply</td></tr>
-<tr><td><code>QuickBuy / QuickBuyTouch</code></td><td>5 / 3 boosts</td><td>The boost strip on computers and phones</td></tr>
 <tr><td><code>Config.Upgrades</code></td><td>10 levels</td><td>Upgrade strength and Gem prices</td></tr>
 </table>
 </div>

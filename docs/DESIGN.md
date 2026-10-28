@@ -152,7 +152,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 - **Cash ($):** earned from fares, spent only at the Pit Stop, resets at match end. Never persisted.
 - **Gems:** awarded at match end (placement + fares delivered) and from quests, and sold in packs. Persisted. Buys vehicles, cosmetics, map unlocks, permanent upgrades.
-- Pay-to-win (owner decision 2026-10-27): Robux passes, cars and in-match products can affect a match in progress (section 10).
+- Pay-to-win (owner decision 2026-10-27): Robux passes, cars and upgrades carry into every match (section 10). Everything sold is permanent (no in-match boosts, owner 2026-10-28).
 
 ## 6. Vehicles
 
@@ -211,7 +211,8 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - Gem packs (dev products) with a one-time Starter Pack offered in the first 2 sessions (300 Gems, the Go-Kart, every upgrade to level 3).
 - Game passes: VIP (2x Gems, +25% cash on every delivery, a gold VIP tag), Turbo Tank (double boost tank, refills 50% faster), Armored Seats (passengers take half damage), Double Item (hold 2), Head Start (+$10 toward the quota every round), Fare Radar (a beacon over every Golden and long fare, through buildings), Pit Stop Plus (6 cards), 2x XP.
 - Robux cars: Night Cab and Ice Cream Truck (also for Gems), Rocket Cab and Armored Limo (Robux only).
-- In-match boosts (developer products) from a quick-buy strip on the HUD while you drive: Item Drop, Tomato Barrage (3 Tomatoes), Nitro Refill, Patch Up (passenger to full HP), +$15 this round; Max Upgrades any time. A boost that can't apply (not driving, no passenger, tank already full) pays Gems instead; the strip greys out a boost that would do nothing.
+- Max Upgrades (developer product): every upgrade to level 10, for every car; already maxed pays 500 Gems instead.
+- **No temporary upgrades** (owner decision 2026-10-28): the in-match boosts (Item Drop, Tomato Barrage, Nitro Refill, Patch Up, Cash Boost) were cut and their products set off sale. Everything sold lasts forever.
 - Private servers and Premium Payouts via engagement.
 - **Pay-to-win, fully (owner decision 2026-10-27: "100% pay to win").** Passes and products may sell speed, boost, passenger HP, items, round cash and upgrade levels, including mid-match. This replaces the earlier "never sell HP, damage, speed or quota" rule. Everything is granted on the server; paid random items (a crate) show their odds and are hidden where `PolicyService` restricts them.
 

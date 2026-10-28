@@ -49,7 +49,7 @@ local onSmash: Signal.Signal<Player> = Signal.new()
 ItemService.OnSmash = onSmash -- (driver) drove through a fruit stand
 
 local held: { [Player]: string } = {}
-local spare: { [Player]: { string } } = {} -- items waiting behind the held one (Double Item, bought items), in order
+local spare: { [Player]: { string } } = {} -- items waiting behind the held one (the Double Item pass), in order
 local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
 local boxRespawn: number? = nil -- Frenzy: boxes come back this fast
 local boxes: { Box } = {}
@@ -151,24 +151,6 @@ local function addItem(player: Player, item: string)
 	fire(player, { kind = "Granted", item = held[player], count = spareCount(player) })
 end
 
--- What a box would give this player right now (their rank's weights).
-function ItemService.Roll(player: Player): string
-	return roll(FareService.GetRankBucket(player))
-end
-
--- Bought items (StoreService): `count` of `item`, past the slot limit if need be.
-function ItemService.GiveExtra(player: Player, item: string, count: number)
-	if not Config.Items.Pool[item] then
-		return
-	end
-	for _ = 1, count do
-		addItem(player, item)
-	end
-end
-
-function ItemService.IsEnabled(): boolean
-	return enabled
-end
 
 function ItemService.HasShield(player: Player): boolean
 	return (shieldHits[player] or 0) > 0

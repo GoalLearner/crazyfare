@@ -135,7 +135,7 @@ export type PitStopCardDef = { Name: string, Effect: string, Share: number, Valu
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
 export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string?, UpgradeLevel: number? }
 export type GamePassDef = { Id: number, Label: string, Effect: string, Robux: number }
--- A consumable sold mid-match (Config.Monetization.Boosts); FallbackGems are paid when it can't apply right then.
+-- A Robux upgrade (Config.Monetization.Boosts); FallbackGems are paid when it can't apply (already maxed).
 export type BoostDef = { Id: number, Label: string, Effect: string, Robux: number, FallbackGems: number, Color: Color3 }
 export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: number, GemMult: number }
 export type EventWindow = { Kind: string, Day: number, HourUtc: number, Hours: number } -- Day: 1 = Sunday ... 7 = Saturday
@@ -1386,25 +1386,16 @@ Config.Monetization = {
 		ArmoredLimo = 3723347558,
 	} :: { [string]: number },
 	VehicleRobux = { NightCab = 149, IceCreamTruck = 149, RocketCab = 499, ArmoredLimo = 399 } :: { [string]: number },
-	-- In-match boosts (developer products): applied by the server the moment Roblox confirms the purchase.
+	-- Permanent upgrades sold for Robux (developer products), applied by StoreService once Roblox confirms the purchase.
+	-- (The in-match boosts Item Drop, Tomato Barrage, Nitro Refill, Patch Up and Cash Boost were cut 2026-10-28, owner:
+	-- no temporary upgrades. Their products are off sale in Creator Hub.)
 	Boosts = {
-		ItemDrop = { Id = 3723347641, Label = "ITEM", Effect = "A random item in your slot, right now", Robux = 25, FallbackGems = 60, Color = Color3.fromRGB(240, 170, 40) },
-		TomatoBarrage = { Id = 3723347720, Label = "TOMATO x3", Effect = "3 Tomatoes. Aim for the leader", Robux = 49, FallbackGems = 120, Color = Color3.fromRGB(230, 60, 50) },
-		NitroRefill = { Id = 3723347806, Label = "NITRO", Effect = "A full boost tank, right now", Robux = 15, FallbackGems = 35, Color = Color3.fromRGB(80, 200, 255) },
-		PatchUp = { Id = 3723347898, Label = "PATCH UP", Effect = "Your passenger back to full HP", Robux = 25, FallbackGems = 60, Color = Color3.fromRGB(90, 220, 120) },
-		CashBoost = { Id = 3723347987, Label = "+$15", Effect = "+$15 this round", Robux = 49, FallbackGems = 120, Color = Color3.fromRGB(120, 240, 130) },
-		MaxUpgrades = { Id = 3723348059, Label = "MAX UPGRADES", Effect = "Every upgrade to the top level", Robux = 199, FallbackGems = 500, Color = Color3.fromRGB(170, 110, 255) },
+		MaxUpgrades = { Id = 3723348059, Label = "MAX UPGRADES", Effect = "Every upgrade to the top level, for every car", Robux = 199, FallbackGems = 500, Color = Color3.fromRGB(170, 110, 255) },
 	} :: { [string]: BoostDef },
-	BoostOrder = { "ItemDrop", "TomatoBarrage", "NitroRefill", "PatchUp", "CashBoost", "MaxUpgrades" },
-	BarrageCount = 3, -- Tomatoes in a Tomato Barrage
-	CashBoostDollars = 15,
-	-- The quick-buy strip on the HUD while you drive a round (only boosts that have an id, or TEST in Studio): left of
-	-- the screen on a computer; on a phone a shorter one under the minimap, clear of the driving pads
-	QuickBuy = { "ItemDrop", "TomatoBarrage", "NitroRefill", "PatchUp", "CashBoost" },
-	QuickBuyTouch = { "ItemDrop", "NitroRefill", "PatchUp" },
-	BoughtLine = "%s!", -- the HUD line when a boost lands
-	FallbackLine = "%s COULDN'T APPLY  +%d GEMS", -- not driving, no passenger, already maxed...
-	Tabs = { "PASSES", "CARS", "BOOSTS", "GEMS" },
+	BoostOrder = { "MaxUpgrades" },
+	BoughtLine = "%s!", -- the HUD line when one lands
+	FallbackLine = "%s COULDN'T APPLY  +%d GEMS", -- already maxed
+	Tabs = { "PASSES", "CARS", "UPGRADES", "GEMS" },
 	-- Fare Radar pass: a beacon over every waiting Golden and long (Red) fare, seen through buildings from anywhere,
 	-- while you drive with nobody aboard
 	Radar = {

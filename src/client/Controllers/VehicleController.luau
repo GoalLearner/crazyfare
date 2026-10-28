@@ -12,7 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
-local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local InputController = require(script.Parent.InputController)
 
@@ -530,12 +529,6 @@ function VehicleController.Init()
 	end)
 	InputController.OnHop:Connect(function()
 		hopPressedAt = os.clock()
-	end)
-	-- Nitro Refill (a Robux boost): the server says the tank is full now
-	State.ItemEvent:Connect(function(payload: Types.ItemEventPayload)
-		if payload.kind == "Refill" then
-			State.boostTank = State.boostTankMax
-		end
 	end)
 	workspace.ChildAdded:Connect(function(child: Instance)
 		if child.Name == "Map" or child.Name == "Depot" then

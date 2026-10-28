@@ -1,13 +1,12 @@
 --!strict
--- The shop (pay-to-win, owner decision 2026-10-27): tabs for game passes, Robux cars, in-match boosts and Gem packs,
--- the one-time Starter Pack card in a player's first sessions, and a quick-buy strip on the HUD while you drive a round
--- (Config.Monetization.QuickBuy). Purchases prompt Roblox's own dialog; the server grants through ProcessReceipt and
--- syncs the profile back. An id of 0 shows COMING SOON, or TEST in Studio, which grants it through the Debug remote.
+-- The shop (pay-to-win, owner decision 2026-10-27): tabs for game passes, Robux cars, Robux upgrades and Gem packs,
+-- and the one-time Starter Pack card in a player's first sessions. Everything sold is permanent (the in-match boosts
+-- were cut 2026-10-28). Purchases prompt Roblox's own dialog; the server grants through ProcessReceipt and syncs the
+-- profile back. An id of 0 shows COMING SOON, or TEST in Studio, which grants it through the Debug remote.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -33,8 +32,6 @@ local gemsLabel: TextLabel
 local tabButtons: { [string]: TextButton } = {}
 local list: ScrollingFrame
 local starterCard: Frame
-local quickStrip: Frame
-local quickButtons: { [string]: TextButton } = {}
 local isOpen = false
 local tab = M.Tabs[1]
 local shopAction: RemoteEvent
@@ -140,16 +137,14 @@ local function renderCars(profile: Types.ProfilePayload?)
 	end
 end
 
-local function renderBoosts()
+local function renderUpgrades()
 	for i, key in M.BoostOrder do
 		local def = M.Boosts[key]
 		if not def then
 			continue
 		end
-		-- the shop opens between rounds: in-round boosts are bought from the strip on the HUD while you drive
-		local anytime = key == "MaxUpgrades"
-		local frame = row(i, def.Label, def.Color, def.Effect .. (if anytime then "" else ". Buy it while you drive."))
-		rightButton(frame, if anytime then priceText(def.Id, def.Robux) else "IN A ROUND", anytime and buyable(def.Id), function()
+		local frame = row(i, def.Label, def.Color, def.Effect)
+		rightButton(frame, priceText(def.Id, def.Robux), buyable(def.Id), function()
 			buy(key, def.Id, false)
 		end)
 	end
@@ -179,13 +174,15 @@ local function render()
 		renderPasses(profile)
 	elseif tab == "CARS" then
 		renderCars(profile)
-	elseif tab == "BOOSTS" then
-		renderBoosts()
+	elseif tab == "UPGRADES" then
+		renderUpgrades()
 	else
 		renderGems()
 	end
 	list.CanvasPosition = Vector2.zero
 end
+
+local updateStarter: () -> ()
 
 local function setOpen(open: boolean)
 	isOpen = open
@@ -193,37 +190,16 @@ local function setOpen(open: boolean)
 	if open then
 		render()
 	end
+	updateStarter()
 end
 
-local function updateStarter()
+function updateStarter()
 	local profile = State.profile
 	local phase = State.GetPhase()
 	-- the depot and the podium only: during a round's setup or the Pit Stop it would sit on the Pit Stop panel
-	local show = profile ~= nil and profile.showStarterPack and (phase == "Waiting" or phase == "MatchEnd") and State.sessionState ~= "Title"
+	-- (and not over the shop panel itself)
+	local show = profile ~= nil and profile.showStarterPack and (phase == "Waiting" or phase == "MatchEnd") and State.sessionState ~= "Title" and not isOpen
 	starterCard.Visible = show
-end
-
--- The quick-buy strip: while you drive a live round. A boost greys out when it would do nothing (a full tank, no
--- passenger or a healthy one), so a tap never turns into the Gem fallback by accident.
-local function updateQuick()
-	local driving = State.sessionState == "Driver" and State.GetPhase() == "Playing" and State.chassis ~= nil
-	local any = false
-	for key, b in quickButtons do
-		local def = M.Boosts[key]
-		local can = buyable(def.Id)
-		b.Visible = can
-		any = any or can
-		local useful = true
-		if key == "NitroRefill" then
-			useful = State.boostTank < State.boostTankMax - 0.05
-		elseif key == "PatchUp" then
-			useful = State.fare ~= nil and State.hp < State.maxHp
-		end
-		b.Active = useful
-		b.AutoButtonColor = useful
-		b.BackgroundTransparency = if useful then 0.1 else 0.55
-	end
-	quickStrip.Visible = driving and any
 end
 
 local function build()
@@ -299,38 +275,6 @@ local function build()
 		starterCard.Visible = false
 		shopAction:FireServer("DismissStarter")
 	end)
-
-	-- Quick-buy strip: in-round boosts, one tap to Roblox's purchase dialog. Left middle on a computer; on a phone the
-	-- left holds HOP and HONK, so a shorter strip sits under the minimap (the side buttons are hidden mid-round)
-	local quick = UI.Screen("CrazyFareQuickBuy", 12)
-	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	local keys: { string } = if touch then M.QuickBuyTouch else M.QuickBuy
-	local height = if touch then 30 else 39 -- shorter on a phone: the strip must end above the BOOST pad
-	quickStrip = UI.Frame({
-		AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(0, 0.5),
-		Position = if touch then UDim2.new(1, -24, 0, 24 + Config.Hud.MinimapSize + 10) else UDim2.new(0, 24, 0.5, 0),
-		Size = UDim2.fromOffset(132, #keys * (height + 5)),
-		BackgroundTransparency = 1,
-		Visible = false,
-	}, quick)
-	UI.New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, quickStrip)
-	for i, key in keys do
-		local def = M.Boosts[key]
-		if not def then
-			continue
-		end
-		local b = button(quickStrip, "", true, UDim2.fromOffset(132, height), Color3.fromRGB(24, 26, 34))
-		b.LayoutOrder = i
-		UI.Stroke(def.Color, 2, b)
-		UI.Label({ Position = UDim2.fromOffset(8, 2), Size = UDim2.new(1, -16, 0.55, -2), Text = def.Label, TextColor3 = def.Color, TextXAlignment = Enum.TextXAlignment.Left }, b)
-		UI.Label({ Position = UDim2.new(0, 8, 0.55, 1), Size = UDim2.new(1, -16, 0.38, 0), Text = priceText(def.Id, def.Robux), TextColor3 = UI.White, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left }, b)
-		b.Activated:Connect(function()
-			if b.Active then
-				buy(key, def.Id, false)
-			end
-		end)
-		quickButtons[key] = b
-	end
 end
 
 -- Parked: between rounds, or not driving at all (on foot, in the depot).
@@ -341,7 +285,6 @@ local function onRound(payload: Types.RoundStatePayload)
 		setOpen(false)
 	end
 	updateStarter()
-	updateQuick()
 end
 
 function ShopController.Init()
@@ -367,8 +310,6 @@ function ShopController.Init()
 	end)
 end
 
-function ShopController.Start()
-	RunService.Heartbeat:Connect(updateQuick)
-end
+function ShopController.Start() end
 
 return ShopController
