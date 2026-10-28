@@ -16,8 +16,9 @@ local Tags = Config.Tags
 local DevBlockout = {}
 
 type Blockout = typeof(Config.Map.City.Blockout)
--- buildings / icons / street / trees: the imported art (Config.Art); boxes: every building's collision box, for finding roofs
-type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string, buildings: { Model }, icons: { [string]: Model }, street: { [string]: Model }, trees: { Model }, boxes: { BasePart } }
+-- buildings / houses / icons / street / trees: the imported art (Config.Art); boxes: every building's collision box, for finding roofs
+type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string, buildings: { Model }, houses: { Model }, icons: { [string]: Model }, street: { [string]: Model }, trees: { Model }, boxes: { BasePart } }
+type BuildingSpec = typeof(Config.Art.Buildings)
 type BuildingFit = { template: Model, facing: Vector3, scale: number, weight: number, footprint: Vector3 }
 type Spot = { position: Vector3, look: Vector3 }
 type Lot = { x: number, z: number, w: number, d: number }
@@ -486,14 +487,13 @@ end
 -- cover Fill of the lot, kept only when its height lands in the block's band (towers downtown), a fuller fit likelier.
 -- An invisible box carries the collision and the Building tag, so physics, near misses and raycasts see one simple
 -- shape; the mesh is looks only. False when nothing fits (the lot gets a box building).
-local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, facings: { Vector3 }): boolean
-	local art = Config.Art.Buildings
+local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, facings: { Vector3 }, templates: { Model }, art: BuildingSpec): BuildingFit?
 	local downtown = Vector3.new(lot.x, 0, lot.z).Magnitude <= art.DowntownRadius
 	local maxHeight = if downtown then art.DowntownMaxHeight else art.MaxHeight
 	local turned = math.abs(math.sin(math.rad(art.FrontYaw))) > 0.5
 	local fits: { BuildingFit } = {}
 	local total = 0
-	for _, template in ctx.buildings do
+	for _, template in templates do
 		local _, raw = template:GetBoundingBox()
 		local size = if turned then Vector3.new(raw.Z, raw.Y, raw.X) else raw
 		for _, facing in facings do
@@ -511,7 +511,7 @@ local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, facings: { 
 		end
 	end
 	if #fits == 0 then
-		return false
+		return nil
 	end
 	local pick = ctx.rng:NextNumber() * total
 	local chosen = fits[#fits]
@@ -528,14 +528,65 @@ local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, facings: { 
 	box.Transparency = 1
 	box.CastShadow = false
 	table.insert(ctx.boxes, box)
-	return true
+	return chosen
+end
+
+-- A house's yard (the Beach): a Kenney fence round the lot with an opening at the front, and a stone path from the door
+-- through the opening to the sidewalk.
+local function buildYard(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: number, fit: BuildingFit)
+	local art = Config.Art
+	local fence = ctx.street[art.Fence.Model]
+	if fence then
+		local _, size = fence:GetBoundingBox()
+		local scale = art.Fence.Height / size.Y
+		local segment = size.X * scale
+		local center = Vector3.new(lot.x, 0.5, lot.z)
+		for _, side in { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis } do
+			local alongX = math.abs(side.Z) > 0.5 -- a side facing Z runs along X
+			local length = if alongX then lot.w else lot.d
+			local reach = if alongX then lot.d / 2 else lot.w / 2
+			local count = math.floor(length / segment)
+			local front = side:Dot(fit.facing) > 0.5
+			for k = 0, count - 1 do
+				local offset = (k - (count - 1) / 2) * segment
+				if front and math.abs(offset) < art.Fence.Gap / 2 + segment / 2 then
+					continue
+				end
+				local along = if alongX then Vector3.xAxis else Vector3.zAxis
+				placeArt(fence, parent, scale, center + side * reach + along * offset, CFrame.Angles(0, if alongX then 0 else math.pi / 2, 0))
+			end
+		end
+	end
+	local path = ctx.street[art.Path.Model]
+	if path then
+		-- from the house's front wall to the sidewalk's inner edge
+		local facing = fit.facing
+		local cellCenter = Vector3.new(cx, 0, cz)
+		local houseFront = Vector3.new(lot.x, 0, lot.z):Dot(facing) + (if math.abs(facing.X) > 0.5 then fit.footprint.X else fit.footprint.Z) / 2
+		local sidewalk = cellCenter:Dot(facing) + ctx.B.CellSize / 2 - ctx.B.Sidewalk
+		local length = sidewalk - houseFront
+		if length > 1 then
+			local _, size = path:GetBoundingBox()
+			local lateral = Vector3.new(lot.x, 0, lot.z) - facing * Vector3.new(lot.x, 0, lot.z):Dot(facing)
+			local mid = lateral + facing * (houseFront + length / 2)
+			local scale = math.min(length / size.Z, art.Path.Width / size.X)
+			placeArt(path, parent, scale, Vector3.new(mid.X, 0.5, mid.Z), CFrame.Angles(0, math.atan2(facing.X, facing.Z), 0))
+		end
+	end
 end
 
 local function buildBuildingLot(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: number, li: number)
 	local B = ctx.B
 	local rng = ctx.rng
-	if ctx.theme == "city" and #ctx.buildings > 0 and placeBuildingMesh(ctx, parent, lot, lotFacings(lot, cx, cz)) then
+	if ctx.theme == "city" and #ctx.buildings > 0 and placeBuildingMesh(ctx, parent, lot, lotFacings(lot, cx, cz), ctx.buildings, Config.Art.Buildings) then
 		return
+	end
+	if ctx.theme == "beach" and #ctx.houses > 0 then
+		local fit = placeBuildingMesh(ctx, parent, lot, lotFacings(lot, cx, cz), ctx.houses, Config.Art.Houses)
+		if fit then
+			buildYard(ctx, parent, lot, cx, cz, fit)
+			return
+		end
 	end
 	local h = rng:NextNumber(B.BuildingMinHeight, B.BuildingMaxHeight)
 	local palette = if ctx.theme == "beach" then BEACH_PALETTE else CITY_PALETTE
@@ -563,7 +614,7 @@ local function buildBuildings(ctx: Ctx, parent: Folder, cx: number, cz: number)
 	local rng = ctx.rng
 	local inner = B.CellSize - 2 * B.Sidewalk
 	local layout = rng:NextInteger(1, 3)
-	if layout == 1 and ctx.theme == "city" and #ctx.buildings > 0 then
+	if layout == 1 and ((ctx.theme == "city" and #ctx.buildings > 0) or (ctx.theme == "beach" and #ctx.houses > 0)) then
 		layout = 3 -- one block-wide mesh would tower: four buildings instead
 	end
 	local lots: { Lot } = {}
@@ -879,9 +930,7 @@ local function buildCells(ctx: Ctx): { Spot }
 				buildJumpBlock(ctx, cells, cx, cz)
 			else
 				buildBuildings(ctx, cells, cx, cz)
-				if ctx.theme == "city" then
-					buildStreetTrees(ctx, cells, cx, cz)
-				end
+				buildStreetTrees(ctx, cells, cx, cz)
 			end
 			if not isPlaza then
 				buildProps(ctx, cells, cx, cz)
@@ -1483,6 +1532,7 @@ function DevBlockout.Generate(mapName: string?): Folder
 		map = map,
 		mapName = name,
 		buildings = {},
+		houses = {},
 		icons = artModels("Icons"),
 		street = artModels("Street"),
 		trees = {},
@@ -1497,6 +1547,12 @@ function DevBlockout.Generate(mapName: string?): Folder
 	for _, model in artModels("Buildings") do
 		table.insert(ctx.buildings, model)
 	end
+	for _, model in artModels("Houses") do
+		table.insert(ctx.houses, model)
+	end
+	table.sort(ctx.houses, function(a: Model, b: Model): boolean
+		return a.Name < b.Name
+	end)
 	-- a steady order, so the seeded layout repeats however the folder lists them
 	table.sort(ctx.buildings, function(a: Model, b: Model): boolean
 		return a.Name < b.Name

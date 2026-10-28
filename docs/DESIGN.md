@@ -236,7 +236,9 @@ Stylized low-poly city with a bold palette: lit window strips, crosswalks, stree
 
 **Art pass, step 2 (2026-10-27):** streets you'd believe. A double yellow center line and white edge lines on every block of road (never painted through a junction), a white stop line across each approach lane, a manhole now and then; light curbs and brick paving on the City's blocks; Kenney streetlights (arms over the road, a glowing bulb at night) at junction corners and along the inner roads, a traffic light facing its lane and a street sign at every inner junction, a red stop sign where an inner road meets the outer road; Kenney trees in the parks and on the strip between the sidewalk and the buildings (behind the walkers' line).
 
-**Art pass, step 3 (2026-10-27):** real cars. Traffic sedans and vans wear Kenney cars (a sedan, an SUV, a pickup; a van, a box truck), the bus stays our own (Kenney has none). Each bot cab is a different Kenney car (a red sports sedan, a hatchback, a luxury SUV) with a glowing roof sign in that bot's color, so rivals read as cabs and never look like traffic. Collisions are unchanged: the same boxes as before carry the physics. Next: the Beach's houses.
+**Art pass, step 3 (2026-10-27):** real cars. Traffic sedans and vans wear Kenney cars (a sedan, an SUV, a pickup; a van, a box truck), the bus stays our own (Kenney has none). Each bot cab is a different Kenney car (a red sports sedan, a hatchback, a luxury SUV) with a glowing roof sign in that bot's color, so rivals read as cabs and never look like traffic. Collisions are unchanged: the same boxes as before carry the physics.
+
+**Art pass, step 4 (2026-10-27):** a beach town. The Beach's inner blocks are Kenney suburban houses (12 kinds) facing the street, each in a wooden-fenced yard with a gap at the front and a stone path from the door to the sidewalk, Kenney trees along the sidewalk; the sand ring keeps its palms and the beach-food icons stand on the house roofs.
 
 ## 14. Open questions (not blocking Phase 1)
 

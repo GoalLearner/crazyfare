@@ -1426,6 +1426,11 @@ Config.Art = {
 		DowntownRadius = 170, -- studs from the map center: blocks this close take towers up to DowntownMaxHeight
 		DowntownMaxHeight = 190,
 	},
+	-- The Beach's blocks: Kenney suburban houses (MapModels.Houses) placed by the same rules as Buildings, each in a
+	-- fenced yard with a stone path from its door to the sidewalk; street trees out front.
+	Houses = { FrontYaw = 0, Fill = 0.72, MinHeight = 8, MaxHeight = 40, DowntownRadius = 0, DowntownMaxHeight = 40 },
+	Fence = { Model = "fence", Height = 2.6, Gap = 7 }, -- MapModels.Street; studs tall; the front fence's opening for the path
+	Path = { Model = "path-stones-long", Width = 3 }, -- MapModels.Street; studs wide
 	-- Destination name -> icon (ReplicatedStorage.MapModels.Icons.<Model>). Size: its longest side in studs; Yaw: degrees
 	-- added so its best side faces the street; Tilt: degrees it leans toward the street (a pizza stands up).
 	RoofIcons = {
