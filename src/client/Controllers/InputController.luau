@@ -137,6 +137,7 @@ local function buildTouchControls()
 	local UI = require(script.Parent.Parent.UI)
 	local cfg = Config.Touch
 	local screen = UI.Screen("CrazyFareTouch", 8, true, true) -- thumb-sized on every screen, clear of the notch
+	screen:SetAttribute(Config.Title.SelfManagedAttribute, true) -- shows itself when you can drive (the title leaves it be)
 	touchScreen = screen
 	local size = cfg.ButtonSize
 	local big = cfg.BigButton

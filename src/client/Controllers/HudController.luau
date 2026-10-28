@@ -1024,8 +1024,27 @@ function HudController.Init()
 	State.RoundChanged:Connect(onRound)
 	State.FareEvent:Connect(onFare)
 	State.ItemEvent:Connect(onItem)
+	-- Notices that arrive on the title screen (the day's streak, an invite's Gems) wait for PLAY, then show in turn.
+	local waiting: { string } = {}
 	State.Notice:Connect(function(text: string)
-		showMessage(text, UI.Accent, 2.2)
+		if State.sessionState == "Title" then
+			table.insert(waiting, text)
+			return
+		end
+		showMessage(text, UI.Accent, Config.Hud.NoticeSeconds)
+	end)
+	State.SessionChanged:Connect(function(state: string)
+		if state == "Title" or #waiting == 0 then
+			return
+		end
+		local queue = table.clone(waiting)
+		table.clear(waiting)
+		task.spawn(function()
+			for i, text in queue do
+				task.wait(if i == 1 then Config.Title.SwoopSeconds else Config.Hud.NoticeSeconds)
+				showMessage(text, UI.Accent, Config.Hud.NoticeSeconds)
+			end
+		end)
 	end)
 	State.Dashed:Connect(function(kind: string)
 		addPopup(kind, 0) -- "DASH!" / "BOOST!" over the cab, no cash: a trick, not a paid stunt

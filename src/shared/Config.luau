@@ -409,6 +409,114 @@ Config.Collection = {
 	},
 }
 
+-- Title screen (owner ask 2026-10-27, after a creator's Minecraft-style menu): every join opens on a slow drone shot over
+-- the live map (bots and players racing underneath) with the logo, a splash line and four buttons. PLAY places you
+-- (MatchController). Arrivals by teleport from our own servers skip it, and so does Studio with the workspace attribute
+-- SkipTitle = true. A loading screen (ReplicatedFirst) covers the join until the title is ready.
+Config.Title = {
+	-- the drone circles the map's center this far out and this high, looking at a point this high, once per period;
+	-- high enough to clear the City's radio mast (153 studs, 241 out) and the hotel
+	Drone = { Radius = 290, Height = 168, LookHeight = 10, PeriodSeconds = 110, Bob = 6, BobSeconds = 9 },
+	SwoopSeconds = 1.3, -- PLAY: from the drone shot down behind your car (or your character)
+	SwoopWaitSeconds = 4, -- ...which may take a moment to arrive; after this the camera goes without it
+	Grade = { Tint = Color3.fromRGB(255, 224, 186), Saturation = 0.18, Contrast = 0.06, Brightness = 0.02, FadeSeconds = 1 },
+	Logo = {
+		Text = "CRAZYFARE",
+		Font = Enum.Font.LuckiestGuy,
+		Size = 104, -- px tall at full scale
+		Width = 640, -- px: the letters shrink to fit this
+		TopGap = 6, -- px below Roblox's top bar
+		Top = Color3.fromRGB(255, 230, 70),
+		Bottom = Color3.fromRGB(255, 136, 20),
+		Outline = Color3.fromRGB(24, 18, 10),
+		OutlineThickness = 6,
+		Tilt = -3, -- degrees
+		BobPixels = 6,
+		BobSeconds = 2.8,
+		Checks = 22, -- squares in the taxi stripe under it
+		CheckSize = 14, -- px
+	},
+	Splash = {
+		Color = Color3.fromRGB(255, 244, 60),
+		Outline = Color3.fromRGB(60, 44, 0),
+		Size = 26, -- px
+		Tilt = -16, -- degrees
+		Pulse = 0.08, -- grows and shrinks by this share
+		PulseSeconds = 0.55, -- one beat
+		Lines = {
+			"TIP YOUR DRIVER!",
+			"NOW 40% MORE BANANAS!",
+			"SEATBELTS OPTIONAL!",
+			"THE METER IS RUNNING!",
+			"HONK IF YOU'RE WINNING!",
+			"NO REFUNDS!",
+			"KEEP THE CHANGE!",
+			"TOMATO-PROOF. MOSTLY!",
+			"WHERE TO, BOSS?",
+			"FIVE STARS OR BUST!",
+			"THE HORSE IS ALSO A TAXI!",
+			"SHOPPING CART APPROVED!",
+			"BRAKES SOLD SEPARATELY!",
+			"DRIFT RESPONSIBLY!",
+			"EST. THIS MORNING!",
+			"MIND THE PASSENGER!",
+			"ICE CREAM FOR THE ROAD!",
+			"100% LICENSED. PROBABLY!",
+			"LEFT AT THE PIZZA!",
+			"THEY WILL RAGE-QUIT!",
+		},
+	},
+	Buttons = { Play = "PLAY", Garage = "GARAGE", Options = "OPTIONS", Credits = "CREDITS" },
+	ButtonWidth = 300, -- px
+	PlayHeight = 58,
+	ButtonHeight = 44,
+	ButtonGap = 10,
+	PlayColor = Color3.fromRGB(255, 196, 30),
+	ButtonColor = Color3.fromRGB(28, 28, 36),
+	-- the live line under the buttons, from the round state everyone gets
+	LiveRound = "ROUND %d  \u{00B7}  %d DRIVING",
+	LiveCountdown = "NEXT MATCH IN %d:%02d",
+	LiveWaiting = "THE DEPOT IS OPEN",
+	LivePitStop = "PIT STOP  \u{00B7}  %d DRIVING",
+	FadeSeconds = 0.5, -- the menu fades away on PLAY
+	PlayRetrySeconds = 3, -- PLAY works again after this if the server never answered
+	-- the loading screen (ReplicatedFirst) before the title: up until the client has booted and the server placed you
+	Loading = {
+		Text = "LOADING THE CITY...",
+		Background = Color3.fromRGB(16, 14, 22),
+		SpinSeconds = 1.2, -- one turn of the tire
+		MinSeconds = 1, -- stays at least this long (no flash)
+		MaxSeconds = 30, -- gives up waiting after this
+		PollSeconds = 0.1,
+	},
+	KeepAttribute = "TitleKeep", -- a ScreenGui with this attribute stays up over the title (its panels, the loading screen)
+	SelfManagedAttribute = "ManagesOwnVisibility", -- a ScreenGui that shows and hides itself by state (left alone after)
+	BootedAttribute = "ClientBooted", -- set on your own Player by the client once every controller has started
+	CreatorFallback = "THE CRAZYFARE CREW", -- CREDITS when Roblox can't say who made the game (an unpublished Studio place)
+	-- CREDITS: { heading, line }; "%s" in a line is the game's creator (from Roblox)
+	CreditsTitle = "CREDITS",
+	Credits = {
+		{ "A GAME BY", "%s" },
+		{ "CITY, HOUSES, CARS AND PROPS", "Kenney (kenney.nl)" },
+		{ "MUSIC", "APM Music, via the Roblox Creator Store" },
+		{ "SOUND EFFECTS", "Pro Sound Effects, via the Roblox Creator Store" },
+		{ "THANKS FOR RIDING!", "" },
+	} :: { { string } },
+}
+
+-- OPTIONS (title screen, and the side stack between matches): saved to your profile (Config.Data.Template.Settings).
+Config.Options = {
+	Title = "OPTIONS",
+	Button = "OPTIONS", -- in the side stack
+	VolumeSteps = { 0, 0.25, 0.5, 0.75, 1 }, -- times Config.Sounds.Volume / MusicVolume; a setting is an index here
+	Labels = { Music = "MUSIC", Sfx = "SOUND", Shake = "CAMERA SHAKE", SpeedFx = "SPEED EFFECTS" },
+	On = "ON",
+	Off = "OFF",
+	SaveDelay = 0.6, -- seconds after the last change before it's sent to the server
+	MusicGroup = "CrazyFareMusic", -- SoundGroups in SoundService (client): the music, and every other sound
+	SfxGroup = "CrazyFareSfx",
+}
+
 Config.Fares = {
 	NpcsPerPlayer = 2,
 	MinNpcs = 4,
@@ -1331,6 +1439,7 @@ Config.Data = {
 		ArcadeBest = 0, -- best Arcade run (cents)
 		ArcadeBestLicense = 0,
 		CoachDone = false, -- the first-match coach prompts have all been shown
+		Settings = { Music = 5, Sfx = 5, Shake = true, SpeedFx = true }, -- OPTIONS: volume steps (Config.Options.VolumeSteps) and switches
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)
 	},
@@ -1484,6 +1593,8 @@ Config.Net = {
 		HailCab = 2,
 		RateRide = 2,
 		DepotChoice = 2,
+		Play = 1,
+		SaveSettings = 2,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.
@@ -1498,6 +1609,7 @@ Config.Hud = {
 	WorldTagNameDistance = 70, -- a rival's name only this close (owner 2026-10-27: too many words at once)
 	NpcHideCheckSeconds = 0.25, -- how often waiting passengers' badges are hidden / shown as you pick up and drop off
 	MinimapSize = 190, -- px
+	NoticeSeconds = 2.2, -- a one-line notice (quest done, streak, level up) stays this long
 	-- Messages while driving sit in a small strip under the timer and leave fast (owner 2026-10-27: big center text hid
 	-- the road and he hit people and cars). Only the pre-round text (read the board, 3-2-1, GO, the winner) is big.
 	PayoutPunchSeconds = 1.1,

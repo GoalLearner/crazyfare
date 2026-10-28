@@ -7,6 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Config = require(Shared:WaitForChild("Config"))
 
 -- Drivers have no character and walkers are respawned by the server, so the reset button stays off.
 task.spawn(function()
@@ -50,6 +51,9 @@ local ordered: { Controller } = {
 	require(Controllers.GarageController),
 	require(Controllers.ProgressController),
 	require(Controllers.ShopController),
+	require(Controllers.OptionsController),
+	require(Controllers.CreditsController),
+	require(Controllers.TitleController),
 	require(Controllers.SoundController),
 }
 if RunService:IsStudio() then
@@ -64,4 +68,6 @@ for _, controller in ordered do
 end
 
 Remotes.Get("ClientReady"):FireServer()
+-- the loading screen (ReplicatedFirst) waits for this before handing over to the title screen
+game:GetService("Players").LocalPlayer:SetAttribute(Config.Title.BootedAttribute, true)
 print("[CrazyFare] client ready")

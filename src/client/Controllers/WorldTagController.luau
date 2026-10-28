@@ -95,9 +95,10 @@ local function onSnapshot(snapshot: Types.Snapshot)
 	end
 end
 
--- Waiting passengers' billboards (badge, CARPOOL / TICK TOCK, speech) hide from you while you carry someone.
+-- Waiting passengers' billboards (badge, CARPOOL / TICK TOCK, speech) hide from you while you carry someone, and on
+-- the title screen (a clean view of the city).
 local function hideWaitingPassengers()
-	local hideFrom = if State.fare then localPlayer else nil
+	local hideFrom = if State.fare or State.sessionState == "Title" then localPlayer else nil
 	for _, model in CollectionService:GetTagged(Config.Tags.Npc) do
 		for _, d in model:GetDescendants() do
 			if d:IsA("BillboardGui") and d.PlayerToHideFrom ~= hideFrom then

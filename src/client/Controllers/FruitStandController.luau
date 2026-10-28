@@ -59,6 +59,10 @@ local function splat(model: Model)
 		local sound = Instance.new("Sound")
 		sound.SoundId = "rbxassetid://" .. id
 		sound.Volume = Config.Sounds.Volume
+		local group = game:GetService("SoundService"):FindFirstChild(Config.Options.SfxGroup)
+		if group and group:IsA("SoundGroup") then
+			sound.SoundGroup = group -- OPTIONS: the sound volume
+		end
 		sound.PlaybackSpeed = cfg.SoundPitch
 		sound.RollOffMaxDistance = cfg.SoundRange
 		sound.Parent = counter

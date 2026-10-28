@@ -35,6 +35,7 @@ export type ProfileData = {
 	CoachDone: boolean,
 	ReferredBy: number,
 	ReferralsPaid: number,
+	Settings: { Music: number, Sfx: number, Shake: boolean, SpeedFx: boolean },
 }
 
 local DataService = {}
@@ -103,6 +104,7 @@ function DataService.Sync(player: Player)
 		arcadeBest = d.ArcadeBest,
 		arcadeBestLicense = d.ArcadeBestLicense,
 		coachDone = d.CoachDone,
+		settings = { music = d.Settings.Music, sfx = d.Settings.Sfx, shake = d.Settings.Shake, speedFx = d.Settings.SpeedFx },
 	}
 	syncEvent:FireClient(player, payload)
 end
@@ -297,6 +299,28 @@ function DataService.Init()
 			d.CoachDone = true
 			DataService.Sync(player)
 		end
+	end)
+	-- OPTIONS: two volume steps and two switches, checked and saved (the client has already applied them).
+	Remotes.Get("SaveSettings").OnServerEvent:Connect(function(player: Player, settings: any)
+		if not RateLimiter.Allow(player, "SaveSettings", Config.Net.RateLimits.SaveSettings, 3) then
+			return
+		end
+		local d = data(player)
+		if not d or typeof(settings) ~= "table" then
+			return
+		end
+		local steps = #Config.Options.VolumeSteps
+		local music, sfx, shake, speedFx = settings.music, settings.sfx, settings.shake, settings.speedFx
+		local function isStep(v: any): boolean
+			return typeof(v) == "number" and v == math.floor(v) and v >= 1 and v <= steps
+		end
+		if not isStep(music) or not isStep(sfx) or typeof(shake) ~= "boolean" or typeof(speedFx) ~= "boolean" then
+			return
+		end
+		d.Settings.Music = music :: number
+		d.Settings.Sfx = sfx :: number
+		d.Settings.Shake = shake :: boolean
+		d.Settings.SpeedFx = speedFx :: boolean
 	end)
 	Remotes.Get("ClientReady").OnServerEvent:Connect(function(player: Player)
 		DataService.Sync(player)

@@ -1,7 +1,8 @@
 --!strict
 -- Sessions: where each person is, and reasons to play the next match and to bring friends (Config.Session).
 --
--- State (the single source of truth, also mirrored to the player's SessionState attribute for the client): "Driver"
+-- State (the single source of truth, also mirrored to the player's SessionState attribute for the client): "Title"
+-- (just joined, on the title screen: holds no seat and counts nowhere until PLAY), "Driver"
 -- (racing), "Passenger" (every seat taken: walking the city, hailing cabs), "Depot" (between matches, or sitting one
 -- out, in the Taxi Depot), "Queued" (a seat is theirs at the next round; walking meanwhile). Only MatchController
 -- changes it (SetState); everything that spawns cars, characters or UI listens to OnStateChanged.
@@ -38,6 +39,7 @@ local satOut: { [Player]: boolean } = {} -- didn't drive the last match though t
 local stayInDepot: { [Player]: boolean } = {} -- opted out of the next match
 local rosterIds: { [number]: boolean } = {} -- UserIds pre-assigned as drivers (TeleportData.roster)
 local debugMaxDrivers = 0 -- Studio: > 0 caps the grid lower, to test a full server with few test players
+local skipTitle: { [Player]: boolean } = {} -- arrived by a teleport from our own servers (Arcade and back)
 
 local streaks: { [Player]: number } = {} -- matches finished in a row in this sitting
 local friendsHere: { [Player]: { [number]: boolean } } = {} -- UserIds of this player's Roblox friends in the server
@@ -120,6 +122,11 @@ function SessionService.WantsMatch(player: Player): boolean
 	return not stayInDepot[player]
 end
 
+-- Straight past the title screen: back from (or off to) our own Arcade server, or Studio's SkipTitle attribute.
+function SessionService.SkipsTitle(player: Player): boolean
+	return skipTitle[player] == true or (RunService:IsStudio() and workspace:GetAttribute("SkipTitle") == true)
+end
+
 function SessionService.SetStayInDepot(player: Player, stay: boolean)
 	if stay then
 		stayInDepot[player] = true
@@ -153,11 +160,12 @@ local function priority(player: Player): number
 	return 3
 end
 
--- People who want a seat, best claim first (roster, friend, sat out, then longest here). `among` limits it.
+-- People who want a seat, best claim first (roster, friend, sat out, then longest here). `among` limits it; anyone
+-- still on the title screen is left out.
 function SessionService.SeatOrder(among: { Player }): { Player }
 	local list: { Player } = {}
 	for _, player in among do
-		if player.Parent and SessionService.WantsMatch(player) then
+		if player.Parent and states[player] ~= "Title" and SessionService.WantsMatch(player) then
 			table.insert(list, player)
 		end
 	end
@@ -309,6 +317,9 @@ function SessionService.Init()
 	Players.PlayerAdded:Connect(function(player: Player)
 		joinedAt[player] = os.clock()
 		local teleport = joinData(player).TeleportData
+		if typeof(teleport) == "table" and ((teleport :: any).streak ~= nil or (teleport :: any).mode ~= nil) then
+			skipTitle[player] = true
+		end
 		if typeof(teleport) == "table" and typeof((teleport :: any).streak) == "number" then
 			streaks[player] = math.clamp(math.floor((teleport :: any).streak), 0, maxStreak())
 		end
@@ -330,6 +341,7 @@ function SessionService.Init()
 		joinedAt[player] = nil
 		satOut[player] = nil
 		stayInDepot[player] = nil
+		skipTitle[player] = nil
 	end)
 	DataService.OnLoaded:Connect(onLoaded)
 	if RunService:IsStudio() then

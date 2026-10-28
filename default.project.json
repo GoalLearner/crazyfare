@@ -9,6 +9,9 @@
       "ItemModels": { "$path": "models/ItemModels.rbxmx" },
       "MapModels": { "$path": "models/MapModels.rbxmx" }
     },
+    "ReplicatedFirst": {
+      "First": { "$path": "src/first" }
+    },
     "ServerScriptService": {
       "Server": { "$path": "src/server" },
       "ServerPackages": { "$path": "ServerPackages" }

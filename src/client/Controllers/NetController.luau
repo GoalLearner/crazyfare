@@ -14,6 +14,7 @@ local State = require(script.Parent.Parent.State)
 local NetController = {}
 
 local localPlayer = Players.LocalPlayer
+local settingsLoaded = false -- your profile's OPTIONS were applied
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -193,7 +194,14 @@ function NetController.Init()
 	end)
 	Remotes.Get("ProfileSync").OnClientEvent:Connect(function(payload: any)
 		if typeof(payload) == "table" then
-			State.profile = payload :: Types.ProfilePayload
+			local profile = payload :: Types.ProfilePayload
+			State.profile = profile
+			-- your saved OPTIONS, once: after that your own changes lead (they're saved as you make them)
+			if not settingsLoaded and typeof(profile.settings) == "table" then
+				settingsLoaded = true
+				State.settings = profile.settings
+				State.SettingsChanged:Fire()
+			end
 			State.ProfileChanged:Fire()
 		end
 	end)

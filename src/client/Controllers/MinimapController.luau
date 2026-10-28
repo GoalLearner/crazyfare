@@ -42,6 +42,7 @@ end
 
 local function build()
 	local screen = UI.Screen("CrazyFareMinimap", 5)
+	screen:SetAttribute(Config.Title.SelfManagedAttribute, true) -- shows itself by state (the title screen leaves it be)
 	-- the Taxi Depot is off the map: no minimap there
 	screen.Enabled = State.sessionState ~= "Depot"
 	State.SessionChanged:Connect(function(state: string)

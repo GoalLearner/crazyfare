@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Store Setup</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#e8a400; --ok:#2f8f4e; --warn:#b5651d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:980px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+h2 b { background:var(--accent); color:#1d1b22; border-radius:999px; min-width:28px; height:28px; display:inline-grid; place-items:center; font-size:15px; }
+ol, ul { margin:6px 0 0; padding-left:22px; }
+li { margin:4px 0; }
+.note { color:var(--muted); font-size:14px; }
+.pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:2px 9px; border:1px solid var(--line); color:var(--muted); }
+.pill.new { color:var(--ok); border-color:var(--ok); }
+.table { width:100%; overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+td.r { white-space:nowrap; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+<h1>Pay-to-win store: what to create</h1>
+<p class="sub">October 27, 2026, PST. Create these in Creator Hub while I build the title screen, then paste me the ids. Creating passes and products is free; you set the prices.</p>
+
+<section>
+<h2><b>1</b> Game passes (8)</h2>
+<ol>
+<li>Creator Hub, then Creations, then CrazyFare, then Monetization, then <b>Passes</b>, then <b>Create a Pass</b>.</li>
+<li>Name and description from the table (the image is optional; <code>docs/launch/icon.png</code> works for now). Create it.</li>
+<li>Open the pass, then <b>Sales</b>: turn on <b>Item for Sale</b>, type the price, Save.</li>
+<li>Copy its id (the number in the pass's web address, or the menu's Copy Asset ID).</li>
+</ol>
+<div class="table">
+<table>
+<tr><th>Name</th><th>Description (paste as is)</th><th>Price</th></tr>
+<tr><td>VIP <span class="pill">exists, upgraded</span></td><td>2x Gems, +25% cash on every fare, gold VIP tag.</td><td class="r">399 R$</td></tr>
+<tr><td>Turbo Tank <span class="pill new">new</span></td><td>Double boost tank. Refills 50% faster.</td><td class="r">249 R$</td></tr>
+<tr><td>Armored Seats <span class="pill new">new</span></td><td>Your passengers take half damage. Tomatoes cry.</td><td class="r">299 R$</td></tr>
+<tr><td>Double Item <span class="pill new">new</span></td><td>Hold 2 items at once.</td><td class="r">299 R$</td></tr>
+<tr><td>Head Start <span class="pill new">new</span></td><td>Start every round with $10 toward the quota.</td><td class="r">199 R$</td></tr>
+<tr><td>Fare Radar <span class="pill new">new</span></td><td>Golden and long fares glow on your map from anywhere.</td><td class="r">149 R$</td></tr>
+<tr><td>Pit Stop Plus <span class="pill">exists</span></td><td>6 cards at every Pit Stop instead of 5.</td><td class="r">149 R$</td></tr>
+<tr><td>2x XP <span class="pill new">new</span></td><td>Double XP from every match.</td><td class="r">149 R$</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2><b>2</b> Developer products (14)</h2>
+<ol>
+<li>Monetization, then <b>Developer Products</b>, then <b>Create a Developer Product</b>.</li>
+<li>Name, description and price from the table. Create it, then copy its <b>Product ID</b>.</li>
+</ol>
+<div class="table">
+<table>
+<tr><th>Name</th><th>Description (paste as is)</th><th>Price</th></tr>
+<tr><td>120 Gems <span class="pill">exists</span></td><td>A pocket of Gems.</td><td class="r">49 R$</td></tr>
+<tr><td>320 Gems <span class="pill">exists</span></td><td>A bag of Gems.</td><td class="r">99 R$</td></tr>
+<tr><td>900 Gems <span class="pill">exists</span></td><td>A truck of Gems.</td><td class="r">249 R$</td></tr>
+<tr><td>Starter Pack <span class="pill">exists</span></td><td>300 Gems and a Go-Kart at upgrade level 3. Once per account.</td><td class="r">79 R$</td></tr>
+<tr><td>Night Cab <span class="pill">exists</span></td><td>Passengers take 20% less damage.</td><td class="r">149 R$</td></tr>
+<tr><td>Ice Cream Truck <span class="pill">exists</span></td><td>Passengers board with +20 HP.</td><td class="r">149 R$</td></tr>
+<tr><td>Rocket Cab <span class="pill new">new</span></td><td>Fastest car in the city. Top speed 105, huge boost tank.</td><td class="r">499 R$</td></tr>
+<tr><td>Armored Limo <span class="pill new">new</span></td><td>Passengers board with +40 HP and take 30% less damage.</td><td class="r">399 R$</td></tr>
+<tr><td>Item Drop <span class="pill new">new</span></td><td>A random item in your slot, right now.</td><td class="r">25 R$</td></tr>
+<tr><td>Tomato Barrage <span class="pill new">new</span></td><td>3 Tomatoes. Aim for the leader.</td><td class="r">49 R$</td></tr>
+<tr><td>Nitro Refill <span class="pill new">new</span></td><td>A full boost tank, right now.</td><td class="r">15 R$</td></tr>
+<tr><td>Patch Up <span class="pill new">new</span></td><td>Your passenger back to full HP.</td><td class="r">25 R$</td></tr>
+<tr><td>Cash Boost <span class="pill new">new</span></td><td>+$15 this round.</td><td class="r">49 R$</td></tr>
+<tr><td>Max Upgrades <span class="pill new">new</span></td><td>Every upgrade on your current car to the top level.</td><td class="r">199 R$</td></tr>
+</table>
+</div>
+<p class="note">If you already made any of the "exists" ones before, keep them and just send me their ids.</p>
+</section>
+
+<section>
+<h2><b>3</b> Send me the ids</h2>
+<p>Paste them into chat as <b>name: id</b>, one per line, in any order (for example <code>Turbo Tank: 1234567890</code>). I put them in <code>Config.Monetization</code>. Anything without an id shows as COMING SOON in the shop, so you can send them a few at a time.</p>
+<p class="note">Purchases in Studio are free test purchases, so I can try every one before anything goes live.</p>
+</section>
+</main>
+</body>
+</html>

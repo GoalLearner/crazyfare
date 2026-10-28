@@ -214,6 +214,9 @@ local function updateStreaks(dt: number)
 	if State.boosting and speedFrac > cfg.StartFrac * 0.5 then
 		target = math.min(1, target + cfg.BoostBonus)
 	end
+	if not State.settings.speedFx then
+		target = 0 -- OPTIONS: speed effects off
+	end
 	streakIntensity += (target - streakIntensity) * math.clamp(dt * 6, 0, 1)
 	if streakIntensity < 0.02 then
 		streakLayer.Visible = false

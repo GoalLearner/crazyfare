@@ -32,6 +32,8 @@ local EVENT_NAMES = {
 	"HailCab", -- (hail: boolean) on foot at a curb: become a player fare, or call it off
 	"RateRide", -- (stars: number) 1-5, after your ride arrived
 	"DepotChoice", -- (choice: "stay" | "join") sit the next match out in the depot, or drive it
+	"Play", -- () PLAY on the title screen: leave the menu for the depot, a seat or the sidewalk
+	"SaveSettings", -- (settings: { music: number, sfx: number, shake: boolean, speedFx: boolean }) OPTIONS changed
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

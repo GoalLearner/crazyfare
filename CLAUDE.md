@@ -24,7 +24,9 @@ src/
     Studio/DevBlockout.luau  Studio-only city generator (parts, CollectionService-tagged)
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau   boots controllers the same way
-    Controllers/*.luau Input, Vehicle (raycast chassis), Camera, Hud, Minimap, WorldTags, Effects, Walker, Depot, DebugPanel...
+    Controllers/*.luau Input, Vehicle (raycast chassis), Camera, Hud, Minimap, WorldTags, Effects, Walker, Depot, Title, Options, Credits, DebugPanel...
+  first/               → ReplicatedFirst.First
+    Loading.client.luau the loading screen (replaces Roblox's), hands over to the title screen
 docs/                  DESIGN.md, PLAN.md, GETTING-STARTED.html, OWNER-STEPS.html, LAUNCH.html (+ launch/ thumbnails, icon)
 ```
 
@@ -74,7 +76,7 @@ return Service
 
 ## Player states (lobby flow)
 
-Every person is Driver, Passenger, Queued or Depot (`SessionService`, mirrored to the `SessionState` attribute). Only `MatchController` changes it; services react to `SessionService.OnStateChanged` (grid car, depot car, walking character). `Racers.All()` is the people driving plus bots, so per-match systems never see walkers or the depot. Depot cars live in their own VehicleService table and never appear in `GetAll()`.
+Every person is Title, Driver, Passenger, Queued or Depot (`SessionService`, mirrored to the `SessionState` attribute). Every join starts on the title screen (Title: no seat, counted nowhere, so `SeatOrder`, `MatchStart`, `AllToDepot` and `CountReady` skip it); the `Play` remote runs the normal join rules. Teleports from our own servers, and Studio's `SkipTitle` workspace attribute, skip it. While Title, `TitleController` hides every other `CrazyFare*` ScreenGui each frame: give a screen the `Config.Title.KeepAttribute` attribute to stay up over the title (a panel its buttons open), or `SelfManagedAttribute` if it decides its own visibility by state (the title won't switch it back on). Only `MatchController` changes it; services react to `SessionService.OnStateChanged` (grid car, depot car, walking character). `Racers.All()` is the people driving plus bots, so per-match systems never see walkers or the depot. Depot cars live in their own VehicleService table and never appear in `GetAll()`.
 
 ## Ownership rules (non-negotiable)
 
@@ -124,6 +126,6 @@ Known v1 limitation: physics is client-authoritative, so positions are trusted. 
 ## Product rules every change must respect
 
 - All art, names and vehicles are original. No licensed vehicles, characters or music, ever.
-- Nothing purchasable affects a match in progress except Pit Stop boosts bought with that round's cash. Never sell passenger HP, item damage, speed or quota.
+- Pay-to-win is the monetization strategy (owner decision 2026-10-27: "100% pay to win"). Passes, cars and in-match products may sell speed, boost, passenger HP, items, cash and upgrades. Every purchase is applied on the server by the service that owns that stat (ProcessReceipt idempotent by receipt id); the client never grants itself anything. Paid random items show their odds first and are hidden where `PolicyService` restricts them.
 - Copy is short and funny; the HUD shows only what a player acts on. No tutorial text for things that are self-explanatory.
 - Tune by Config, then playtest. Playtest beats theory.

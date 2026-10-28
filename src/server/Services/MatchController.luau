@@ -2,7 +2,8 @@
 -- Who drives, rides or waits, match to match (owner spec 2026-10-27, lobby flow v1). The only code that changes a
 -- person's SessionService state; RoundService runs the clock and calls in at each phase.
 --
--- Joining: between matches (Waiting, MatchEnd) you land in the Taxi Depot. During a round with a free seat you drive at
+-- Joining: you start on the title screen (Title: no seat, counted nowhere); PLAY places you. Between matches
+-- (Waiting, MatchEnd) that's the Taxi Depot. During a round with a free seat you drive at
 -- once, a little behind last place (Config.Join.LateJoinPenalty) and in a bot's seat. With every seat taken by people
 -- you ride along on foot (Passenger) until one opens. During RoundEnd or the Pit Stop you're Queued: walking now,
 -- driving at the next round start. A seat that opens mid-round goes to the next person in SessionService.SeatOrder,
@@ -164,9 +165,9 @@ function MatchController.MatchStart(drivers: { Player }, options: MatchOptions)
 			count += 1
 		end
 	end
-	-- Off the grid first (frees the pads), then onto it
+	-- Off the grid first (frees the pads), then onto it; anyone on the title screen stays there
 	for _, player in Players:GetPlayers() do
-		if not driving[player] then
+		if not driving[player] and SessionService.GetState(player) ~= "Title" then
 			if SessionService.WantsMatch(player) then
 				SessionService.SetState(player, "Passenger")
 				banner(player, Config.Join.Rider)
@@ -243,7 +244,9 @@ end
 function MatchController.AllToDepot()
 	mode = "Race"
 	for _, player in Players:GetPlayers() do
-		SessionService.SetState(player, "Depot")
+		if SessionService.GetState(player) ~= "Title" then
+			SessionService.SetState(player, "Depot")
+		end
 	end
 end
 
@@ -261,7 +264,7 @@ end
 function MatchController.CountReady(): number
 	local n = 0
 	for _, player in Players:GetPlayers() do
-		if SessionService.WantsMatch(player) then
+		if SessionService.GetState(player) ~= "Title" and SessionService.WantsMatch(player) then
 			n += 1
 		end
 	end
@@ -292,9 +295,27 @@ local function place(player: Player)
 	onSlotsChanged:Fire()
 end
 
+-- Just arrived: the title screen, unless they came by teleport from our own servers (or Studio skips it).
+local function enter(player: Player)
+	if SessionService.SkipsTitle(player) then
+		place(player)
+	else
+		SessionService.SetState(player, "Title")
+	end
+end
+
 function MatchController.Init()
 	Players.PlayerAdded:Connect(function(player: Player)
-		task.defer(place, player) -- after SessionService has read their join data
+		task.defer(enter, player) -- after SessionService has read their join data
+	end)
+	-- PLAY on the title screen: the same join rules as arriving now.
+	Remotes.Get("Play").OnServerEvent:Connect(function(player: Player)
+		if not RateLimiter.Allow(player, "Play", Config.Net.RateLimits.Play) then
+			return
+		end
+		if SessionService.GetState(player) == "Title" then
+			place(player)
+		end
 	end)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		local was = player:GetAttribute("SessionState")
@@ -326,6 +347,9 @@ function MatchController.Init()
 			return
 		end
 		local state = SessionService.GetState(player)
+		if state == "Title" then
+			return -- PLAY first
+		end
 		if choice == "stay" then
 			if state == "Driver" and phase ~= "MatchEnd" then
 				return -- mid-match drivers finish the match
@@ -347,7 +371,7 @@ end
 function MatchController.Start()
 	for _, player in Players:GetPlayers() do
 		if SessionService.GetState(player) == "" then
-			place(player)
+			enter(player)
 		end
 	end
 end

@@ -4,9 +4,10 @@
 export type Tier = "Green" | "Yellow" | "Red"
 export type RoundPhase = "Waiting" | "PreCountdown" | "Countdown" | "Playing" | "RoundEnd" | "PitStop" | "MatchEnd"
 export type RankBucket = "Leader" | "Mid" | "Last"
--- Where a person is (SessionService; also the player's SessionState attribute): racing, riding/walking the city while
--- every seat is taken, in the Taxi Depot between matches, or waiting for the next round's seat (walking meanwhile).
-export type SessionState = "Driver" | "Passenger" | "Depot" | "Queued"
+-- Where a person is (SessionService; also the player's SessionState attribute): on the title screen (just joined, not
+-- placed yet), racing, riding/walking the city while every seat is taken, in the Taxi Depot between matches, or waiting
+-- for the next round's seat (walking meanwhile).
+export type SessionState = "Title" | "Driver" | "Passenger" | "Depot" | "Queued"
 
 -- One taxi in the 10 Hz snapshot.
 export type PlayerSnap = {
@@ -109,7 +110,11 @@ export type ProfilePayload = {
 	arcadeBest: number, -- cents
 	arcadeBestLicense: number,
 	coachDone: boolean,
+	settings: SettingsPayload,
 }
+
+-- OPTIONS: volume steps index Config.Options.VolumeSteps (1 = off); the switches turn camera shake and speed effects off.
+export type SettingsPayload = { music: number, sfx: number, shake: boolean, speedFx: boolean }
 
 export type QuestEntry = { id: string, text: string, goal: number, progress: number, reward: number, done: boolean }
 export type QuestPayload = {

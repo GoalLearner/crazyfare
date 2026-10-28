@@ -2,6 +2,7 @@
 -- Every sound in the game, keyed by Config.Sounds.Ids. An id of 0 means "no asset yet" and plays nothing, so the
 -- hooks are wired now and come alive the moment the owner pastes asset ids into Config.
 -- Music rotates through Config.Sounds.Playlist; callout stings (combo, Golden Fare, new best, win) dip it briefly.
+-- Two SoundGroups carry the OPTIONS volumes: the music, and every other sound (Config.Options).
 
 local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
@@ -26,6 +27,8 @@ local track = 0 -- index into Config.Sounds.Playlist
 local lastPhase = ""
 local wasBoosting = false
 local lastBeep = -1
+local musicGroup: SoundGroup
+local sfxGroup: SoundGroup
 
 local function make(name: string, id: number, looped: boolean, volume: number): Sound?
 	if id <= 0 then
@@ -36,6 +39,7 @@ local function make(name: string, id: number, looped: boolean, volume: number): 
 	sound.SoundId = "rbxassetid://" .. tostring(id)
 	sound.Looped = looped
 	sound.Volume = volume
+	sound.SoundGroup = if name == "Music" then musicGroup else sfxGroup
 	sound.Parent = SoundService
 	return sound
 end
@@ -202,7 +206,22 @@ local function onHonk()
 	end
 end
 
+-- OPTIONS: each volume is a step (Config.Options.VolumeSteps) times the base volumes set on each sound.
+local function applySettings()
+	local steps = Config.Options.VolumeSteps
+	musicGroup.Volume = steps[State.settings.music] or 1
+	sfxGroup.Volume = steps[State.settings.sfx] or 1
+end
+
 function SoundController.Init()
+	musicGroup = Instance.new("SoundGroup")
+	musicGroup.Name = Config.Options.MusicGroup
+	musicGroup.Parent = SoundService
+	sfxGroup = Instance.new("SoundGroup")
+	sfxGroup.Name = Config.Options.SfxGroup
+	sfxGroup.Parent = SoundService
+	applySettings()
+	State.SettingsChanged:Connect(applySettings)
 	local ids = Config.Sounds.Ids
 	local volume = Config.Sounds.Volume
 	for name, id in ids do

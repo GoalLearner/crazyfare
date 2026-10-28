@@ -28,11 +28,12 @@ export type FareInfo = {
 }
 
 local defaultStats = Config.Vehicles.Stats[Config.Vehicles.Default]
+local defaultSettings = Config.Data.Template.Settings
 
 local State = {
 	vehicle = nil :: Model?, -- the car you drive (grid or depot); nil on foot
 	chassis = nil :: BasePart?,
-	sessionState = "", -- "Driver" | "Passenger" | "Depot" | "Queued" (your SessionState attribute; "" until placed)
+	sessionState = "", -- "Title" | "Driver" | "Passenger" | "Depot" | "Queued" (your SessionState attribute; "" until placed)
 	rideChassis = nil :: BasePart?, -- riding along in someone's cab (a player fare): its chassis
 	rideDriverId = 0, -- that cab's owner (0 when not riding)
 	stats = defaultStats,
@@ -44,6 +45,8 @@ local State = {
 	profile = nil :: Types.ProfilePayload?,
 	quests = nil :: Types.QuestPayload?,
 	boards = nil :: Types.LeaderboardPayload?,
+	-- OPTIONS (from your profile, then your own changes)
+	settings = { music = defaultSettings.Music, sfx = defaultSettings.Sfx, shake = defaultSettings.Shake, speedFx = defaultSettings.SpeedFx } :: Types.SettingsPayload,
 	gems = 0,
 	-- self, mirrored from the snapshot
 	cash = 0,
@@ -91,6 +94,7 @@ local hopped: Signal.Signal<nil> = Signal.new()
 local riderSaid: Signal.Signal<string> = Signal.new()
 local sessionChanged: Signal.Signal<string> = Signal.new()
 local rideChanged: Signal.Signal<nil> = Signal.new()
+local settingsChanged: Signal.Signal<nil> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -110,6 +114,7 @@ State.Hopped = hopped -- the local cab just hopped (dust, a thump, the coach)
 State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's bubble over your cab, never stacked)
 State.SessionChanged = sessionChanged -- your session state changed (driving, on foot, in the depot)
 State.RideChanged = rideChanged -- you got into (or out of) someone's cab as their passenger
+State.SettingsChanged = settingsChanged -- OPTIONS changed (or arrived with your profile): volumes, shake, speed effects
 
 -- The cab the camera, popups and arrow follow: the one you ride in, else your own.
 function State.ViewChassis(): BasePart?

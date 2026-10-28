@@ -24,6 +24,9 @@ CrazyFare is a multiplayer, shared-map, free-for-all taxi game: up to 10 people 
 - One run on the clock: start with 50 s; a pickup adds time by trip length (6 / 9 / 12 s), an arrival by its grade (SPEEDY 5 s, ON TIME 2 s), capped at 99 s on the clock. The run ends at 0. No bots, no quota, no Pit Stop; the City with its set pieces; items still drop.
 - Its own grade from the run's total (`Config.License.Arcade`), your best run saved and shown where the quota usually is, a BEST ARCADE RUN board, and the next run starts by itself (or PLAY AGAIN).
 
+### Title screen (owner ask 2026-10-27)
+Every join opens on a title screen, after our own loading screen (the logo and a spinning tire, in place of Roblox's). A drone circles high over the live map, so the real race, bots and traffic play underneath, with a warm grade on top. The CRAZYFARE logo (chunky gold letters with a taxi checker stripe) bobs, and a yellow splash line pulses off its corner: one of 20 jokes per join (TIP YOUR DRIVER!, THE METER IS RUNNING!). Four buttons: PLAY, GARAGE, OPTIONS, CREDITS. One line under them says what the server is doing (ROUND 2 · 4 DRIVING, NEXT MATCH IN 0:08, THE DEPOT IS OPEN). Nothing else shows. PLAY swoops the camera down to wherever the join rules put you (depot car, your seat, the sidewalk) and the HUD comes back. Someone on the title holds no seat, so a full grid isn't blocked by people reading the menu. OPTIONS (music and sound volume in 5 steps, camera shake and speed effects on or off) is saved to the profile, and is also in the side stack between matches (not on phones, where it would sit on the driving pads). CREDITS names the creator (from Roblox) and the Kenney art, APM music and Pro Sound Effects audio. All copy and numbers: `Config.Title`, `Config.Options`.
+
 ### Server and lobby flow (owner spec 2026-10-27, v1)
 One place, up to 10 people (`Config.Server.MaxPlayers`; the place's Max Players setting must match), 6 seats on the grid (`MaxDrivers`), bots filling to 4. `SessionService` holds every person's state; `MatchController` is the only code that changes it.
 - **States.** Driver (racing), Passenger (every seat taken: on foot in the city, hailing cabs), Queued (a seat is theirs at the next round; on foot meanwhile), Depot (between matches, or sitting one out). Every state has a camera and UI: the chase cam on your cab, Roblox's own camera on your character, the chase cam on the cab you ride in, the depot car.
@@ -148,8 +151,8 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 ## 5. Currencies
 
 - **Cash ($):** earned from fares, spent only at the Pit Stop, resets at match end. Never persisted.
-- **Gems:** awarded at match end (placement + fares delivered) and from quests. Persisted. Buys vehicles, cosmetics, map unlocks, permanent upgrades. Never spendable mid-match.
-- Nothing purchasable affects a match in progress except Pit Stop boosts bought with round cash.
+- **Gems:** awarded at match end (placement + fares delivered) and from quests, and sold in packs. Persisted. Buys vehicles, cosmetics, map unlocks, permanent upgrades.
+- Pay-to-win (owner decision 2026-10-27): Robux passes, cars and in-match products can affect a match in progress (section 10).
 
 ## 6. Vehicles
 
@@ -206,7 +209,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 - Gem packs (dev products) with a one-time Starter Pack offered in the first 2 sessions.
 - VIP gamepass (2× Gems, badge, horn). Pit Stop Plus (6 cards instead of 5). Premium vehicles. Cosmetics. Private servers. Premium Payouts via engagement.
-- **Never sell anything that affects passenger HP, item damage, speed, or quota.**
+- **Pay-to-win, fully (owner decision 2026-10-27: "100% pay to win").** Passes and products may sell speed, boost, passenger HP, items, round cash and upgrade levels, including mid-match. This replaces the earlier "never sell HP, damage, speed or quota" rule. Everything is granted on the server; paid random items (a crate) show their odds and are hidden where `PolicyService` restricts them.
 
 ## 11. Controls (keyboard, gamepad, phones)
 

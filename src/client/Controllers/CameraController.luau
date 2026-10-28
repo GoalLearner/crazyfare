@@ -2,7 +2,8 @@
 -- Chase camera: sits behind and above the taxi, follows its heading smoothly, widens FOV with speed.
 -- Holds its heading during a spinout so the player sees the spin instead of becoming it.
 -- Riding along in someone's cab it chases that cab; on foot it hands over to Roblox's own camera on your character;
--- with nothing to follow (loading in) it looks over the city.
+-- with nothing to follow (loading in) it looks over the city. On the title screen a drone circles the live map; PLAY
+-- swoops from there down to your car (or your character) once it exists (Config.Title).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -21,6 +22,10 @@ local heldLook = Vector3.new(0, 0, -1)
 local fov = Config.Camera.FovBase
 local shakeAmount = 0
 local shakeRng = Random.new()
+local swoopPending = false -- left the title screen; the swoop starts once there is something to swoop to
+local swoopWaitUntil = 0
+local swoopFrom: CFrame? = nil
+local swoopStart = 0
 
 local function overview(dt: number)
 	local half = Config.Map.City.Blockout.Half
@@ -30,6 +35,19 @@ local function overview(dt: number)
 	camera.CFrame = CFrame.lookAt(camPos :: Vector3, target)
 	fov = fov + (Config.Camera.FovBase - fov) * VecUtil.ExpAlpha(4, dt)
 	camera.FieldOfView = fov
+end
+
+-- Title screen: a slow circle over the map's center (both maps sit on the origin), bobbing a little.
+local function drone(dt: number)
+	local d = Config.Title.Drone
+	local t = os.clock()
+	local angle = t / d.PeriodSeconds * math.pi * 2
+	local bob = math.sin(t / d.BobSeconds * math.pi * 2) * d.Bob
+	local pos = Vector3.new(math.cos(angle) * d.Radius, d.Height + bob, math.sin(angle) * d.Radius)
+	camera.CFrame = CFrame.lookAt(pos, Vector3.new(0, d.LookHeight, 0))
+	fov = fov + (Config.Camera.FovBase - fov) * VecUtil.ExpAlpha(4, dt)
+	camera.FieldOfView = fov
+	camPos = nil
 end
 
 local function follow(dt: number)
@@ -57,7 +75,10 @@ local function follow(dt: number)
 
 	local speed = if State.rideChassis then ch.AssemblyLinearVelocity.Magnitude else State.speed
 	local speedFrac = math.clamp(speed / State.stats.TopSpeed, 0, 1)
-	local targetFov = cfg.FovBase + cfg.FovSpeedBonus * speedFrac + (if State.boosting then cfg.FovBoostBonus else 0)
+	local targetFov = cfg.FovBase
+	if State.settings.speedFx then -- OPTIONS: speed effects off keeps the view still
+		targetFov += cfg.FovSpeedBonus * speedFrac + (if State.boosting then cfg.FovBoostBonus else 0)
+	end
 	fov = fov + (targetFov - fov) * VecUtil.ExpAlpha(5, dt)
 	camera.FieldOfView = fov
 end
@@ -74,7 +95,17 @@ function CameraController.Init()
 		camPos = nil
 	end)
 	State.Shake:Connect(function(strength: number)
-		shakeAmount = math.max(shakeAmount, strength)
+		if State.settings.shake then
+			shakeAmount = math.max(shakeAmount, strength)
+		end
+	end)
+	local lastState = State.sessionState
+	State.SessionChanged:Connect(function(state: string)
+		if lastState == "Title" and state ~= "Title" then
+			swoopPending = true -- off the title screen: swoop once your car or character turns up
+			swoopWaitUntil = os.clock() + Config.Title.SwoopWaitSeconds
+		end
+		lastState = state
 	end)
 end
 
@@ -87,9 +118,48 @@ local function walkerHumanoid(): Humanoid?
 	return if character then character:FindFirstChildOfClass("Humanoid") else nil
 end
 
+-- Where the swoop lands for someone on foot: behind and above the character, like the chase camera.
+local function behind(humanoid: Humanoid): CFrame?
+	local root = humanoid.RootPart
+	if not root then
+		return nil
+	end
+	local look = VecUtil.FlatUnit(root.CFrame.LookVector, heldLook)
+	return CFrame.lookAt(root.Position - look * Config.Camera.Distance + Vector3.new(0, Config.Camera.Height, 0), root.Position)
+end
+
 function CameraController.Start()
 	RunService:BindToRenderStep("CrazyFareCamera", Enum.RenderPriority.Camera.Value, function(dt: number)
 		local humanoid = walkerHumanoid()
+		if State.sessionState == "Title" or swoopPending then
+			camera.CameraType = Enum.CameraType.Scriptable
+			local target = State.ViewChassis() ~= nil or (humanoid ~= nil and humanoid.RootPart ~= nil)
+			if State.sessionState ~= "Title" and (target or os.clock() > swoopWaitUntil) then
+				swoopPending = false
+				swoopFrom = camera.CFrame
+				swoopStart = os.clock()
+			else
+				drone(dt)
+				return
+			end
+		end
+		local swoop = swoopFrom
+		if swoop then
+			-- PLAY: ease from the drone shot onto wherever the camera now wants to be
+			camera.CameraType = Enum.CameraType.Scriptable
+			local landing = if humanoid then behind(humanoid) else nil
+			if landing then
+				camera.CFrame = landing
+			else
+				follow(dt)
+			end
+			local alpha = math.clamp((os.clock() - swoopStart) / Config.Title.SwoopSeconds, 0, 1)
+			camera.CFrame = swoop:Lerp(camera.CFrame, 1 - (1 - alpha) ^ 3)
+			if alpha >= 1 then
+				swoopFrom = nil
+			end
+			return
+		end
 		if humanoid then
 			if camera.CameraType ~= Enum.CameraType.Custom or camera.CameraSubject ~= humanoid then
 				camera.CameraType = Enum.CameraType.Custom

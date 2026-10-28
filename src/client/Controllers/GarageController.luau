@@ -196,6 +196,7 @@ end
 
 local function build()
 	local screen = UI.Screen("CrazyFareGarage", 18) -- above the Pit Stop panel (15) so it reads while open
+	screen:SetAttribute(Config.Title.KeepAttribute, true) -- the title screen's GARAGE opens it
 	openButton = UI.New("TextButton", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -24, 0, 24 + Config.Hud.MinimapSize + 10),
@@ -241,6 +242,21 @@ local function build()
 	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
 end
 
+-- The title screen's GARAGE button.
+function GarageController.Open()
+	setOpen(true)
+end
+
+function GarageController.Close()
+	if isOpen then
+		setOpen(false)
+	end
+end
+
+function GarageController.IsOpen(): boolean
+	return isOpen
+end
+
 -- Show the garage content inside another panel (the Pit Stop's GARAGE tab). The side button hides meanwhile.
 function GarageController.Mount(parent: Instance, position: UDim2)
 	if mounted then
@@ -270,7 +286,7 @@ end
 -- Parked: between rounds, or not driving at all (on foot, in the depot).
 local function onRound(payload: Types.RoundStatePayload)
 	parked = (payload.phase ~= "Playing" and payload.phase ~= "Countdown") or (State.sessionState ~= "Driver" and State.sessionState ~= "")
-	openButton.Visible = parked and not mounted
+	openButton.Visible = parked and not mounted and State.sessionState ~= "Title" -- the title screen has its own GARAGE
 	if not parked and isOpen then
 		setOpen(false)
 	end
