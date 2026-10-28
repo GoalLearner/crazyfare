@@ -752,6 +752,7 @@ function FareService.Init()
 		matchEarned[player] = nil
 		delivered[player] = nil
 		bestTip[player] = nil
+		forcedRequest[player] = nil
 	end)
 end
 

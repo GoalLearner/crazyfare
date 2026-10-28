@@ -71,7 +71,14 @@ local function padCFrameForSlot(slot: number): CFrame
 		return CFrame.new(0, 4, 0)
 	end
 	local pad = pads[((slot - 1) % #pads) + 1]
-	return pad.cframe * CFrame.new(0, 3.2, 0)
+	local base = pad.cframe * CFrame.new(0, 3.2, 0)
+	local ring = math.floor((slot - 1) / #pads)
+	if ring == 0 then
+		return base
+	end
+	-- more drivers than pads: never two cars in one spot (they'd fling each other)
+	local side = if pad.cframe.Position.X >= MapService.GetCenter().X then 1 else -1
+	return base + Vector3.new(side * Config.Round.ExtraSlotOffset * ring, 0, 0)
 end
 
 -- Why a template cannot be used, or nil when it satisfies the VehicleBuilder contract.

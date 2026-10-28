@@ -212,6 +212,7 @@ function RiderService.Init()
 	ComboService.OnStunt:Connect(onStunt)
 	ItemService.OnSmash:Connect(onSmash)
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
+		onUnloaded(player)
 		lineIds[player] = nil
 	end)
 end

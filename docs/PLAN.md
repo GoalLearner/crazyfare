@@ -268,6 +268,15 @@ Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10
 - [x] Load: the City is 2,620 parts + 445 meshes on the client (light for Roblox), mesh memory about 2 MB
 - [ ] Not seen yet: a real phone (feel of the buttons, frame rate, the Dynamic Island inset), the Garage's small text and buttons on 360-point phones (it fits but is cramped: a phone layout for it is a follow-up)
 
+## Server capacity check (owner ask 2026-10-27: "can this game hold many players ... I don't want it to crash")
+- [x] How it scales: Roblox runs as many servers as there are players, so the total player base isn't capped by the game; what matters is one server's size and staying healthy for hours. The game is built for 6 per server (6 start pads, 6-car race)
+- [x] Load test (Studio, Server and Clients, 4 player clients, round running): server 60 fps, worst frame 20 ms, heartbeat 1.5 ms of the 16.7 ms frame (about 9%), physics 0.6 ms, network out about 65 KB/s in all (about 16 KB/s per player; Roblox's comfort zone is under ~50 per player), memory about 935 MB including Studio, 4,019 instances in the workspace
+- [x] Saving: ProfileStore (session locking, autosave); leaderboards read each board once a minute and write once per player per match, inside Roblox's per-minute budgets even with 1 player; the referral store is written only on joins
+- [x] More than 6 in a server used to stack the 7th car on pad 1 (cars spawned inside each other fling): `VehicleService.padCFrameForSlot` now parks each extra lap of drivers `Config.Round.ExtraSlotOffset` 20 studs farther out to the side
+- [x] Long-uptime cleanup on leave: PassengerService now also forgets the Seatbelt timer and who last hit (and anyone it hit); FareService the Studio forced request; RiderService a rider still riding (`onUnloaded`)
+- [ ] OWNER: Creator Hub > Configure > Places > CrazyFare > Max Players = 6 (added to `docs/LAUNCH.html`; Studio no longer shows it and the browser pane isn't signed in)
+- [ ] Not measured: a full 6-player server, a real phone's client, a live server over hours
+
 ## Traffic jams (owner note 2026-10-27, "make sure NPC drivers don't crash and cause these traffic jams")
 - [x] Cause: when a round ended every racer's car froze where it stood, often in a lane, for the podium and the 30 s Pit Stop, while traffic kept driving into the queue behind it; each queued car waited its own 8 s before giving up, and a traffic van shoved into a frozen cab ended up across both lanes
 - [x] Racers go back to their grid pads on the plaza the moment play stops (round end, match end, Arcade end, waiting), so nothing sits in a lane between rounds (`VehicleService.ResetAllToGrid` instead of freezing in place)

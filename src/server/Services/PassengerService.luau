@@ -828,6 +828,13 @@ function PassengerService.Init()
 	game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
 		PassengerService.Release(player)
 		lastDamageAt[player] = nil
+		immuneUntil[player] = nil
+		lastAttacker[player] = nil
+		for victim, attacker in lastAttacker do
+			if attacker == player then
+				lastAttacker[victim] = nil
+			end
+		end
 	end)
 end
 

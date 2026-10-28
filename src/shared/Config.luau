@@ -261,6 +261,9 @@ Config.Keys = {
 Config.Round = {
 	MinPlayers = 2, -- live servers wait for this many before a match starts
 	StudioMinPlayers = 1, -- so a solo Studio run plays
+	-- Servers should allow at most 6 players (one per grid pad: Creator Hub > Configure > Places > Max Players). If more
+	-- ever get in, each extra lap of drivers parks this many studs farther out to the side instead of on top of a car.
+	ExtraSlotOffset = 20,
 	AutoStartDelay = 4, -- seconds after MinPlayers is met before PreCountdown
 	PreCountdownSeconds = 3, -- "read the board": NPCs visible, cars frozen
 	CountdownSeconds = 3, -- 3-2-1
