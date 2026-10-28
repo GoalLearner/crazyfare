@@ -96,6 +96,9 @@ export type RoundStatePayload = {
 
 export type SlotEntry = { name: string, id: number, bot: boolean? } -- id: UserId (bots below 0)
 
+-- The next-map vote on the match-end podium (MapVoteService -> everyone).
+export type MapVoteStatePayload = { open: boolean, options: { string }, counts: { [string]: number } }
+
 export type ProfilePayload = {
 	gems: number,
 	level: number,

@@ -14,12 +14,16 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Signal = require(ReplicatedStorage.Shared.Signal)
 local Metrics = require(script.Parent.Parent.Metrics)
 local Racers = require(script.Parent.Parent.Racers)
 local DataService = require(script.Parent.DataService)
 local MonetizationService = require(script.Parent.MonetizationService)
 
 local LeaderboardService = {}
+
+local onPhantomRegistered: Signal.Signal<Player, number> = Signal.new()
+LeaderboardService.OnPhantomRegistered = onPhantomRegistered -- (player, serial) a new Phantom owner got their number
 
 type Board = {
 	name: string,
@@ -276,6 +280,7 @@ function LeaderboardService.RegisterPhantom(player: Player)
 		submit(getBoard("phantom", PHANTOM.OwnersStore), player, serial, "max")
 		setOwnerCount(serial)
 		Metrics.Event(player, Config.Metrics.Events.PhantomOwned, serial)
+		onPhantomRegistered:Fire(player, serial)
 		if RunService:IsStudio() then
 			print(string.format("[LeaderboardService] %s is Phantom owner #%d", player.Name, serial))
 		end

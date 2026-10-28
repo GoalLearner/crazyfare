@@ -409,6 +409,30 @@ Config.Depot = {
 }
 
 -- The COLLECTION panel (side stack): what you've unlocked and done, from your profile.
+-- Map voting (checklist move 4, 2026-10-28): on a race's match-end podium everyone taps the next map
+-- (Config.Map.Rotation); most votes wins, a tie with the rotation's own pick or no votes keeps that pick.
+Config.MapVote = {
+	Title = "NEXT MAP",
+	Hint = "Tap to vote",
+	Width = 200, -- px, the card right of the podium
+	RowHeight = 44,
+}
+
+-- Roblox badges (checklist move 4, 2026-10-28), awarded by BadgesService. Each needs creating in Creator Hub
+-- (Creator Hub > the experience > Engagement > Badges, with art from docs/badges); paste its id here. Id 0 = not
+-- created yet: nothing is awarded.
+Config.Badges = {
+	Level = 10, -- "Level10" badge at this level
+	Order = { "FirstFare", "FirstWin", "Level10", "LegendLicense", "PhantomOwner" },
+	List = {
+		FirstFare = { Id = 0, Name = "First Fare", Description = "Delivered your first passenger. The meter is running!" },
+		FirstWin = { Id = 0, Name = "Top Cab", Description = "Won a match in CrazyFare. Honk if you're winning!" },
+		Level10 = { Id = 0, Name = "Road Regular", Description = "Reached level 10 in CrazyFare." },
+		LegendLicense = { Id = 0, Name = "Legend License", Description = "Earned a LEGEND license in a match." },
+		PhantomOwner = { Id = 0, Name = "Phantom Rider", Description = "Owns the mythic Phantom horse." },
+	} :: { [string]: { Id: number, Name: string, Description: string } },
+}
+
 -- Analytics (Creator Hub > Analytics), logged through src/server/Metrics.luau. The onboarding funnel is one step each,
 -- once per account, in this order; Gems flows use Roblox's transaction types (IAP, Shop, Gameplay, TimedReward).
 Config.Metrics = {
@@ -1843,6 +1867,7 @@ Config.Data = {
 		Equipped = { Trail = "", Horn = "" }, -- "" = none (the default honk; no trail unless you earn the weekly one)
 		WeirdoQueue = "", -- a new card's weirdo, spawned once in your next round as a bonus fare ("" = none)
 		OnboardingStep = 0, -- the furthest new-player funnel step logged for this account (Config.Metrics.Onboarding)
+		BadgesGiven = {} :: { [string]: boolean }, -- Config.Badges keys already sent to Roblox for this account
 		PhantomSerial = 0, -- your Phantom's number among all owners (0 = none yet)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)
@@ -1999,6 +2024,7 @@ Config.Net = {
 		DepotChoice = 2,
 		Play = 1,
 		SaveSettings = 2,
+		MapVote = 4,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.

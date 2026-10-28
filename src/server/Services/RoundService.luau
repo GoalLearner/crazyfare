@@ -33,6 +33,7 @@ local SessionService = require(script.Parent.SessionService)
 local MatchController = require(script.Parent.MatchController)
 local DropService = require(script.Parent.DropService)
 local Racers = require(script.Parent.Parent.Racers)
+local MapVoteService = require(script.Parent.MapVoteService)
 
 local MapService = require(script.Parent.MapService)
 
@@ -230,9 +231,9 @@ local function beginMatch()
 	mode = "Race"
 	roundIndex = 1
 	waitingSince = nil
-	-- Map rotation: one match per entry.
+	-- Map rotation: one match per entry, unless the last podium voted for another map.
 	local rotation = Config.Map.Rotation
-	local nextMap = rotation[(matchCount % #rotation) + 1]
+	local nextMap = MapVoteService.TakeWinner(rotation[(matchCount % #rotation) + 1])
 	matchCount += 1
 	if nextMap and nextMap ~= MapService.GetCurrentMap() then
 		PassengerService.ClearAll()
@@ -297,6 +298,7 @@ local function endRound()
 	else
 		results = MatchController.MatchEnd(standings)
 		setPhase("MatchEnd", Config.Round.MatchEndSeconds)
+		MapVoteService.Open()
 	end
 end
 

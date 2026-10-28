@@ -44,6 +44,8 @@ local ordered: { Service } = {
 	require(Services.DebugService),
 	require(Services.MatchController),
 	require(Services.MetricsService),
+	require(Services.MapVoteService),
+	require(Services.BadgesService),
 	require(Services.RoundService),
 }
 

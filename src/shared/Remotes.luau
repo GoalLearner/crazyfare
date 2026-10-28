@@ -17,6 +17,7 @@ local EVENT_NAMES = {
 	"QuestSync", -- (Types.QuestPayload) when quests, streak or progress change
 	"LeaderboardSync", -- (Types.LeaderboardPayload) on request and on refresh
 	"DropEvent", -- (Types.DropEventPayload) your post-match drop; a Mythic pull goes to everyone
+	"MapVoteState", -- (Types.MapVoteStatePayload) the next-map vote opened, changed or closed
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)
@@ -35,6 +36,7 @@ local EVENT_NAMES = {
 	"DepotChoice", -- (choice: "stay" | "join") sit the next match out in the depot, or drive it
 	"Play", -- () PLAY on the title screen: leave the menu for the depot, a seat or the sidewalk
 	"SaveSettings", -- (settings: { music: number, sfx: number, shake: boolean, speedFx: boolean }) OPTIONS changed
+	"MapVote", -- (map: string) your pick for the next map on the match-end podium
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

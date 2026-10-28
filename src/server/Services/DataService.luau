@@ -44,6 +44,7 @@ export type ProfileData = {
 	Equipped: { Trail: string, Horn: string },
 	WeirdoQueue: string,
 	OnboardingStep: number,
+	BadgesGiven: { [string]: boolean },
 }
 
 local DataService = {}
