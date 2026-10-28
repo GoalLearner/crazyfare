@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Game Checklist</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#e8a400; --ok:#2f8f4e; --part:#b5851d; --miss:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --part:#e8b54a; --miss:#ff7a6b; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --part:#e8b54a; --miss:#ff7a6b; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:980px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+h2 b { background:var(--accent); color:#1d1b22; border-radius:999px; min-width:28px; height:28px; display:inline-grid; place-items:center; font-size:15px; }
+.why { color:var(--muted); margin:0 0 12px; font-size:15px; }
+ul, ol { margin:6px 0 0; padding-left:22px; }
+li { margin:4px 0; }
+.verdict { border-left:4px solid var(--accent); padding:2px 0 2px 14px; }
+.items { list-style:none; padding:0; margin:8px 0 0; }
+.items li { display:grid; grid-template-columns:24px 1fr auto; gap:10px; align-items:start; padding:9px 0; border-top:1px solid var(--line); }
+.items li:first-child { border-top:0; }
+.items input { width:18px; height:18px; margin-top:3px; accent-color:var(--ok); }
+.items .t { font-weight:600; }
+.items .d { color:var(--muted); font-size:14px; }
+.tags { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:2px 9px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+.pill.done { color:var(--ok); border-color:var(--ok); }
+.pill.part { color:var(--part); border-color:var(--part); }
+.pill.miss { color:var(--miss); border-color:var(--miss); }
+.items li.checked .t { text-decoration:line-through; color:var(--muted); }
+.table { width:100%; overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+.score { font-size:14px; color:var(--muted); margin-top:6px; }
+@media (max-width:600px) { .items li { grid-template-columns:22px 1fr; } .tags { grid-column:2; justify-content:flex-start; } }
+</style>
+</head>
+<body>
+<main>
+<h1>CrazyFare checklist</h1>
+<p class="sub">October 28, 2026, 2:30 PM PST. Built from three videos you sent, checked against the game as it is live today (v16). Tick boxes as you go; they stay ticked in this browser.</p>
+
+<section>
+<h2><b>!</b> Are we on track?</h2>
+<div class="verdict">
+<p><b>The game itself: yes.</b> All three videos say the same things win on Roblox: play with friends, something to grind and show off, a reason to come back tomorrow, and a skill to get good at. CrazyFare already has all of that. It has 6 players in one city, bots, items, ramming, bounties, levels, upgrades, 9 cars, quests, leaderboards, crates, the Phantom, weekly events and a coach.</p>
+<p><b>Getting players: no, and this is the big one.</b> The two developer videos agree on one lesson above everything else: test with real players first, then build. The 20-minute video's game made money after a 2-week build; the same developer's 3-year, all-money project made nothing. CrazyFare has had 16 versions and <b>zero visits</b>. In Creator Hub today, the game is <b>Private</b>. The description is <b>empty</b>, <b>no thumbnails</b> are uploaded and there's <b>no custom icon</b>, even though the art is ready in <code>docs/launch</code>.</p>
+<p><b>So the next move isn't more features.</b> Open the game to players this week, make the store page clickable, watch day-1 retention, then build what the numbers ask for.</p>
+</div>
+</section>
+
+<section>
+<h2><b>1</b> What the three videos teach</h2>
+<div class="table">
+<table>
+<tr><th>Video</th><th>Main lessons</th></tr>
+<tr><td>Player psychology (5 min)</td><td>Design backwards from five cravings: <b>progression</b> (visible growth), <b>status</b> (something rare to flex, like a big lifetime stat), <b>FOMO</b> (daily rewards, limited events, framed as "you'll lose this"), <b>mastery</b> (a system you can learn and get good at), and <b>community</b> (most solo games fail on Roblox). Study hit games: watch players, read comments, and map each trigger → action → reward.</td></tr>
+<tr><td>A developer's road (9 min)</td><td>First games flop; that's normal. Common rookie misses: API services off, UI not built for phones. What finally worked for him was core retention: progression, random rewards, leaderboards, something to grind. Players care about fun, not clean code. Feedback from a community is fuel. Some bugs only show up in live servers. An update can drop your player count, so watch analytics. Take responsibility and don't let the numbers rule your mood.</td></tr>
+<tr><td>Roblox millionaires (20 min)</td><td>The formula: <b>clickable</b> (a dramatic, unique name and look), <b>social</b> (play with or against friends), <b>replayable</b> (curiosity, like "at level 10 I need level 100 to see what's next"). <b>Test first, then build.</b> Round-based games with map voting. Money comes from <b>daily rotating shops</b>, coins and abilities. No ads needed when the game clicks, because TikTok and YouTubers drive discovery (a big streamer playing one game led to about 100M views). They pay artists for thumbnails and icons.</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2><b>2</b> Get real players (do this first)</h2>
+<p class="why">Both developer videos: nothing else matters until people play and you can see what they do.</p>
+<ul class="items">
+<li><input type="checkbox" data-k="public"><div><div class="t">Make the game public</div><div class="d">Creator Hub shows Game access: Private. You could open it to friends first (Audience → Friends), then to everyone. Steps are in docs/OWNER-STEPS.html §2 and docs/LAUNCH.html.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="idv"><div><div class="t">ID verification</div><div class="d">Creator Hub asks for it ("set up your ID verification to reach more players"). Only you can do this.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="quest"><div><div class="t">Maturity questionnaire</div><div class="d">Answers are ready in docs/OWNER-STEPS.html: mild, repeated cartoon violence, no blood.</div></div><div class="tags"><span class="pill part">check</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="first20"><div><div class="t">First 10 to 20 real players</div><div class="d">Friends and family first, then a small Roblox ad if you choose to spend (I never spend money).</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="retention"><div><div class="t">Watch the 3 numbers weekly</div><div class="d">Day-1 retention, average playtime and new users (Creator Hub → Analytics). Decide each update from these, not from visits.</div></div><div class="tags"><span class="pill miss">no data yet</span><span class="pill">both</span></div></li>
+<li><input type="checkbox" data-k="funnel"><div><div class="t">Funnel and economy analytics in the code</div><div class="d">Roblox can log each step new players reach: title → PLAY → first fare → first match end. It can also log every Gems earn and spend. Right now we log none of it, so we won't see where new players quit.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+<li><input type="checkbox" data-k="livetest"><div><div class="t">Live test after every publish</div><div class="d">Two real accounts in the live game for 5 minutes, plus a look at Creator Hub → Monitoring for errors. Some bugs only show up live.</div></div><div class="tags"><span class="pill part">Studio only so far</span><span class="pill">both</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>3</b> Clickable</h2>
+<p class="why">The millionaires' first rule: if the tile doesn't get clicked, nothing inside matters.</p>
+<ul class="items">
+<li><input type="checkbox" data-k="icon"><div><div class="t">Upload the icon</div><div class="d">docs/launch/icon.png is ready. Today the game shows an auto-generated or placeholder image.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me, with your OK</span></div></li>
+<li><input type="checkbox" data-k="thumbs"><div><div class="t">Upload the 4 thumbnails</div><div class="d">Big air, jumping rivals, the cab and the city are ready in docs/launch. None are uploaded. Roblox shows each player the one that fits best.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me, with your OK</span></div></li>
+<li><input type="checkbox" data-k="desc"><div><div class="t">Write the description</div><div class="d">It's empty. Short and funny: what you do (race taxis, steal fares, splat rivals), the Phantom, and an update line.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me drafts, you approve</span></div></li>
+<li><input type="checkbox" data-k="name"><div><div class="t">A more dramatic title</div><div class="d">"CrazyFare" is clear. Hit games often add a hook, like "CrazyFare 🚕 Taxi Chaos". It's your call, and easy to try for a week.</div></div><div class="tags"><span class="pill part">optional</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="video"><div><div class="t">Short clips for TikTok, Shorts and Reels</div><div class="d">The millionaires say kids find games on TikTok. Banana spinouts, a Phantom pull banner and big jumps make good 10-second clips.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>4</b> Social (community)</h2>
+<p class="why">Psychology video and millionaires: Roblox is a social platform, and solo games rarely last.</p>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Play against friends in one city</div><div class="d">6 seats, bots fill the rest, ramming, items, bounty on the leader, HAIL CAB (players ride with players).</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Invite and referral rewards</div><div class="d">The INVITE button, Gems for referrals, a friend bonus and friends keeping seats together.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="group"><div><div class="t">A Roblox Community (group) and a Discord</div><div class="d">The developer video credits his community for testing, feedback and spreading the word. Link both on the game page.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+<li><input type="checkbox" data-k="vote"><div><div class="t">Map voting at match end</div><div class="d">The millionaires' game lets kids vote for the next map. We rotate City → Beach. Voting is small to build and gives players a say.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+<li><input type="checkbox" data-k="teams"><div><div class="t">Something to do together, not just against each other</div><div class="d">For example a 2-player crew mode, or a server goal everyone fills. Later, once the numbers say social is the weak spot.</div></div><div class="tags"><span class="pill part">later</span><span class="pill">me</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>5</b> Progression and replay (curiosity)</h2>
+<p class="why">Psychology video: every action should feel like moving forward. Millionaires: make players want to see what's behind the next door.</p>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Things to grind</div><div class="d">XP to level 99, Gems, 10-level upgrades, 9 cars, daily and weekly quests, license grades, crates with pity, 12 cards to collect.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Variety each match</div><div class="d">Two maps, weather, world events, Frenzy, carpools, ticking fares, the Golden Fare.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="levelgates"><div><div class="t">Levels that unlock something</div><div class="d">Today a level is only a number. Rewards at set levels give a reason to play "one more", for example a horn at 5, a paint at 10, a trail at 20, the Beach at 15 or a title at 50.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+<li><input type="checkbox" data-k="prestige"><div><div class="t">Prestige or rebirth</div><div class="d">The psychology video lists it. Optional for a racing game; consider it once players reach high levels.</div></div><div class="tags"><span class="pill part">optional</span><span class="pill">me</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>6</b> Status (something to flex)</h2>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Rare things and boards</div><div class="d">Weekly, tips, knockouts, Arcade and Phantom owners boards, the weekly gold trail, Phantom serial numbers, the VIP tag, license plates, trails, horns and paints.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="badges"><div><div class="t">Badges</div><div class="d">None yet. They show on a player's profile, and kids collect them. Ideas: first fare, first win, LEGEND license, Phantom owner, all 12 cards. You create them in Creator Hub (Roblox allows a few free ones a day), and I wire them in.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">both</span></div></li>
+<li><input type="checkbox" data-k="stat"><div><div class="t">A big lifetime stat everyone can see</div><div class="d">The psychology video's example is a lifetime kill count that players grind. Show lifetime fares (or knockouts) in the player list next to each name. Today stats are only in your own COLLECTION.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>7</b> Come back tomorrow (FOMO)</h2>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Daily and weekly reasons</div><div class="d">Daily and weekly quests, a login streak, weekly live events (Golden Hour, Double Gems), the weekly trail.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="calendar"><div><div class="t">A 7-day reward calendar, framed as loss</div><div class="d">The psychology video's twist is to say "you'll lose this if you miss tomorrow". Our streak pays Gems in one passing line; a calendar card makes it felt.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+<li><input type="checkbox" data-k="dailyshop"><div><div class="t">A daily rotating shop</div><div class="d">The millionaires' baby game makes most of its money this way. A few paints, trails and horns rotate every day for Gems or Robux. Sold items are permanent, so it fits our store rule.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">me</span></div></li>
+<li><input type="checkbox" data-k="phantomend"><div><div class="t">Give the Phantom sale an end date</div><div class="d">It's on sale with no end. A countdown ("2D 4H LEFT") is the time pressure the psychology video describes. One line in Config, then a publish.</div></div><div class="tags"><span class="pill part">your call</span><span class="pill">you</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>8</b> Mastery and fun</h2>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">A skill to get good at</div><div class="d">Drift and stunt chains, near misses, hop, item timing, ramming, bounties, stunt requests, license grades, Arcade best runs.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Teaching without walls of text</div><div class="d">The first-match coach and short HUD lines.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Built for phones</div><div class="d">Touch controls, phone layouts and the Device Simulator checked. (The developer video's rookie miss.)</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="watch"><div><div class="t">Watch real kids play</div><div class="d">The psychology video's homework: see where they go, what they ignore and when they leave. Sit with one or two kids, or join live servers once it's public.</div></div><div class="tags"><span class="pill miss">missing</span><span class="pill">you</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>9</b> Money</h2>
+<ul class="items">
+<li><input type="checkbox" disabled checked data-fixed="1"><div><div class="t">Store live</div><div class="d">8 passes, Gem packs, the Starter Pack, Robux cars, Max Upgrades, the Phantom at 999 R$. Free crates show their odds.</div></div><div class="tags"><span class="pill done">done</span></div></li>
+<li><input type="checkbox" data-k="arppu"><div><div class="t">Watch who pays and how much</div><div class="d">Once players arrive: Creator Hub → Monetization shows paying users and average spend. The millionaires track this closely.</div></div><div class="tags"><span class="pill miss">no data yet</span><span class="pill">both</span></div></li>
+<li><input type="checkbox" data-k="freeplayers"><div><div class="t">Check that free players stay</div><div class="d">Pay-to-win is the plan. Day-1 retention for non-payers tells us whether the gap needs tuning (Config knobs, not new rules).</div></div><div class="tags"><span class="pill miss">no data yet</span><span class="pill">both</span></div></li>
+</ul>
+</section>
+
+<section>
+<h2><b>10</b> The long game</h2>
+<ul>
+<li>Expect the first public week to be quiet. Both developers had flops before a hit; judge by retention, not visits.</li>
+<li>Small updates on a set day (Friday is planned in docs/LAUNCH.html), each one answering what players did.</li>
+<li>If an update drops the numbers, roll back or fix fast. A bad week doesn't mean the game is over.</li>
+<li>Rest. The millionaires work focused blocks and stop, and they say the breaks give them their best ideas.</li>
+</ul>
+<p class="score" id="score"></p>
+</section>
+
+<section>
+<h2><b>→</b> The next five moves</h2>
+<ol>
+<li><b>You:</b> ID verification, the questionnaire, then open the game (friends first is fine).</li>
+<li><b>Me, on your OK:</b> upload the icon and 4 thumbnails in Creator Hub, and draft the description for you to approve.</li>
+<li><b>Me:</b> funnel and economy analytics, so the first players tell us where they quit.</li>
+<li><b>Both:</b> badges (you create them, I wire them in), plus map voting.</li>
+<li><b>You:</b> a Roblox Community and a Discord, and a few 10-second clips.</li>
+</ol>
+</section>
+</main>
+<script>
+(function () {
+  var KEY = 'crazyfare-checklist-v1';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.items input[type=checkbox]'));
+  function paint() {
+    var done = 0;
+    boxes.forEach(function (b) {
+      var li = b.closest('li');
+      if (li) li.classList.toggle('checked', b.checked && !b.dataset.fixed);
+      if (b.checked) done++;
+    });
+    var el = document.getElementById('score');
+    if (el) el.textContent = done + ' of ' + boxes.length + ' items ticked (the greyed ones are already in the game).';
+  }
+  boxes.forEach(function (b) {
+    if (b.dataset.k && saved[b.dataset.k]) b.checked = true;
+    b.addEventListener('change', function () {
+      if (b.dataset.k) saved[b.dataset.k] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      paint();
+    });
+  });
+  paint();
+})();
+</script>
+</body>
+</html>
