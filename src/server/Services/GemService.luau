@@ -20,7 +20,7 @@ function GemService.GetTotal(player: Player): number
 end
 
 function GemService.Add(player: Player, amount: number)
-	DataService.AddGems(player, amount)
+	DataService.AddGems(player, amount, "Gameplay", "MatchAward")
 end
 
 -- Gems earned by playing outside the match award (a ride as a passenger): they count toward the lifetime total too.
@@ -29,7 +29,7 @@ function GemService.Earn(player: Player, amount: number)
 	if d then
 		d.TotalGemsEarned += amount
 	end
-	DataService.AddGems(player, amount)
+	DataService.AddGems(player, amount, "Gameplay", "Ride")
 end
 
 -- Pays every entry by placement and fares, writes the award into the entry, records match stats.

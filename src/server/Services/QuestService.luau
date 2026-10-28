@@ -138,7 +138,7 @@ local function advance(player: Player, stored: StoredQuest, amount: number, labe
 	stored.progress += amount
 	if stored.progress >= stored.goal then
 		stored.done = true
-		DataService.AddGems(player, stored.reward)
+		DataService.AddGems(player, stored.reward, "Gameplay", "Quest:" .. stored.id)
 		pendingNotice[player] = string.format("%s QUEST DONE  +%d GEMS", label, stored.reward)
 		return true
 	end

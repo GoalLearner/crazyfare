@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Metrics = require(script.Parent.Parent.Metrics)
 local DataService = require(script.Parent.DataService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 local PassengerService = require(script.Parent.PassengerService)
@@ -122,7 +123,7 @@ local function grant(player: Player, d: DataService.ProfileData, entry: Config.D
 	local duplicate = false
 	if entry.Kind == "Gems" then
 		local amount = entry.Amount or 0
-		DataService.AddGems(player, amount)
+		DataService.AddGems(player, amount, "Gameplay", "Drop:" .. entry.Id)
 		d.TotalGemsEarned += amount
 	elseif entry.Kind == "Paint" then
 		if (d.Inventory.Paints[ref] or 0) > 0 then
@@ -157,7 +158,7 @@ local function grant(player: Player, d: DataService.ProfileData, entry: Config.D
 		return 0
 	end
 	local gems = cfg.DuplicateGems[entry.Rarity] or 0
-	DataService.AddGems(player, gems)
+	DataService.AddGems(player, gems, "Gameplay", "Duplicate:" .. entry.Id)
 	d.TotalGemsEarned += gems
 	return gems
 end
@@ -198,6 +199,7 @@ local function open(player: Player, place: number, forceRarity: string?, forcePr
 	if RunService:IsStudio() then
 		print(string.format("[DropService] %s opened a %s crate: %s %s%s", player.Name, tier, entry.Rarity, entry.Id, if duplicateGems > 0 then string.format(" (duplicate, +%d gems)", duplicateGems) else ""))
 	end
+	Metrics.Event(player, Config.Metrics.Events.DropOpened, rarityIndex(entry.Rarity))
 	if quiet then
 		return payload
 	end

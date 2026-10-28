@@ -13,6 +13,7 @@ local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local ProfileStore = require(ServerScriptService.ServerPackages.ProfileStore) :: any
+local Metrics = require(script.Parent.Parent.Metrics)
 
 export type ProfileData = {
 	Gems: number,
@@ -42,6 +43,7 @@ export type ProfileData = {
 	PhantomSerial: number,
 	Equipped: { Trail: string, Horn: string },
 	WeirdoQueue: string,
+	OnboardingStep: number,
 }
 
 local DataService = {}
@@ -128,23 +130,27 @@ function DataService.GetGems(player: Player): number
 	return if d then d.Gems else 0
 end
 
-function DataService.AddGems(player: Player, amount: number)
+-- `kind` is Roblox's transaction type for analytics ("Gameplay" by default, "IAP", "TimedReward"...) and `sku` what
+-- it was for ("Quest:daily1", "GemsSmall").
+function DataService.AddGems(player: Player, amount: number, kind: string?, sku: string?)
 	local d = data(player)
 	if not d then
 		return
 	end
 	d.Gems = math.max(0, d.Gems + amount)
 	DataService.Sync(player)
+	Metrics.Gems(player, true, amount, d.Gems, kind or "Gameplay", sku)
 end
 
--- Returns false without touching the balance when it cannot afford it.
-function DataService.SpendGems(player: Player, amount: number): boolean
+-- Returns false without touching the balance when it cannot afford it. `sku`: what was bought ("Car:GoKart").
+function DataService.SpendGems(player: Player, amount: number, sku: string?): boolean
 	local d = data(player)
 	if not d or d.Gems < amount then
 		return false
 	end
 	d.Gems -= amount
 	DataService.Sync(player)
+	Metrics.Gems(player, false, amount, d.Gems, "Shop", sku)
 	return true
 end
 
@@ -242,7 +248,7 @@ function DataService.BuyVehicle(player: Player, vehicleId: string): boolean
 	if not stats or not d or stats.RobuxOnly or DataService.Owns(player, vehicleId) then
 		return false -- Robux-only cars come through MonetizationService
 	end
-	if not DataService.SpendGems(player, stats.GemPrice) then
+	if not DataService.SpendGems(player, stats.GemPrice, "Car:" .. vehicleId) then
 		return false
 	end
 	d.OwnedVehicles[vehicleId] = true
@@ -261,7 +267,7 @@ function DataService.BuyUpgrade(player: Player, name: string): boolean
 		return false
 	end
 	local cost = def.Costs[level + 1]
-	if not cost or not DataService.SpendGems(player, cost) then
+	if not cost or not DataService.SpendGems(player, cost, "Upgrade:" .. name) then
 		return false
 	end
 	d.Upgrades[name] = level + 1
@@ -314,7 +320,7 @@ function DataService.BuyPaint(player: Player, colorName: string): boolean
 	end
 	-- a paint won from a drop applies free; drop-only colors can't be bought at all
 	local owned = colorName ~= "" and (d.Inventory.Paints[colorName] or 0) > 0
-	if colorName ~= "" and not owned and (dropOnly or not DataService.SpendGems(player, Config.Paint.Price)) then
+	if colorName ~= "" and not owned and (dropOnly or not DataService.SpendGems(player, Config.Paint.Price, "Paint:" .. colorName)) then
 		return false
 	end
 	d.Paint = colorName

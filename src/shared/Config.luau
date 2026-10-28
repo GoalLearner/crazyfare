@@ -409,6 +409,20 @@ Config.Depot = {
 }
 
 -- The COLLECTION panel (side stack): what you've unlocked and done, from your profile.
+-- Analytics (Creator Hub > Analytics), logged through src/server/Metrics.luau. The onboarding funnel is one step each,
+-- once per account, in this order; Gems flows use Roblox's transaction types (IAP, Shop, Gameplay, TimedReward).
+Config.Metrics = {
+	Currency = "Gems",
+	Onboarding = { "Joined", "PressedPlay", "Drove", "FirstPickup", "FirstDelivery", "FinishedMatch" },
+	LevelPath = "Level",
+	Events = {
+		MatchFinished = "MatchFinished", -- value = place
+		DropOpened = "DropOpened", -- value = rarity (1 Common .. 5 Mythic)
+		PhantomOwned = "PhantomOwned", -- value = serial number
+	},
+	StudioLog = true, -- print each event in Studio (nothing is sent from Studio tests)
+}
+
 Config.Collection = {
 	Button = "COLLECTION",
 	Title = "COLLECTION",
@@ -1828,6 +1842,7 @@ Config.Data = {
 		Inventory = { Paints = {}, Boosts = {}, Trails = {}, Horns = {}, Cards = {} } :: { [string]: { [string]: number } },
 		Equipped = { Trail = "", Horn = "" }, -- "" = none (the default honk; no trail unless you earn the weekly one)
 		WeirdoQueue = "", -- a new card's weirdo, spawned once in your next round as a bonus fare ("" = none)
+		OnboardingStep = 0, -- the furthest new-player funnel step logged for this account (Config.Metrics.Onboarding)
 		PhantomSerial = 0, -- your Phantom's number among all owners (0 = none yet)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)

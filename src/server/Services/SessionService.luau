@@ -247,7 +247,7 @@ local function payInviter(player: Player, count: number)
 	end
 	d.ReferralsPaid += n
 	d.TotalGemsEarned += n * cfg.InviterGems
-	DataService.AddGems(player, n * cfg.InviterGems)
+	DataService.AddGems(player, n * cfg.InviterGems, "Gameplay", "ReferralInviter")
 	onNotice:Fire(player, string.format(cfg.InviterNotice, n * cfg.InviterGems))
 end
 
@@ -301,7 +301,7 @@ local function onLoaded(player: Player)
 		local cfg = Config.Session.Referral
 		d.ReferredBy = inviterId
 		d.TotalGemsEarned += cfg.InviteeGems
-		DataService.AddGems(player, cfg.InviteeGems)
+		DataService.AddGems(player, cfg.InviteeGems, "Onboarding", "ReferralInvitee")
 		onNotice:Fire(player, string.format(cfg.InviteeNotice, cfg.InviteeGems))
 		task.spawn(creditInviter, inviterId)
 	end

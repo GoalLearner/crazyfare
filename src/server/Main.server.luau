@@ -43,6 +43,7 @@ local ordered: { Service } = {
 	require(Services.DepotService),
 	require(Services.DebugService),
 	require(Services.MatchController),
+	require(Services.MetricsService),
 	require(Services.RoundService),
 }
 

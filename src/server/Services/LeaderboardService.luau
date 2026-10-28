@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Metrics = require(script.Parent.Parent.Metrics)
 local Racers = require(script.Parent.Parent.Racers)
 local DataService = require(script.Parent.DataService)
 local MonetizationService = require(script.Parent.MonetizationService)
@@ -274,6 +275,7 @@ function LeaderboardService.RegisterPhantom(player: Player)
 		end
 		submit(getBoard("phantom", PHANTOM.OwnersStore), player, serial, "max")
 		setOwnerCount(serial)
+		Metrics.Event(player, Config.Metrics.Events.PhantomOwned, serial)
 		if RunService:IsStudio() then
 			print(string.format("[LeaderboardService] %s is Phantom owner #%d", player.Name, serial))
 		end

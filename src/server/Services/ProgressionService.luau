@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Metrics = require(script.Parent.Parent.Metrics)
 local DataService = require(script.Parent.DataService)
 local MonetizationService = require(script.Parent.MonetizationService)
 
@@ -35,6 +36,7 @@ function ProgressionService.AddXp(player: Player, amount: number): boolean
 	if leveled then
 		player:SetAttribute("Level", d.Level)
 		onNotice:Fire(player, string.format("LEVEL %d", d.Level))
+		Metrics.Level(player, d.Level)
 	end
 	DataService.Sync(player)
 	return leveled
@@ -134,7 +136,7 @@ local function checkStreak(player: Player)
 	end
 	d.Streak.LastDay = today
 	local reward = Config.Streak.PerDay * math.min(d.Streak.Days, Config.Streak.MaxDays)
-	DataService.AddGems(player, reward)
+	DataService.AddGems(player, reward, "TimedReward", "Streak")
 	onNotice:Fire(player, string.format("DAY %d STREAK  +%d GEMS", d.Streak.Days, reward))
 end
 

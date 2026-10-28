@@ -39,6 +39,8 @@ local MatchController = {}
 
 local onSlotsChanged: Signal.Signal<nil> = Signal.new()
 MatchController.OnSlotsChanged = onSlotsChanged -- the next match's line-up changed (the depot board redraws)
+local onMatchEnded: Signal.Signal<{ Types.PodiumEntry }> = Signal.new()
+MatchController.OnMatchEnded = onMatchEnded -- (results by place, awards filled in) a match just finished
 
 local phase = "Waiting" -- RoundService's phase (a plain string: the old solver mis-refines the union)
 local mode = "Race"
@@ -239,6 +241,7 @@ function MatchController.MatchEnd(results: { Types.PodiumEntry }): { Types.Podiu
 	DropService.AwardMatch(awarded) -- a free crate each, by place (bots get none)
 	SessionService.ReadyAll()
 	onSlotsChanged:Fire()
+	onMatchEnded:Fire(awarded)
 	return awarded
 end
 

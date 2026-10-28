@@ -83,7 +83,7 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	end,
 	AddGems = function(player, arg)
 		if typeof(arg) == "number" then
-			DataService.AddGems(player, math.round(arg))
+			DataService.AddGems(player, math.round(arg), "Gameplay", "Debug")
 		end
 	end,
 	Bail = function(player)
@@ -264,7 +264,7 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			if Config.Vehicles.Stats[nextId].RobuxOnly then
 				MonetizationService.DebugGrant(player, nextId) -- Studio: as if bought for Robux
 			else
-				DataService.AddGems(player, Config.Vehicles.Stats[nextId].GemPrice)
+				DataService.AddGems(player, Config.Vehicles.Stats[nextId].GemPrice, "Gameplay", "Debug")
 				DataService.BuyVehicle(player, nextId)
 			end
 		end

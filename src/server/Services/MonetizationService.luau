@@ -97,7 +97,7 @@ local function grantKey(player: Player, key: string): boolean
 	end
 	local product = Config.Monetization.Products[key]
 	if product then
-		DataService.AddGems(player, product.Gems)
+		DataService.AddGems(player, product.Gems, "IAP", key)
 		if product.Vehicle then
 			d.OwnedVehicles[product.Vehicle] = true
 		end

@@ -21,7 +21,7 @@ end
 
 local function fallback(player: Player, key: string)
 	local def = cfg.Boosts[key]
-	DataService.AddGems(player, def.FallbackGems)
+	DataService.AddGems(player, def.FallbackGems, "IAP", key)
 	SessionService.OnNotice:Fire(player, string.format(cfg.FallbackLine, def.Label, def.FallbackGems))
 end
 
