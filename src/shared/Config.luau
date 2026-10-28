@@ -1463,10 +1463,13 @@ Config.Art = {
 	LightCurbInset = 1.5, -- studs onto the sidewalk from the curb
 	FurnitureClearance = 10, -- studs from stops, stalls, hydrants, walls and the drawbridge
 	Trees = { "tree-large", "tree-small" }, -- MapModels.Street models; parks and the strip between sidewalk and buildings
-	TreeHeight = { 15, 21 }, -- studs, random between
-	TreeSpacing = 22, -- studs between street trees along a block
+	TreeHeight = { 15, 21 }, -- park trees, studs, random between
+	TrunkSize = Vector3.new(1.2, 6, 1.2), -- the invisible collider under each park tree
+	-- Street trees: one near each corner of a block, on its north and south sides, far from the mid-block stops; looks only,
+	-- nothing collides with them (owner 2026-10-27: a tree every 22 studs, solid, got in the way of pickups).
+	StreetTreeOffset = 30, -- studs from the middle of the block's side
+	StreetTreeHeight = { 12, 16 },
 	TreeInset = 2, -- studs inside the sidewalk's inner edge: behind the walkers, in front of the buildings
-	TrunkSize = Vector3.new(1.2, 6, 1.2), -- the invisible collider under each tree
 	-- Kenney cars (MapModels.Cars), looks only: traffic keeps its collider box and wears a car picked from its kind's
 	-- list (an empty list keeps the parts body: Kenney has no bus); each bot wears one by its slot over its hidden parts
 	-- cab, with a roof sign in the bot's color so it reads as a rival cab. Traffic and bots use different models.

@@ -336,17 +336,21 @@ local function buildStartPads(parent: Folder, cx: number, cz: number)
 	end
 end
 
--- A tree: a Kenney tree (Config.Art.Trees, random height and turn) over an invisible trunk collider, or parts.
-local function buildTree(ctx: Ctx, parent: Folder, tx: number, tz: number)
+-- A tree: a Kenney tree (Config.Art.Trees, random height in `heights` and turn), over an invisible trunk collider when
+-- `solid`, or parts.
+local function buildTree(ctx: Ctx, parent: Folder, tx: number, tz: number, heights: { number }?, solid: boolean?)
 	if #ctx.trees > 0 then
 		local art = Config.Art
+		local range = heights or art.TreeHeight
 		local template = ctx.trees[ctx.rng:NextInteger(1, #ctx.trees)]
 		local _, size = template:GetBoundingBox()
-		local height = ctx.rng:NextNumber(art.TreeHeight[1], art.TreeHeight[2])
+		local height = ctx.rng:NextNumber(range[1], range[2])
 		placeArt(template, parent, height / size.Y, Vector3.new(tx, 0.5, tz), CFrame.Angles(0, ctx.rng:NextNumber(0, math.pi * 2), 0))
-		local collider = makePart("Trunk", art.TrunkSize, CFrame.new(tx, 0.5 + art.TrunkSize.Y / 2, tz), COLOR_TRUNK, parent)
-		collider.Transparency = 1
-		collider.CastShadow = false
+		if solid ~= false then
+			local collider = makePart("Trunk", art.TrunkSize, CFrame.new(tx, 0.5 + art.TrunkSize.Y / 2, tz), COLOR_TRUNK, parent)
+			collider.Transparency = 1
+			collider.CastShadow = false
+		end
 		return
 	end
 	local trunk = makePart("Trunk", Vector3.new(1.2, 6, 1.2), CFrame.new(tx, 3.5, tz), COLOR_TRUNK, parent)
@@ -383,26 +387,19 @@ local function buildTrees(ctx: Ctx, parent: Folder, cx: number, cz: number, clea
 	end
 end
 
--- Street trees on the strip between the sidewalk and the buildings, TreeSpacing apart along every side (behind the
--- walkers' line, in front of the facades). Only with imported trees.
+-- Street trees on the strip between the sidewalk and the buildings (behind the walkers' line, in front of the
+-- facades): one near each corner of the block, on its north and south sides, StreetTreeOffset from the middle so the
+-- mid-block stops stay clear. Looks only (no collider). Only with imported trees.
 local function buildStreetTrees(ctx: Ctx, parent: Folder, cx: number, cz: number)
 	if #ctx.trees == 0 then
 		return
 	end
 	local art = Config.Art
 	local d = ctx.B.CellSize / 2 - ctx.B.Sidewalk - art.TreeInset
-	local count = math.floor(2 * d / art.TreeSpacing) + 1
-	local first = -(count - 1) * art.TreeSpacing / 2
-	for _, side in { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis } do
-		local along = Vector3.new(side.Z, 0, side.X)
-		for k = 0, count - 1 do
-			local offset = first + k * art.TreeSpacing
-			-- the X sides leave the corners to the Z sides, so no corner gets a pair
-			if math.abs(side.X) > 0.5 and math.abs(offset) > d - art.TreeSpacing / 2 then
-				continue
-			end
-			local p = Vector3.new(cx, 0, cz) + side * d + along * offset
-			buildTree(ctx, parent, p.X, p.Z)
+	for _, side in { Vector3.zAxis, -Vector3.zAxis } do
+		for _, s in { -1, 1 } do
+			local p = Vector3.new(cx, 0, cz) + side * d + Vector3.xAxis * (s * art.StreetTreeOffset)
+			buildTree(ctx, parent, p.X, p.Z, art.StreetTreeHeight, false)
 		end
 	end
 end

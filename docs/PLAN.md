@@ -253,6 +253,10 @@ Plan of record: the approved fun-pass plan (Crazy Taxi gap list + the owner's 10
 - [x] Studio-tested 2026-10-27 (server command bar: `require(DevBlockout:Clone()).Generate('Beach')`, a look only): houses face the street with doors and awnings, fences with the front gap, stone paths to the sidewalk, trees out front, the cocktail and the ice cream on roofs; overview with the sand ring, palms and sea (3694 instances)
 - [ ] Not seen yet: a full Beach match (map rotation brings it every second match), phone frame rate on the Beach
 
+## Fewer trees (owner note after v11, 2026-10-27: "a bit less trees because they become an obstacle")
+- [x] Street trees: one near each corner of a block on its north and south sides (`Config.Art.StreetTreeOffset` 30 from the middle of the side), smaller (`StreetTreeHeight` 12-16), and no trunk collider: they used to stand every 22 studs on all four sides, flanking every mid-block stop, each with a solid trunk that a cab pulling onto the sidewalk for a passenger could hit. Park trees keep their trunks (`TreeHeight`, `TrunkSize`)
+- [x] Studio-tested 2026-10-27 (server count): 217 trees, all solid, became 81 (68 street trees nothing hits + 13 park trees)
+
 ## Traffic jams (owner note 2026-10-27, "make sure NPC drivers don't crash and cause these traffic jams")
 - [x] Cause: when a round ended every racer's car froze where it stood, often in a lane, for the podium and the 30 s Pit Stop, while traffic kept driving into the queue behind it; each queued car waited its own 8 s before giving up, and a traffic van shoved into a frozen cab ended up across both lanes
 - [x] Racers go back to their grid pads on the plaza the moment play stops (round end, match end, Arcade end, waiting), so nothing sits in a lane between rounds (`VehicleService.ResetAllToGrid` instead of freezing in place)
