@@ -355,5 +355,5 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
-- [ ] Owner: Max Players is still **50** (Creator Hub > place > Access > Maximum Visitor Count); the lobby flow was built for 10
+- [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)
 - [ ] Owner: Phantom sale dates for `Config.Monetization.PhantomOffer` when you want a sale
