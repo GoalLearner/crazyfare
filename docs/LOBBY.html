@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Lobby Flow</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#e8a400; --ok:#2f8f4e; --warn:#b5651d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:980px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+h2 b { background:var(--accent); color:#1d1b22; border-radius:999px; min-width:28px; height:28px; display:inline-grid; place-items:center; font-size:15px; }
+ol, ul { margin:6px 0 0; padding-left:22px; }
+li { margin:4px 0; }
+.note { color:var(--muted); font-size:14px; }
+.pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:2px 9px; border:1px solid var(--line); color:var(--muted); }
+.pill.ok { color:var(--ok); border-color:var(--ok); }
+.pill.warn { color:var(--warn); border-color:var(--warn); }
+code { font-family:ui-monospace, Consolas, monospace; font-size:14px; }
+.table { width:100%; overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+td code { white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+<h1>Server and lobby flow, version 1</h1>
+<p class="sub">October 27, 2026, 9:00 PM PST. Built while you were at the gym. Tested in Studio, committed, <b>not published</b>. Live is still v14.</p>
+
+<section>
+<h2><b>!</b> One thing for you <span class="pill warn">before the next publish</span></h2>
+<ol>
+<li>Creator Hub, then Creations, then CrazyFare, then Configure, then Places, then the CrazyFare place.</li>
+<li>Set <b>Max Players</b> to <b>10</b> (it was 6) and save. 6 people race; the other 4 walk the city and hail cabs until a seat opens. The game never puts more than 6 on the grid.</li>
+</ol>
+</section>
+
+<section>
+<h2><b>1</b> What a player sees now</h2>
+<ul>
+<li><b>Taxi Depot.</b> Join between matches and you drive your own car in a yard beside the City: a cone ring to drift around, two ramps, a cone slalom, and a board with this server's longest jump and best drift. Up top: <b>NEXT MATCH IN 0:08</b> and the 6 seats filling with people, then bots. Tap <b>STAY IN DEPOT</b> to sit a match out, <b>JOIN THE MATCH</b> to come back.</li>
+<li><b>Joining mid-round.</b> A free seat: you drive right away, $10 behind last place, and a bot leaves to make room. Banner: <b>YOU'RE IN! CATCH UP!</b></li>
+<li><b>Server full (6 driving).</b> You get your Roblox character on a sidewalk. Cars pass through you (you dive out of the way when one is about to hit you). Banner: <b>RIDE ALONG UNTIL A SEAT OPENS</b>.</li>
+<li><b>HAIL CAB.</b> Near a curb during a round. You become a gold fare with a TAXI! sign that every driver (and bot) sees. The ride pays 1.5x. You sit in the cab, see the driver's trip (fare card, arrow, countdown, stunts) and get tossed out if the passenger bails. On arrival you rate the driver 1 to 5 stars (the tip goes from 0.8x to 1.3x) and earn 3 Gems.</li>
+<li><b>Joining during the Pit Stop.</b> You walk until the next round, then take your seat: <b>YOU DRIVE NEXT ROUND</b>.</li>
+<li><b>Between matches.</b> No more REMATCH vote: after a 12 s podium the next match starts by itself (under 20 s in all). People who waited get seats first, bots fill the rest. <b>INVITE</b> is on the podium and in the depot; a friend who follows you in gets the next free seat.</li>
+<li>New <b>COLLECTION</b> button (cars owned, best license, lifetime stats). <b>PROGRESS</b> is now called <b>QUESTS</b>.</li>
+</ul>
+</section>
+
+<section>
+<h2><b>2</b> What I saw working in Studio <span class="pill ok">tested</span></h2>
+<ul>
+<li>1 player: the depot, the board recording a jump and a drift, WAITING FOR DRIVERS after STAY, the countdown with me plus 3 bots after JOIN, the hand-off to the grid, a full match, and the next match starting by itself on the Beach.</li>
+<li>2 players with 1 seat: the second player on foot by a pickup, HAIL CAB with the ring and TAXI! sign (visible to the driver), the pickup ($27 for a long trip = $18 x 1.5), the rider's chase camera with the trip's fare card and no money, a timeout tossing the rider out, a delivery, the 5-star prompt and +3 Gems, and the next match giving the seat to the one who had waited.</li>
+<li>Late joins: a player added mid-round drove at once at $70.11 (last place $80.11 minus $10). With 6 people and 3 seats, 3 drove and 3 walked. No script errors.</li>
+<li>Fixed during the tests: the dodge triggered for every car passing in the lane; the minimap showed in the depot; a newcomer could take a seat promised to someone waiting.</li>
+</ul>
+</section>
+
+<section>
+<h2><b>3</b> Your Studio test plan</h2>
+<p class="note">Test, then Clients and Servers, set the player count, then Start. Each client opens its own window. To try "server full" with few players: in the command bar before starting, run <code>workspace:SetAttribute('DebugSeats', 1)</code> (Studio only; clear it after with <code>nil</code>), or use the debug panel's <b>Seats 1</b> button.</p>
+<div class="table">
+<table>
+<tr><th>Test</th><th>Players</th><th>What should happen</th></tr>
+<tr><td>Bots fill</td><td>1</td><td>Depot, NEXT MATCH IN 0:10 with you + 3 bots, then a match with 3 bots. STAY IN DEPOT stops the countdown; JOIN starts it.</td></tr>
+<tr><td>Small group</td><td>3</td><td>All 3 in the depot, then a match with 3 people + 1 bot.</td></tr>
+<tr><td>Full server</td><td>8</td><td>6 drive, 2 walk. Walkers hail; drivers (and bots) pick them up; the rider rates the ride.</td></tr>
+<tr><td>Late join</td><td>Test menu, Add Clients, mid-round</td><td>A free seat: drives at once, $10 behind last place, a bot leaves. No seat: walks with the RIDE ALONG banner.</td></tr>
+<tr><td>Join during the Pit Stop</td><td>Add Clients during the Pit Stop</td><td>Walks with YOU DRIVE NEXT ROUND, then drives at the next round start.</td></tr>
+<tr><td>Match to match</td><td>2+</td><td>Podium 12 s with STAY IN DEPOT and INVITE, then the next match by itself; anyone who walked last match drives first.</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2><b>4</b> Knobs to tune <span class="pill">src/shared/Config.luau</span></h2>
+<div class="table">
+<table>
+<tr><th>Knob</th><th>Now</th><th>What it does</th></tr>
+<tr><td><code>Server.MaxPlayers</code></td><td>10</td><td>People per server (match the Creator Hub setting)</td></tr>
+<tr><td><code>Server.MaxDrivers</code></td><td>6</td><td>Seats on the grid</td></tr>
+<tr><td><code>Server.BotFillTo</code></td><td>4</td><td>Bots fill the grid to this many drivers</td></tr>
+<tr><td><code>Join.LateJoinPenalty</code></td><td>$10</td><td>How far behind last place a late driver starts</td></tr>
+<tr><td><code>Round.AutoStartDelay</code></td><td>10 s</td><td>The depot's NEXT MATCH countdown</td></tr>
+<tr><td><code>Round.MatchEndSeconds</code></td><td>12 s</td><td>Podium time (plus 3 + 3 s to GO)</td></tr>
+<tr><td><code>PlayerFare.PayMult</code></td><td>1.5</td><td>A person pays this times an NPC fare</td></tr>
+<tr><td><code>PlayerFare.MaxOnBoard</code></td><td>2</td><td>Player fares out at once</td></tr>
+<tr><td><code>PlayerFare.HailCooldown</code></td><td>6 s</td><td>Between hails</td></tr>
+<tr><td><code>PlayerFare.RatingSeconds / RatingDefault</code></td><td>8 s / 4</td><td>The star prompt</td></tr>
+<tr><td><code>PlayerFare.RatingTipRange</code></td><td>0.8 to 1.3</td><td>1 star to 5 stars, times the tip</td></tr>
+<tr><td><code>PlayerFare.RiderGems</code></td><td>3</td><td>Gems for the rider per ride</td></tr>
+<tr><td><code>Walkers.LanePushSeconds</code></td><td>2 s</td><td>In a lane this long: back on the sidewalk</td></tr>
+<tr><td><code>Depot.*</code></td><td></td><td>The yard: size, ramps, drift ring, slalom, board text</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2><b>5</b> Not done yet</h2>
+<ul>
+<li>Not tested: 8 real people at once, friend-follow priority (needs real accounts), invites (Studio can't send them), walking and hailing on a phone, a bot picking up a person.</li>
+<li><code>docs/SCALING.md</code> says when to move to a separate lobby place with a queue (for example more than 500 players online, or people spending more than a round in three on foot) and how it would work.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>
