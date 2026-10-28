@@ -16,6 +16,7 @@ local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 local PhantomOffer = require(script.Parent.Parent.PhantomOffer)
+local SoundController = require(script.Parent.SoundController)
 
 local GarageController = {}
 
@@ -33,6 +34,8 @@ local gemsLabel: TextLabel
 local vehicleList: ScrollingFrame
 local upgradeList: Frame
 local paintRow: Frame
+local trailRow: Frame
+local hornRow: Frame
 local isOpen = false
 local mounted = false
 local parked = false
@@ -186,11 +189,11 @@ local function renderPaint(profile: Types.ProfilePayload)
 			TextSize = 14,
 			TextColor3 = UI.White,
 			TextStrokeTransparency = 0.3,
-			Text = if owned and not current then "\u{2713}" else "",
+			Text = if owned and not current then "\u{2713}" elseif entry.Material then Config.Paint.MaterialMark else "",
 			AutoButtonColor = usable and not current,
 		}, paintRow) :: TextButton
 		UI.Corner(14, b)
-		UI.Stroke(if current then UI.White else Color3.fromRGB(40, 40, 48), if current then 3 else 1, b)
+		UI.Stroke(if current then UI.White else Color3.fromRGB(40, 40, 48), if current then 3 else 1, b).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		if not current and usable then
 			b.Activated:Connect(function()
 				action:FireServer("Paint", entry.Name)
@@ -213,6 +216,67 @@ local function renderPaint(profile: Types.ProfilePayload)
 	end)
 end
 
+-- TRAIL / HORN: the ones you won in drops, the equipped one outlined, NONE to take it off. A horn plays when you tap it.
+local function renderCosmetics(row: Frame, slot: string, order: { string }, names: { [string]: string }, colors: { [string]: Color3 }, profile: Types.ProfilePayload)
+	for _, child in row:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local owned = if profile.inventory then profile.inventory[slot .. "s"] or {} else {}
+	local equipped = if profile.equipped then (if slot == "Trail" then profile.equipped.Trail else profile.equipped.Horn) else ""
+	local any = false
+	for i, id in order do
+		if (owned[id] or 0) <= 0 then
+			continue
+		end
+		any = true
+		local current = equipped == id
+		local b = button(names[id] or id, colors[id] or Color3.fromRGB(70, 110, 190), UDim2.fromOffset(84, 26), row, true)
+		b.LayoutOrder = i
+		b.TextSize = 11
+		UI.Stroke(if current then UI.White else Color3.fromRGB(40, 40, 48), if current then 3 else 1, b).ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		b.Activated:Connect(function()
+			if slot == "Horn" then
+				SoundController.PlayHorn(id)
+			end
+			if not current then
+				action:FireServer(slot, id)
+			end
+		end)
+	end
+	if not any then
+		UI.Label({ Size = UDim2.new(1, 0, 0, 26), Text = Config.Cosmetics.EmptyLine, TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, row)
+		return
+	end
+	local none = button(Config.Cosmetics.NoneLabel, Color3.fromRGB(50, 50, 58), UDim2.fromOffset(52, 26), row, equipped ~= "")
+	none.LayoutOrder = 99
+	none.TextSize = 11
+	if equipped ~= "" then
+		none.Activated:Connect(function()
+			action:FireServer(slot, "")
+		end)
+	end
+end
+
+local function renderTrailsAndHorns(profile: Types.ProfilePayload)
+	local c = Config.Cosmetics
+	local trailNames: { [string]: string } = {}
+	local trailColors: { [string]: Color3 } = {}
+	for id, def in c.Trails do
+		trailNames[id] = def.Name
+		trailColors[id] = def.Colors[1]:Lerp(Color3.new(0, 0, 0), 0.35)
+	end
+	local hornNames: { [string]: string } = {}
+	local hornColors: { [string]: Color3 } = {}
+	for id, def in c.Horns do
+		hornNames[id] = def.Name
+		hornColors[id] = Config.Drops.Colors[def.Rarity]:Lerp(Color3.new(0, 0, 0), 0.45)
+	end
+	renderCosmetics(trailRow, "Trail", c.TrailOrder, trailNames, trailColors, profile)
+	renderCosmetics(hornRow, "Horn", c.HornOrder, hornNames, hornColors, profile)
+end
+
 local function render()
 	local profile = State.profile
 	if not profile then
@@ -222,6 +286,7 @@ local function render()
 	renderVehicles(profile)
 	renderUpgrades(profile)
 	renderPaint(profile)
+	renderTrailsAndHorns(profile)
 end
 
 local function setOpen(open: boolean)
@@ -289,6 +354,12 @@ local function build()
 	UI.Label({ Position = UDim2.fromOffset(0, 220), Size = UDim2.fromOffset(200, 22), Text = string.format("PAINT  ·  %d GEMS", Config.Paint.Price), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
 	paintRow = UI.Frame({ Position = UDim2.fromOffset(0, 248), Size = UDim2.new(1, 0, 0, 64), BackgroundTransparency = 1 }, right)
 	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Wraps = true, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
+	UI.Label({ Position = UDim2.fromOffset(0, 318), Size = UDim2.fromOffset(200, 22), Text = Config.Cosmetics.TrailRow, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
+	trailRow = UI.Frame({ Position = UDim2.fromOffset(0, 344), Size = UDim2.new(1, 0, 0, 56), BackgroundTransparency = 1 }, right)
+	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Wraps = true, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, trailRow)
+	UI.Label({ Position = UDim2.fromOffset(0, 400), Size = UDim2.fromOffset(200, 22), Text = Config.Cosmetics.HornRow, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
+	hornRow = UI.Frame({ Position = UDim2.fromOffset(0, 426), Size = UDim2.new(1, 0, 0, 56), BackgroundTransparency = 1 }, right)
+	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Wraps = true, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, hornRow)
 end
 
 -- The title screen's GARAGE button.

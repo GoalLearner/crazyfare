@@ -234,7 +234,7 @@ local function pickPassenger(bot: Bot): PassengerService.Npc?
 	local cruise = cfg.CruiseSpeed * bot.skill
 	local ranked: { { npc: PassengerService.Npc, score: number } } = {}
 	for _, npc in PassengerService.GetAll() do
-		if npc.state ~= 0 or (not npc.golden and targetedByOthers(bot, npc.id)) then
+		if npc.state ~= 0 or (not npc.golden and targetedByOthers(bot, npc.id)) or PassengerService.IsReservedFrom(npc, bot.driver) then
 			continue
 		end
 		local tier = Config.Fares.Tiers[npc.tier]

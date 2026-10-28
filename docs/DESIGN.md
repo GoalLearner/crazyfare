@@ -206,9 +206,11 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - Phones first: the whole HUD and every panel shrink to fit a phone screen under Roblox's top bar; the touch pads stay thumb-sized.
 - Seasons later (new map + pass + limited event every 6–8 weeks). No ranked MMR.
 
-## 9b. Post-match drops (owner spec 2026-10-28; D1 and D3 built)
+## 9b. Post-match drops (owner spec 2026-10-28; D1, D2 and D3 built)
 - Every person who finishes a match opens one free crate on the podium. Placement picks the crate: 1st Gold, 2nd-3rd Silver, the rest Bronze. Each crate's odds pick the rarity (Bronze 70 / 22 / 6.4 / 1.5 / 0.1 % Common / Rare / Epic / Legendary / Mythic; Silver and Gold shift up), then weights pick the prize.
-- Prizes: Gems, paints (the six shop colors and four drop-only ones), one-match item tokens (you start your next match holding that item), the Gem cars at Epic, Rocket Cab and Armored Limo at Legendary, 2,500 Gems or the Phantom at Mythic (the Phantom is about 1 in 10,000 drops). Trails, horns and Weirdo cards join in D2.
+- Prizes: Gems, paints (the six shop colors, four drop-only colors, and four drop-only material paints: Frost, Chrome, Laser, Gold), one-match item tokens (you start your next match holding that item), trails, horns, Weirdo cards, the Gem cars at Epic, Rocket Cab and Armored Limo at Legendary, 2,500 Gems or the Phantom at Mythic (the Phantom is about 1 in 10,000 drops).
+- Trails (Mint Breeze, Hot Sauce, Galaxy, Toxic, Rainbow) and horns (seven licensed clips: Squeaky, Euro Beep, Big Bus, Big Rig, Kazoo, Choo Choo, Ferry) are equipped from the Garage. The weekly gold trail still wins over an equipped one. Only you hear your horn.
+- Weirdo cards (12, all original: Pirate Captain, Ghost, Mime, Chef, Roller Grandma, Team Mascot, Knight, Opera Singer, Alien Tourist, Wedding Party, Magician, Astronaut) fill a CARDS grid in COLLECTION. A card you didn't have sends its weirdo to a curb a few seconds into your next round: a costumed long fare paying double, yours alone for 20 seconds (only you see its badge and minimap dot), then anyone's.
 - A car or paint you already own pays Gems instead (10 / 30 / 100 / 400 / 1,500 by rarity). Pity: an Epic or better by the 30th drop since the last one.
 - The reveal: the crate falls in beside the podium, shakes, bursts in the rarity color and shows the prize. The i button shows every tier's odds and the Phantom's chance per tier. A Mythic pull puts a gold banner and a flash on every screen in the server.
 - Free and earned only: no Gems or Robux can buy, reroll or improve a drop, and no purchase multiplies drop Gems. Bots get none. Numbers: `Config.Drops`.

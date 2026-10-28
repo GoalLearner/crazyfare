@@ -40,14 +40,18 @@ export type ProfileData = {
 	PityCounter: number,
 	Inventory: { [string]: { [string]: number } },
 	PhantomSerial: number,
+	Equipped: { Trail: string, Horn: string },
+	WeirdoQueue: string,
 }
 
 local DataService = {}
 
 local onLoaded: Signal.Signal<Player> = Signal.new()
 local onVehicleSelected: Signal.Signal<Player> = Signal.new()
+local onEquipped: Signal.Signal<Player> = Signal.new()
 DataService.OnLoaded = onLoaded
 DataService.OnVehicleSelected = onVehicleSelected -- selection or paint changed; the car may need a respawn
+DataService.OnEquipped = onEquipped -- the equipped trail or horn changed
 
 local store = ProfileStore.New(Config.Data.StoreName, Config.Data.Template)
 type Extras = { vip: boolean, pitStopPlus: boolean, showStarterPack: boolean, passes: { [string]: boolean } }
@@ -111,6 +115,7 @@ function DataService.Sync(player: Player)
 		coachDone = d.CoachDone,
 		settings = { music = d.Settings.Music, sfx = d.Settings.Sfx, shake = d.Settings.Shake, speedFx = d.Settings.SpeedFx },
 		inventory = d.Inventory,
+		equipped = { Trail = d.Equipped.Trail, Horn = d.Equipped.Horn },
 		dropCount = d.DropCount,
 		pity = d.PityCounter,
 		phantomSerial = d.PhantomSerial,
@@ -163,17 +168,49 @@ function DataService.GetSelectedVehicle(player: Player): string
 	return if Config.Vehicles.Stats[selected] then selected else Config.Vehicles.Default
 end
 
-function DataService.GetPaint(player: Player): Color3?
+-- The paint's color and its material (a drop paint like Chrome; nil = the car's own).
+function DataService.GetPaint(player: Player): (Color3?, Enum.Material?)
 	local d = data(player)
 	if not d or d.Paint == "" then
-		return nil
+		return nil, nil
 	end
 	for _, entry in Config.Paint.Colors do
 		if entry.Name == d.Paint then
-			return entry.Color
+			return entry.Color, entry.Material
 		end
 	end
-	return nil
+	return nil, nil
+end
+
+-- The equipped trail's colors (nil = none, or one you no longer own).
+function DataService.GetTrail(player: Player): { Color3 }?
+	local d = data(player)
+	local id = if d then d.Equipped.Trail else ""
+	local def = Config.Cosmetics.Trails[id]
+	if not d or not def or (d.Inventory.Trails[id] or 0) <= 0 then
+		return nil
+	end
+	return def.Colors
+end
+
+-- Equip an owned trail or horn ("Trail" | "Horn"); "" takes it off.
+function DataService.Equip(player: Player, slot: string, id: string): boolean
+	local d = data(player)
+	if not d or (slot ~= "Trail" and slot ~= "Horn") then
+		return false
+	end
+	local owned = d.Inventory[slot .. "s"] or {}
+	if id ~= "" and (owned[id] or 0) <= 0 then
+		return false
+	end
+	if slot == "Trail" then
+		d.Equipped.Trail = id
+	else
+		d.Equipped.Horn = id
+	end
+	DataService.Sync(player)
+	onEquipped:Fire(player)
+	return true
 end
 
 function DataService.Owns(player: Player, vehicleId: string): boolean

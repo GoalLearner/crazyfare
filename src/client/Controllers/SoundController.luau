@@ -197,9 +197,30 @@ local function onRound(payload: Types.RoundStatePayload)
 	end
 end
 
+local horns: { [string]: Sound } = {}
+
+-- A horn won in a drop (Config.Cosmetics.Horns), made the first time it plays.
+function SoundController.PlayHorn(id: string)
+	local existing = horns[id]
+	if existing then
+		existing:Play()
+		return
+	end
+	local def = Config.Cosmetics.Horns[id]
+	local sound = if def then make("Horn" .. id, def.Sound, false, Config.Sounds.Volume) else nil
+	if sound and def then
+		sound.PlaybackSpeed = def.Pitch or 1
+		horns[id] = sound
+		sound:Play()
+	end
+end
+
 local function onHonk()
 	local profile = State.profile
-	if profile and profile.vip and sounds.HonkVip then
+	local horn = if profile and profile.equipped then profile.equipped.Horn else ""
+	if Config.Cosmetics.Horns[horn] then
+		SoundController.PlayHorn(horn)
+	elseif profile and profile.vip and sounds.HonkVip then
 		play("HonkVip")
 	else
 		play("Honk")

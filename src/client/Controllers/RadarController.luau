@@ -53,7 +53,10 @@ local function refresh()
 		for _, inst in CollectionService:GetTagged(Config.Tags.Npc) do
 			if inst:IsA("Model") and inst:IsDescendantOf(workspace) then
 				local golden = inst:GetAttribute("Golden") == true
-				if golden or inst:GetAttribute("Tier") == "Red" then
+				local owner = inst:GetAttribute("ReservedFor")
+				local revealAt = inst:GetAttribute("RevealAt")
+				local hidden = typeof(owner) == "number" and owner ~= localPlayer.UserId and typeof(revealAt) == "number" and workspace:GetServerTimeNow() < revealAt
+				if (golden or inst:GetAttribute("Tier") == "Red") and not hidden then
 					wanted[inst] = true
 					if not beacons[inst] then
 						local gui = makeBeacon(inst, golden)

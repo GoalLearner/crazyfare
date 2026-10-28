@@ -266,6 +266,15 @@ local function beginPlaying()
 	VehicleService.SetReleased(true)
 	FareService.SetEnabled(true)
 	ItemService.SetEnabled(true)
+	-- new Weirdo cards' bonus fares, a few seconds in (if this round is still on)
+	if mode == "Race" then
+		local started = phaseStartsAt
+		task.delay(Config.Cosmetics.Bonus.SpawnDelay, function()
+			if phase == "Playing" and phaseStartsAt == started then
+				DropService.SpawnWeirdos()
+			end
+		end)
+	end
 end
 
 local function endRound()

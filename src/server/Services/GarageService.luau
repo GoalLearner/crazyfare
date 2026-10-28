@@ -1,5 +1,6 @@
 --!strict
--- Garage actions from the client: select or buy a vehicle, buy an upgrade level, buy paint. Validation lives in
+-- Garage actions from the client: select or buy a vehicle, buy an upgrade level, buy paint, equip a trail or horn
+-- won in a drop. Validation lives in
 -- DataService; this only rate-limits and routes. Nothing here can touch a match in progress.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +28,8 @@ function GarageService.Init()
 			DataService.BuyUpgrade(player, id)
 		elseif action == "Paint" then
 			DataService.BuyPaint(player, id)
+		elseif action == "Trail" or action == "Horn" then
+			DataService.Equip(player, action, id)
 		end
 	end)
 end

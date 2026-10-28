@@ -15,6 +15,8 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local DataService = require(script.Parent.DataService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local PassengerService = require(script.Parent.PassengerService)
+local SessionService = require(script.Parent.SessionService)
 
 local DropService = {}
 
@@ -101,6 +103,15 @@ local function prizeName(entry: Config.DropEntry): string
 	elseif entry.Kind == "Boost" then
 		local item = Config.Items.Pool[entry.Ref or ""]
 		return string.format(names.Boost, string.upper(if item then item.DisplayName else entry.Ref or ""))
+	elseif entry.Kind == "Trail" then
+		local def = Config.Cosmetics.Trails[entry.Ref or ""]
+		return string.format(names.Trail, if def then def.Name else entry.Ref or "")
+	elseif entry.Kind == "Horn" then
+		local def = Config.Cosmetics.Horns[entry.Ref or ""]
+		return string.format(names.Horn, if def then def.Name else entry.Ref or "")
+	elseif entry.Kind == "Card" then
+		local def = Config.Cosmetics.Cards[entry.Ref or ""]
+		return string.format(names.Card, if def then def.Name else entry.Ref or "")
 	end
 	return entry.Id
 end
@@ -131,6 +142,16 @@ local function grant(player: Player, d: DataService.ProfileData, entry: Config.D
 		end
 	elseif entry.Kind == "Boost" then
 		d.Inventory.Boosts[ref] = (d.Inventory.Boosts[ref] or 0) + 1
+	elseif entry.Kind == "Trail" or entry.Kind == "Horn" or entry.Kind == "Card" then
+		local owned = d.Inventory[entry.Kind .. "s"]
+		if (owned[ref] or 0) > 0 then
+			duplicate = true
+		else
+			owned[ref] = 1
+			if entry.Kind == "Card" then
+				d.WeirdoQueue = ref -- the new card's weirdo rides in your next round
+			end
+		end
 	end
 	if not duplicate then
 		return 0
@@ -204,6 +225,26 @@ function DropService.AwardMatch(results: { Types.PodiumEntry })
 	end
 end
 
+-- RoundService, a few seconds into a round: every driver with a new card's weirdo queued gets it as a bonus fare at a
+-- free curb (theirs alone for Config.Cosmetics.Bonus.HeadStartSeconds). No free curb: it waits for the next round.
+function DropService.SpawnWeirdos()
+	for _, player in SessionService.GetDrivers() do
+		local d = DataService.Get(player)
+		local card = if d then Config.Cosmetics.Cards[d.WeirdoQueue] else nil
+		if not d or not card then
+			continue
+		end
+		local npc = PassengerService.SpawnWeirdo(player, d.WeirdoQueue)
+		if npc then
+			dropEvent:FireClient(player, { kind = "Weirdo", card = d.WeirdoQueue, text = string.format(Config.Cosmetics.Bonus.Notice, card.Name) })
+			if RunService:IsStudio() then
+				print(string.format("[DropService] %s's %s is waiting at curb %d", player.Name, d.WeirdoQueue, npc.pickupIndex))
+			end
+			d.WeirdoQueue = ""
+		end
+	end
+end
+
 -- A line on every screen (RoundService: A PHANTOM HAS ENTERED THE MATCH).
 function DropService.Banner(text: string)
 	dropEvent:FireAllClients({ kind = "Banner", text = text })
@@ -235,7 +276,8 @@ function DropService.TakeStartToken(player: Player): string?
 	return item
 end
 
--- Studio (DebugService): a crate right now with this rarity, or "Phantom" for the Phantom itself.
+-- Studio (DebugService): a crate right now with this rarity, "Phantom" for the Phantom itself, a kind ("Card",
+-- "Trail", "Horn": a random one of those) or a Pool Id.
 function DropService.DebugDrop(player: Player, what: string)
 	if not RunService:IsStudio() then
 		return
@@ -244,6 +286,18 @@ function DropService.DebugDrop(player: Player, what: string)
 		open(player, 1, nil, "CarPhantom")
 	elseif table.find(cfg.Rarities, what) then
 		open(player, 1, what)
+	elseif findPrize(what) then
+		open(player, 1, nil, what)
+	else
+		local ofKind: { string } = {}
+		for _, entry in cfg.Pool do
+			if entry.Kind == what then
+				table.insert(ofKind, entry.Id)
+			end
+		end
+		if #ofKind > 0 then
+			open(player, 1, nil, ofKind[rng:NextInteger(1, #ofKind)])
+		end
 	end
 end
 

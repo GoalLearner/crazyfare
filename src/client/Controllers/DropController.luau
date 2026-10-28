@@ -195,10 +195,12 @@ local function mythicBanner(payload: Types.DropEventPayload)
 	end)
 end
 
--- A line for the whole server right now (A PHANTOM HAS ENTERED THE MATCH), in the Phantom's glow, no flash.
+-- A line right now, no flash: for the whole server (A PHANTOM HAS ENTERED THE MATCH, in the Phantom's glow) or just
+-- you (YOUR GHOST IS WAITING!, in the card's colors).
 local function lineBanner(payload: Types.DropEventPayload)
+	local cardDef = if payload.card then Config.Cosmetics.Cards[payload.card] else nil
 	banner.Text = payload.text or ""
-	banner.TextColor3 = Config.Vehicles.Phantom.Glow
+	banner.TextColor3 = if cardDef then cardDef.Shirt:Lerp(Color3.new(1, 1, 1), Config.Cosmetics.Bonus.BannerLighten) else Config.Vehicles.Phantom.Glow
 	banner.Visible = true
 	local text = banner.Text
 	task.delay(R.BannerSeconds, function()
@@ -293,7 +295,7 @@ function DropController.Init()
 			reveal(payload)
 		elseif payload.kind == "Mythic" then
 			mythicBanner(payload)
-		elseif payload.kind == "Banner" then
+		elseif payload.kind == "Banner" or payload.kind == "Weirdo" then
 			lineBanner(payload)
 		end
 	end)

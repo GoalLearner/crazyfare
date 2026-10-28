@@ -41,6 +41,9 @@ export type Npc = {
 	group: TextLabel?, -- "CARPOOL x3" over a waiting group
 	ticking: boolean, -- late, with an alarm clock: the fare drops every second (Config.Chaos.Ticking)
 	rider: Player?, -- a player fare: the person who hailed (their avatar rides; no NPC figure)
+	card: string?, -- a Weirdo card's bonus fare (Config.Cosmetics.Cards key)
+	reservedFor: Player?, -- that card's owner: only they can pick it up until revealAt
+	revealAt: number?, -- server time it opens to everyone
 }
 
 local PassengerService = {}
@@ -159,7 +162,8 @@ end
 local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, BasePart, TextLabel, TextLabel)
 	local tierDef = Config.Fares.Tiers[npc.tier]
 	local kindDef = Config.PassengerTypes.Kinds[npc.kind] or Config.PassengerTypes.Kinds.Regular
-	local badgeColor = if npc.golden then Config.Golden.Color else tierDef.Color
+	local card = if npc.card then Config.Cosmetics.Cards[npc.card] else nil
+	local badgeColor = if npc.golden then Config.Golden.Color elseif card then card.Shirt else tierDef.Color
 	local model = Instance.new("Model")
 	model.Name = "NPC_" .. npc.id
 	model:SetAttribute("NpcId", npc.id)
@@ -167,6 +171,13 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	model:SetAttribute("Kind", npc.kind)
 	model:SetAttribute("Golden", npc.golden)
 	model:SetAttribute("Ticking", npc.ticking)
+	-- a Weirdo card's fare: clients hide its badge from everyone but the owner until RevealAt (WeirdoController)
+	local reservedFor = npc.reservedFor
+	if card and reservedFor then
+		model:SetAttribute("Card", npc.card)
+		model:SetAttribute("ReservedFor", reservedFor.UserId)
+		model:SetAttribute("RevealAt", npc.revealAt or 0)
+	end
 	CollectionService:AddTag(model, Config.Tags.Npc)
 
 	local torsoCf = standCFrame(groundPos, look)
@@ -185,6 +196,11 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	end
 	if npc.golden then
 		addGoldenMarks(model, torso, torsoCf)
+	end
+	-- a weirdo's costume: the shirt (torso and arms, above) and a hat in the card's colors
+	if card then
+		local hat = makePart("Hat", Config.Cosmetics.Bonus.HatSize, torsoCf * CFrame.new(0, 2.25, 0), card.Hat, model)
+		weld(torso, hat)
 	end
 	-- A carpool: the others stand beside them (welded, so they walk and ride along), one model each so a stop takes one
 	local carpool = Config.Chaos.Carpool
@@ -212,9 +228,9 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	end
 
 	-- The badge: tier color ring, the kind's icon inside ($, a bolt, a nervous face; a star for the Golden Fare)
-	local iconSize = if npc.golden then 60 else 46
+	local iconSize = if npc.golden then 60 elseif card then Config.Cosmetics.Bonus.IconSize else 46
 	local icon = makeLabel(head, "Icon", UDim2.fromOffset(iconSize, iconSize), Vector3.new(0, 1.6, 0))
-	icon.Text = if npc.golden then Config.Golden.Icon else kindDef.Icon
+	icon.Text = if npc.golden then Config.Golden.Icon elseif card then card.Icon else kindDef.Icon
 	icon.TextColor3 = badgeColor
 	local iconFrame = icon.Parent :: BillboardGui
 	local ring = Instance.new("Frame")
@@ -246,6 +262,9 @@ local function buildModel(npc: Npc, groundPos: Vector3, look: Vector3): (Model, 
 	end
 	if npc.ticking then
 		tag("Ticking", Config.Chaos.Ticking.Label, Config.Chaos.Ticking.Color)
+	end
+	if card then
+		tag("Card", card.Name, card.Shirt)
 	end
 
 	local bubble = makeLabel(head, "Bubble", UDim2.fromOffset(260, 40), Vector3.new(0, 3.2, 0))
@@ -499,6 +518,61 @@ function PassengerService.DebugSpawnTicking(): Npc?
 	return PassengerService.SpawnAt(point, pickTier(VecUtil.FlatDistance(point.position, MapService.GetCenter())), false, 1, true)
 end
 
+-- A Weirdo card's bonus fare (DropService) at a random free curb: the card's costume, Config.Cosmetics.Bonus.Tier,
+-- and only `owner` can pick it up for HeadStartSeconds. Nil when every curb is taken.
+function PassengerService.SpawnWeirdo(owner: Player, cardId: string): Npc?
+	local bonus = Config.Cosmetics.Bonus
+	local tierDef = Config.Fares.Tiers[bonus.Tier]
+	if not Config.Cosmetics.Cards[cardId] or not tierDef then
+		return nil
+	end
+	local free: { MapService.Point } = {}
+	for _, point in MapService.GetPickups() do
+		if not npcAtPickup[point.index] then
+			table.insert(free, point)
+		end
+	end
+	if #free == 0 then
+		return nil
+	end
+	local point = free[rng:NextInteger(1, #free)]
+	local id = nextId
+	nextId += 1
+	local groundY = MapService.GroundY(point.position, point.position.Y)
+	local groundPos = Vector3.new(point.position.X, groundY, point.position.Z)
+	local npc = {
+		id = id,
+		tier = bonus.Tier,
+		kind = "Regular",
+		golden = false,
+		state = 0,
+		pickupIndex = point.index,
+		position = groundPos,
+		hp = tierDef.Hp,
+		maxHp = tierDef.Hp,
+		riders = 1,
+		ticking = false,
+		card = cardId,
+		reservedFor = owner,
+		revealAt = workspace:GetServerTimeNow() + bonus.HeadStartSeconds,
+	} :: any
+	local model, torso, icon, bubble = buildModel(npc, groundPos, point.cframe.LookVector)
+	npc.model = model
+	npc.torso = torso
+	npc.icon = icon
+	npc.bubble = bubble
+	local typed = npc :: Npc
+	npcs[id] = typed
+	npcAtPickup[point.index] = id
+	return typed
+end
+
+-- Still another player's weirdo (their head start isn't over)?
+function PassengerService.IsReservedFrom(npc: Npc, player: Player?): boolean
+	local owner = npc.reservedFor
+	return owner ~= nil and owner ~= player and workspace:GetServerTimeNow() < (npc.revealAt or 0)
+end
+
 -- Debug: a Golden Fare at a random free curb (nil when every curb is taken or one is already in play).
 function PassengerService.SpawnGolden(): Npc?
 	if goldenInPlay() then
@@ -700,11 +774,12 @@ function PassengerService.EnsureCount(target: number)
 	end
 end
 
-function PassengerService.GetAvailableNear(position: Vector3, radius: number): (Npc?, number)
+-- `player`: the cab asking (another player's weirdo in its head start is skipped).
+function PassengerService.GetAvailableNear(position: Vector3, radius: number, player: Player?): (Npc?, number)
 	local best: Npc? = nil
 	local bestDist = radius
 	for _, npc in npcs do
-		if npc.state == 0 then
+		if npc.state == 0 and not PassengerService.IsReservedFrom(npc, player) then
 			local d = VecUtil.FlatDistance(npc.position, position)
 			if d <= bestDist then
 				bestDist = d
@@ -976,6 +1051,9 @@ function PassengerService.Snapshot(): { Types.NpcSnap }
 				riders = npc.riders,
 				ticking = npc.ticking,
 				player = if npc.rider then true else nil,
+				card = npc.card,
+				owner = if npc.reservedFor then npc.reservedFor.UserId else nil,
+				revealAt = if npc.reservedFor then npc.revealAt else nil,
 			})
 		end
 	end

@@ -43,6 +43,9 @@ export type NpcSnap = {
 	riders: number, -- people in the group (2+ = a carpool)
 	ticking: boolean, -- a ticking fare (Config.Chaos.Ticking)
 	player: boolean?, -- a person hailing a cab (Config.PlayerFare)
+	card: string?, -- a Weirdo card's bonus fare (Config.Cosmetics.Cards key)
+	owner: number?, -- that card's owner (UserId): only they see it until revealAt
+	revealAt: number?, -- server time everyone sees it
 }
 
 export type Snapshot = {
@@ -113,7 +116,8 @@ export type ProfilePayload = {
 	arcadeBestLicense: number,
 	coachDone: boolean,
 	settings: SettingsPayload,
-	inventory: { [string]: { [string]: number } }, -- Paints (owned = 1), Boosts (tokens: next match starts holding one)
+	inventory: { [string]: { [string]: number } }, -- Paints, Trails, Horns, Cards (owned = 1), Boosts (tokens: next match starts holding one)
+	equipped: { Trail: string, Horn: string }, -- Config.Cosmetics ids ("" = none)
 	dropCount: number,
 	pity: number, -- drops since the last Epic or better
 	phantomSerial: number, -- your Phantom's number among all owners (0 = none)
@@ -121,7 +125,7 @@ export type ProfilePayload = {
 
 -- A post-match drop (DropService -> the player who opened it), or a Mythic pull told to everyone (kind "Mythic").
 export type DropEventPayload = {
-	kind: string, -- "Drop" | "Mythic" | "Banner"
+	kind: string, -- "Drop" | "Mythic" | "Banner" | "Weirdo"
 	tier: string?, -- "Gold" | "Silver" | "Bronze"
 	rarity: string?,
 	prize: string?, -- Config.Drops.Pool Id
@@ -130,7 +134,8 @@ export type DropEventPayload = {
 	pity: number?, -- drops since the last Epic or better, after this one
 	who: string?, -- "Mythic": the puller's display name
 	phantom: boolean?, -- "Mythic": the prize was the Phantom
-	text: string?, -- "Banner": a line for every screen (A PHANTOM HAS ENTERED THE MATCH)
+	text: string?, -- "Banner": a line for every screen (A PHANTOM HAS ENTERED THE MATCH); "Weirdo": yours is waiting
+	card: string?, -- "Weirdo": the card (Config.Cosmetics.Cards key)
 }
 
 -- OPTIONS: volume steps index Config.Options.VolumeSteps (1 = off); the switches turn camera shake and speed effects off.
@@ -244,6 +249,7 @@ export type Fare = {
 	riders: number, -- people still aboard, the one going to this stop included (2+ = a carpool)
 	stops: { number }, -- carpool: drop-off indices after this one
 	ticking: boolean, -- the fare drops every second (Config.Chaos.Ticking)
+	card: string?, -- a Weirdo card's bonus fare: pays Config.Cosmetics.Bonus.PayMult
 }
 
 return {}

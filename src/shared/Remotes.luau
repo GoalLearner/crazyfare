@@ -25,7 +25,7 @@ local EVENT_NAMES = {
 	"ClientReady", -- () client booted; server replies with RoundState + VehicleAssigned
 	"PitStopBuy", -- (cardId: string, undo: boolean?) undo hands a bought card back for a refund
 	"PitStopReady", -- (ready: boolean) READY in the Pit Stop; all players ready ends it in Config.PitStop.ReadySeconds
-	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint", id: string)
+	"GarageAction", -- (action: "Select" | "Buy" | "Upgrade" | "Paint" | "Trail" | "Horn", id: string)
 	"RequestLeaderboards", -- ()
 	"ShopAction", -- (action: "Refresh" | "DismissStarter")
 	"CoachDone", -- () the first-match coach prompts have all been shown

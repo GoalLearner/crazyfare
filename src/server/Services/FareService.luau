@@ -440,7 +440,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		npcId = npc.id,
 		expired = false,
 		tier = npc.tier,
-		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult elseif npc.rider then Config.PlayerFare.PayMult elseif npc.riders > 1 then Config.Chaos.Carpool.PayMult else 1),
+		base = Money.Cents(tierDef.Base) * (if npc.golden then Config.Golden.PayMult elseif npc.card then Config.Cosmetics.Bonus.PayMult elseif npc.rider then Config.PlayerFare.PayMult elseif npc.riders > 1 then Config.Chaos.Carpool.PayMult else 1),
 		kind = npc.kind,
 		golden = npc.golden,
 		pickupIndex = npc.pickupIndex,
@@ -456,6 +456,7 @@ local function claim(player: Player, npc: PassengerService.Npc)
 		riders = npc.riders,
 		stops = if npc.riders > 1 then pickStops(destination.position, npc.riders - 1, destination.index) else {},
 		ticking = npc.ticking,
+		card = npc.card,
 	}
 	local request = if npc.ticking then nil else rollRequest(player)
 	if request then
@@ -580,7 +581,7 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 	end
 	-- The passenger's kind bends the tip: a Thrill Seeker who got no stunt halves it, a Nervous one who arrived without
 	-- a scratch doubles it. `bonus` tells the driver why.
-	local bonus: string? = if fare.golden then Config.Golden.PayLine else nil
+	local bonus: string? = if fare.golden then Config.Golden.PayLine elseif fare.card then Config.Cosmetics.Bonus.PayLine else nil
 	local kindDef = Config.PassengerTypes.Kinds[fare.kind]
 	if kindDef and allowTip then
 		local mult = 1
@@ -783,7 +784,7 @@ local function tick()
 		if entry.chassis.AssemblyLinearVelocity.Magnitude > Config.Fares.StopSpeed then
 			continue
 		end
-		local npc, dist = PassengerService.GetAvailableNear(entry.chassis.Position, Config.Fares.PickupRadius)
+		local npc, dist = PassengerService.GetAvailableNear(entry.chassis.Position, Config.Fares.PickupRadius, player)
 		if npc then
 			local current = bids[npc.id]
 			if not current then
@@ -833,7 +834,7 @@ function FareService.DebugClaimNearest(player: Player)
 	if not RunService:IsStudio() or not entry or fares[player] then
 		return
 	end
-	local npc = PassengerService.GetAvailableNear(entry.chassis.Position, math.huge)
+	local npc = PassengerService.GetAvailableNear(entry.chassis.Position, math.huge, player)
 	if npc then
 		claim(player, npc)
 	end

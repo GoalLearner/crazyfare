@@ -145,6 +145,9 @@ export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: numb
 -- One prize in the post-match drop pool (Config.Drops.Pool). Kind: "Gems" (Amount), "Paint" | "Vehicle" (Ref: a
 -- Config.Paint / Config.Vehicles id), "Boost" (Ref: a Config.Items.Pool id: you start next match holding it).
 export type DropEntry = { Id: string, Kind: string, Rarity: string, Weight: number, Amount: number?, Ref: string? }
+export type TrailDef = { Name: string, Rarity: string, Weight: number, Colors: { Color3 } }
+export type HornDef = { Name: string, Rarity: string, Weight: number, Sound: number, Pitch: number? }
+export type CardDef = { Name: string, Rarity: string, Weight: number, Shirt: Color3, Hat: Color3, Icon: string }
 export type EventWindow = { Kind: string, Day: number, HourUtc: number, Hours: number } -- Day: 1 = Sunday ... 7 = Saturday
 
 local Config = {}
@@ -409,6 +412,7 @@ Config.Collection = {
 	Button = "COLLECTION",
 	Title = "COLLECTION",
 	Cars = "CARS %d/%d",
+	Cards = "WEIRDO CARDS %d/%d",
 	BestLicense = "BEST LICENSE",
 	Stats = { -- lifetime stats shown, in order (DataService Stats keys)
 		{ Key = "Matches", Label = "MATCHES" },
@@ -1099,7 +1103,98 @@ Config.Paint = {
 		{ Name = "Lime", Color = Color3.fromRGB(170, 240, 60), DropOnly = true },
 		{ Name = "Bubblegum", Color = Color3.fromRGB(255, 130, 210), DropOnly = true },
 		{ Name = "Teal", Color = Color3.fromRGB(30, 190, 180), DropOnly = true },
-	} :: { { Name: string, Color: Color3, DropOnly: boolean? } },
+		-- drop-only with a material of their own (D2)
+		{ Name = "Frost", Color = Color3.fromRGB(170, 220, 255), DropOnly = true, Material = Enum.Material.Ice },
+		{ Name = "Chrome", Color = Color3.fromRGB(205, 210, 220), DropOnly = true, Material = Enum.Material.Metal },
+		{ Name = "Laser", Color = Color3.fromRGB(255, 60, 200), DropOnly = true, Material = Enum.Material.Neon },
+		{ Name = "Gold", Color = Color3.fromRGB(255, 200, 60), DropOnly = true, Material = Enum.Material.Foil },
+	} :: { { Name: string, Color: Color3, DropOnly: boolean?, Material: Enum.Material? } },
+	MaterialMark = "\u{2726}", -- on a material paint's swatch in the Garage
+}
+
+-- Cosmetics won in drops (Config.Drops, owner spec 2026-10-28, D2): trails behind your car, horns for your honk, and
+-- Weirdo cards. Trails and horns are equipped from the Garage (owned only); cards fill COLLECTION, and a card you didn't
+-- have queues its weirdo as a bonus fare in your next round (Cards.Bonus). All names and looks are original.
+Config.Cosmetics = {
+	-- the weekly leaderboard trail (Config.Leaderboards.WeeklyTrailTop) wins over an equipped one
+	WeeklyTrail = { Color3.fromRGB(255, 215, 80), Color3.fromRGB(255, 120, 30) } :: { Color3 },
+	TrailLook = { Transparency = 0.2, Lifetime = 0.6, LightEmission = 0.8, MinLength = 0.2 },
+	TrailOrder = { "Mint", "HotSauce", "Galaxy", "Toxic", "Rainbow" },
+	Trails = {
+		Mint = { Name = "MINT BREEZE", Rarity = "Rare", Weight = 8, Colors = { Color3.fromRGB(110, 230, 170), Color3.fromRGB(230, 255, 245) } },
+		HotSauce = { Name = "HOT SAUCE", Rarity = "Rare", Weight = 8, Colors = { Color3.fromRGB(255, 60, 40), Color3.fromRGB(255, 170, 40) } },
+		Galaxy = { Name = "GALAXY", Rarity = "Epic", Weight = 8, Colors = { Color3.fromRGB(120, 60, 255), Color3.fromRGB(60, 140, 255), Color3.fromRGB(255, 90, 200) } },
+		Toxic = { Name = "TOXIC", Rarity = "Epic", Weight = 8, Colors = { Color3.fromRGB(150, 255, 60), Color3.fromRGB(40, 120, 20) } },
+		Rainbow = {
+			Name = "RAINBOW",
+			Rarity = "Legendary",
+			Weight = 20,
+			Colors = {
+				Color3.fromRGB(255, 60, 60),
+				Color3.fromRGB(255, 160, 40),
+				Color3.fromRGB(255, 230, 60),
+				Color3.fromRGB(80, 220, 100),
+				Color3.fromRGB(60, 140, 255),
+				Color3.fromRGB(170, 80, 255),
+			},
+		},
+	} :: { [string]: TrailDef },
+	-- Roblox-licensed Pro Sound Effects clips from the Creator Store (picked 2026-10-28); only you hear your horn
+	HornOrder = { "Squeaky", "EuroBeep", "Bus", "BigRig", "Kazoo", "ChooChoo", "Ferry" },
+	Horns = {
+		Squeaky = { Name = "SQUEAKY", Rarity = "Common", Weight = 4, Sound = 9113438364 }, -- Bike Horn Squeeze 1
+		EuroBeep = { Name = "EURO BEEP", Rarity = "Common", Weight = 4, Sound = 9120383448 }, -- Vehicle Horn Honk European Buzzing Whine 1
+		Bus = { Name = "BIG BUS", Rarity = "Common", Weight = 4, Sound = 9114661198 }, -- Greyhound Bus Horn Honks Short Long 1
+		BigRig = { Name = "BIG RIG", Rarity = "Rare", Weight = 6, Sound = 9114075901 }, -- Diesel Truck Horn Air Horn Exterior 3
+		Kazoo = { Name = "KAZOO", Rarity = "Rare", Weight = 6, Sound = 9114898328 }, -- Kazoo Fanfare 2
+		ChooChoo = { Name = "CHOO CHOO", Rarity = "Epic", Weight = 6, Sound = 9120250368 }, -- Train Horn 2
+		Ferry = { Name = "FERRY", Rarity = "Epic", Weight = 6, Sound = 9114406881 }, -- Ferry Boat Horn Medium Cu Clean Twice 2
+	} :: { [string]: HornDef },
+	CardOrder = {
+		"PirateCaptain",
+		"Ghost",
+		"Mime",
+		"Chef",
+		"RollerGrandma",
+		"TeamMascot",
+		"Knight",
+		"OperaSinger",
+		"AlienTourist",
+		"WeddingParty",
+		"Magician",
+		"Astronaut",
+	},
+	Cards = {
+		PirateCaptain = { Name = "PIRATE CAPTAIN", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(150, 30, 40), Hat = Color3.fromRGB(25, 25, 30), Icon = "\u{2620}" },
+		Ghost = { Name = "GHOST", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(235, 240, 255), Hat = Color3.fromRGB(235, 240, 255), Icon = "\u{1F47B}" },
+		Mime = { Name = "MIME", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(245, 245, 245), Hat = Color3.fromRGB(20, 20, 24), Icon = "\u{1F3AD}" },
+		Chef = { Name = "CHEF", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(250, 250, 250), Hat = Color3.fromRGB(255, 255, 255), Icon = "\u{1F373}" },
+		RollerGrandma = { Name = "ROLLER GRANDMA", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(255, 140, 200), Hat = Color3.fromRGB(190, 160, 255), Icon = "\u{1F475}" },
+		TeamMascot = { Name = "TEAM MASCOT", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(255, 200, 40), Hat = Color3.fromRGB(40, 90, 220), Icon = "\u{1F4E3}" },
+		Knight = { Name = "KNIGHT", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(170, 175, 185), Hat = Color3.fromRGB(140, 145, 155), Icon = "\u{1F6E1}" },
+		OperaSinger = { Name = "OPERA SINGER", Rarity = "Rare", Weight = 5, Shirt = Color3.fromRGB(150, 30, 90), Hat = Color3.fromRGB(255, 215, 80), Icon = "\u{1F3A4}" },
+		AlienTourist = { Name = "ALIEN TOURIST", Rarity = "Epic", Weight = 6, Shirt = Color3.fromRGB(120, 230, 90), Hat = Color3.fromRGB(255, 120, 200), Icon = "\u{1F47D}" },
+		WeddingParty = { Name = "WEDDING PARTY", Rarity = "Epic", Weight = 6, Shirt = Color3.fromRGB(255, 255, 255), Hat = Color3.fromRGB(255, 230, 240), Icon = "\u{1F48D}" },
+		Magician = { Name = "MAGICIAN", Rarity = "Epic", Weight = 6, Shirt = Color3.fromRGB(60, 30, 90), Hat = Color3.fromRGB(20, 20, 24), Icon = "\u{1F3A9}" },
+		Astronaut = { Name = "ASTRONAUT", Rarity = "Epic", Weight = 6, Shirt = Color3.fromRGB(235, 235, 240), Hat = Color3.fromRGB(60, 140, 255), Icon = "\u{1F680}" },
+	} :: { [string]: CardDef },
+	-- A new card's weirdo: once, a few seconds into your next round, at a free curb. Only you see their badge and dot,
+	-- and only you can pick them up, for HeadStartSeconds; then everyone can.
+	Bonus = {
+		Tier = "Red",
+		PayMult = 2, -- times the tier's base pay
+		SpawnDelay = 6, -- seconds after GO
+		HeadStartSeconds = 20,
+		HatSize = Vector3.new(1.3, 0.6, 1.3),
+		PayLine = "WEIRDO BONUS",
+		Notice = "YOUR %s IS WAITING!",
+		BannerLighten = 0.45, -- the notice is the card's shirt color this far toward white (dark costumes stay readable)
+		IconSize = 56, -- px, the badge (a normal one is 46)
+	},
+	TrailRow = "TRAIL",
+	HornRow = "HORN",
+	NoneLabel = "NONE",
+	EmptyLine = "Win these in crates",
 }
 
 -- Player level: XP per match, level thresholds grow linearly. The level shows as a badge by the name.
@@ -1557,6 +1652,9 @@ Config.Drops = {
 		Paint = "%s PAINT",
 		Vehicle = "%s",
 		Boost = "START NEXT MATCH WITH %s",
+		Trail = "%s TRAIL",
+		Horn = "%s HORN",
+		Card = "%s CARD",
 	} :: { [string]: string },
 	DuplicateLine = "ALREADY YOURS  +%d GEMS",
 	PityLine = "EPIC OR BETTER WITHIN %d DROPS",
@@ -1579,6 +1677,29 @@ Config.Drops = {
 }
 -- the Phantom joins the Mythic pool at its own weight (D3 builds the car; until then a pull owns it and shows the banner)
 table.insert(Config.Drops.Pool, { Id = "CarPhantom", Kind = "Vehicle", Rarity = "Mythic", Weight = Config.Drops.PhantomWeight, Ref = Config.Drops.PhantomRef })
+-- D2: the material paints, trails, horns and Weirdo cards join the pool at their own rarity and weight
+for _, entry in
+	{
+		{ Id = "PaintFrost", Kind = "Paint", Rarity = "Rare", Weight = 10, Ref = "Frost" },
+		{ Id = "PaintChrome", Kind = "Paint", Rarity = "Epic", Weight = 8, Ref = "Chrome" },
+		{ Id = "PaintLaser", Kind = "Paint", Rarity = "Epic", Weight = 8, Ref = "Laser" },
+		{ Id = "PaintGold", Kind = "Paint", Rarity = "Legendary", Weight = 20, Ref = "Gold" },
+	} :: { DropEntry }
+do
+	table.insert(Config.Drops.Pool, entry)
+end
+for _, id in Config.Cosmetics.TrailOrder do
+	local def = Config.Cosmetics.Trails[id]
+	table.insert(Config.Drops.Pool, { Id = "Trail" .. id, Kind = "Trail", Rarity = def.Rarity, Weight = def.Weight, Ref = id })
+end
+for _, id in Config.Cosmetics.HornOrder do
+	local def = Config.Cosmetics.Horns[id]
+	table.insert(Config.Drops.Pool, { Id = "Horn" .. id, Kind = "Horn", Rarity = def.Rarity, Weight = def.Weight, Ref = id })
+end
+for _, id in Config.Cosmetics.CardOrder do
+	local def = Config.Cosmetics.Cards[id]
+	table.insert(Config.Drops.Pool, { Id = "Card" .. id, Kind = "Card", Rarity = def.Rarity, Weight = def.Weight, Ref = id })
+end
 
 -- Sounds. Asset ids are placeholders until the owner uploads audio; 0 = silent. Everything plays through SoundController.
 Config.Sounds = {
@@ -1697,7 +1818,10 @@ Config.Data = {
 		Settings = { Music = 5, Sfx = 5, Shake = true, SpeedFx = true }, -- OPTIONS: volume steps (Config.Options.VolumeSteps) and switches
 		DropCount = 0, -- post-match drops opened, ever
 		PityCounter = 0, -- drops since the last Epic or better (Config.Drops.PityEpic)
-		Inventory = { Paints = {}, Boosts = {} } :: { [string]: { [string]: number } }, -- owned paints (1), boost tokens (count)
+		-- owned paints, trails, horns, cards (1 each) and boost tokens (count)
+		Inventory = { Paints = {}, Boosts = {}, Trails = {}, Horns = {}, Cards = {} } :: { [string]: { [string]: number } },
+		Equipped = { Trail = "", Horn = "" }, -- "" = none (the default honk; no trail unless you earn the weekly one)
+		WeirdoQueue = "", -- a new card's weirdo, spawned once in your next round as a bonus fare ("" = none)
 		PhantomSerial = 0, -- your Phantom's number among all owners (0 = none yet)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)

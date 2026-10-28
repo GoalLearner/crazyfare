@@ -357,7 +357,8 @@ function VehicleBuilder.Build(vehicleId: string): Model
 end
 
 -- Recolour every Paintable part (nil restores the vehicle's own colour).
-function VehicleBuilder.ApplyPaint(model: Model, color: Color3?)
+-- `material` (a drop paint like Chrome) swaps the painted parts' material; nil puts their own back.
+function VehicleBuilder.ApplyPaint(model: Model, color: Color3?, material: Enum.Material?)
 	local vehicleId = model:GetAttribute("VehicleId")
 	local stats = if typeof(vehicleId) == "string" then Config.Vehicles.Stats[vehicleId] else nil
 	local target = color or (if stats then stats.Color else nil)
@@ -367,6 +368,21 @@ function VehicleBuilder.ApplyPaint(model: Model, color: Color3?)
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") and part:GetAttribute("Paintable") == true then
 			part.Color = target
+			local base = part:GetAttribute("BaseMaterial")
+			if typeof(base) ~= "string" then
+				base = part.Material.Name
+				part:SetAttribute("BaseMaterial", base)
+			end
+			if material then
+				part.Material = material
+			else
+				for _, item in Enum.Material:GetEnumItems() do
+					if item.Name == base then
+						part.Material = item
+						break
+					end
+				end
+			end
 			-- Imported meshes carry their texture on a SurfaceAppearance; its Color is what tints them.
 			local appearance = part:FindFirstChildOfClass("SurfaceAppearance")
 			if appearance then

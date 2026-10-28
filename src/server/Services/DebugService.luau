@@ -40,6 +40,10 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			DropService.DebugSetPity(player, arg)
 		end
 	end,
+	-- queued Weirdo card fares spawn now instead of a few seconds into the next round
+	Weirdos = function()
+		DropService.SpawnWeirdos()
+	end,
 	-- the shop's TEST buttons (ids still 0): as if this pass or product was just bought
 	Grant = function(player, arg)
 		if typeof(arg) == "string" then

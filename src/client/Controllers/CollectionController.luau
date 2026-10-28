@@ -1,6 +1,7 @@
 --!strict
 -- COLLECTION in the side stack (under INVITE), whenever you're not mid-round at the wheel: the cars you own, your best
--- license plate and your lifetime stats, straight from your profile (ProfileSync). Config.Collection.
+-- license plate, your lifetime stats and your Weirdo cards (won in drops; missing ones dark), straight from your profile
+-- (ProfileSync). Config.Collection, Config.Cosmetics.Cards.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -18,11 +19,15 @@ local carsLabel: TextLabel
 local carList: Frame
 local licenseLabel: TextLabel
 local statList: Frame
+local cardsLabel: TextLabel
+local cardGrid: Frame
 local isOpen = false
+
+local CARD_TILE = Vector2.new(84, 56)
 
 local function render()
 	local profile = State.profile
-	for _, list in { carList, statList } do
+	for _, list in { carList, statList, cardGrid } do
 		for _, child in list:GetChildren() do
 			if child:IsA("GuiObject") then
 				child:Destroy()
@@ -59,6 +64,22 @@ local function render()
 		UI.Label({ Size = UDim2.fromScale(0.6, 1), Text = stat.Label, TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left }, row)
 		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromScale(0.4, 1), Text = tostring(profile.stats[stat.Key] or 0), TextXAlignment = Enum.TextXAlignment.Right }, row)
 	end
+	-- Weirdo cards: yours lit in their costume colors, the rest dark
+	local ownedCards = if profile.inventory then profile.inventory.Cards or {} else {}
+	local cardCount = 0
+	for i, id in Config.Cosmetics.CardOrder do
+		local def = Config.Cosmetics.Cards[id]
+		local has = (ownedCards[id] or 0) > 0
+		if has then
+			cardCount += 1
+		end
+		local tile = UI.Frame({ LayoutOrder = i, BackgroundColor3 = if has then def.Shirt:Lerp(Color3.new(0, 0, 0), 0.55) else Color3.fromRGB(32, 32, 38), BackgroundTransparency = 0 }, cardGrid)
+		UI.Corner(8, tile)
+		UI.Stroke(if has then Config.Drops.Colors[def.Rarity] else Color3.fromRGB(50, 50, 58), if has then 2 else 1, tile)
+		UI.Label({ Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 0, 26), Text = if has then def.Icon else "?", TextColor3 = if has then UI.White else UI.Muted }, tile)
+		UI.Label({ Position = UDim2.new(0, 3, 1, -22), Size = UDim2.new(1, -6, 0, 18), Text = if has then def.Name else "", TextColor3 = UI.White, Font = UI.FontMedium }, tile)
+	end
+	cardsLabel.Text = string.format(Config.Collection.Cards, cardCount, #Config.Cosmetics.CardOrder)
 end
 
 local function setOpen(open: boolean)
@@ -97,7 +118,7 @@ local function build()
 		setOpen(not isOpen)
 	end)
 
-	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(520, 340), BackgroundTransparency = 0.05, Visible = false }, screen)
+	panel = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 340), BackgroundTransparency = 0.05, Visible = false }, screen)
 	UI.CenterBelowTopbar(panel)
 	UI.Corner(16, panel)
 	UI.Label({ Position = UDim2.fromOffset(24, 14), Size = UDim2.fromOffset(240, 36), Text = Config.Collection.Title, TextXAlignment = Enum.TextXAlignment.Left }, panel)
@@ -123,6 +144,9 @@ local function build()
 	licenseLabel = UI.Label({ Position = UDim2.fromOffset(276, 84), Size = UDim2.fromOffset(220, 40), Text = "-", TextXAlignment = Enum.TextXAlignment.Left }, panel)
 	statList = UI.Frame({ Position = UDim2.fromOffset(276, 136), Size = UDim2.fromOffset(220, 180), BackgroundTransparency = 1 }, panel)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, statList)
+	cardsLabel = UI.Label({ Position = UDim2.fromOffset(528, 60), Size = UDim2.fromOffset(264, 20), Text = "", TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left }, panel)
+	cardGrid = UI.Frame({ Position = UDim2.fromOffset(528, 86), Size = UDim2.fromOffset(264, 242), BackgroundTransparency = 1 }, panel)
+	UI.New("UIGridLayout", { CellSize = UDim2.fromOffset(CARD_TILE.X, CARD_TILE.Y), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder }, cardGrid)
 end
 
 function CollectionController.Init()

@@ -266,15 +266,32 @@ function VehicleService.SetHighlight(player: Player, color: Color3?, seconds: nu
 	end
 end
 
--- Exclusive trail for this week's leaderboard top: two attachments at the rear corners and a Trail between them.
+-- A trail from the rear corners: this week's leaderboard top get the gold one (attribute WeeklyTrail), anyone else
+-- the trail they equipped from a drop (Config.Cosmetics.Trails), or none.
 local function applyTrail(entry: VehicleEntry)
 	local existing = entry.model:FindFirstChild("WeeklyTrail")
 	if existing then
 		existing:Destroy()
 	end
-	if entry.player:GetAttribute("WeeklyTrail") ~= true then
+	for _, name in { "TrailL", "TrailR" } do
+		local old = entry.chassis:FindFirstChild(name)
+		if old then
+			old:Destroy()
+		end
+	end
+	local picked: { Color3 }? = if entry.player:GetAttribute("WeeklyTrail") == true then Config.Cosmetics.WeeklyTrail else DataService.GetTrail(entry.player)
+	if not picked or #picked == 0 then
 		return
 	end
+	local colors: { Color3 } = picked
+	local keys: { ColorSequenceKeypoint } = {}
+	for i, color in ipairs(colors) do
+		table.insert(keys, ColorSequenceKeypoint.new(if #colors > 1 then (i - 1) / (#colors - 1) else 0, color))
+	end
+	if #keys == 1 then
+		table.insert(keys, ColorSequenceKeypoint.new(1, colors[1]))
+	end
+	local look = Config.Cosmetics.TrailLook
 	local size = entry.chassis.Size
 	local a0 = Instance.new("Attachment")
 	a0.Name = "TrailL"
@@ -288,11 +305,11 @@ local function applyTrail(entry: VehicleEntry)
 	trail.Name = "WeeklyTrail"
 	trail.Attachment0 = a0
 	trail.Attachment1 = a1
-	trail.Color = ColorSequence.new(Color3.fromRGB(255, 215, 80), Color3.fromRGB(255, 120, 30))
-	trail.Transparency = NumberSequence.new(0.2, 1)
-	trail.Lifetime = 0.6
-	trail.LightEmission = 0.8
-	trail.MinLength = 0.2
+	trail.Color = ColorSequence.new(keys)
+	trail.Transparency = NumberSequence.new(look.Transparency, 1)
+	trail.Lifetime = look.Lifetime
+	trail.LightEmission = look.LightEmission
+	trail.MinLength = look.MinLength
 	trail.Parent = entry.model
 end
 
@@ -314,7 +331,8 @@ local function buildPlayerCar(player: Player): (Model?, BasePart?, string)
 			part.CollisionGroup = Config.CollisionGroups.Vehicles -- traffic collides with this group only
 		end
 	end
-	VehicleBuilder.ApplyPaint(model, DataService.GetPaint(player))
+	local color, material = DataService.GetPaint(player)
+	VehicleBuilder.ApplyPaint(model, color, material)
 	local chassis = model.PrimaryPart
 	if not chassis then
 		warn("[VehicleService] vehicle model has no PrimaryPart: " .. vehicleId)
@@ -585,6 +603,13 @@ function VehicleService.Init()
 			end
 		end)
 	end)
+	-- a trail equipped in the Garage shows on the car right away
+	DataService.OnEquipped:Connect(function(player: Player)
+		local entry = entries[player]
+		if entry then
+			applyTrail(entry)
+		end
+	end)
 	-- A garage change while the car is parked (lobby, pit stop) swaps it right away; mid-round it waits for the grid.
 	DataService.OnVehicleSelected:Connect(function(player: Player)
 		local depot = depotEntries[player]
@@ -597,7 +622,8 @@ function VehicleService.Init()
 			return
 		end
 		if released and not entry.chassis.Anchored then
-			VehicleBuilder.ApplyPaint(entry.model, DataService.GetPaint(player))
+			local color, material = DataService.GetPaint(player)
+			VehicleBuilder.ApplyPaint(entry.model, color, material)
 		else
 			VehicleService.Spawn(player)
 		end

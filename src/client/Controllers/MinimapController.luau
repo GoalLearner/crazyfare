@@ -187,8 +187,12 @@ local function styleNpcDot(dot: Frame, npc: Types.NpcSnap)
 		stroke.Thickness = if npc.golden or person or carpool or ticking then 2 else 0
 		stroke.Color = if npc.golden or person then UI.White elseif carpool then Config.Chaos.Carpool.Color elseif ticking then Config.Chaos.Ticking.Color else UI.White
 	end
-	dot.BackgroundColor3 = if person then Config.PlayerFare.Color elseif npc.golden then Config.Golden.Color else tierColor(npc.tier)
-	dot.ZIndex = if npc.golden or person then 4 else 3
+	local card = if npc.card then Config.Cosmetics.Cards[npc.card] else nil
+	dot.BackgroundColor3 = if person then Config.PlayerFare.Color elseif npc.golden then Config.Golden.Color elseif card then card.Shirt else tierColor(npc.tier)
+	dot.ZIndex = if npc.golden or person or card then 4 else 3
+	-- another player's Weirdo card fare is theirs alone until its head start ends
+	local owner = npc.owner
+	dot.Visible = owner == nil or owner == localPlayer.UserId or workspace:GetServerTimeNow() >= (npc.revealAt or 0)
 end
 
 local function ensureRival(id: number): RivalMarker
