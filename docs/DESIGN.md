@@ -232,6 +232,8 @@ Phones (`Config.Touch`, owner call 2026-10-27; most Roblox players are on phones
 
 Stylized low-poly city with a bold palette: lit window strips, crosswalks, streetlights and traffic lights, storefront signs with invented names, a few landmark buildings you can see from anywhere. The blockout generator grows into this (decoration passes first, real meshes for landmarks and the cab last). Layout gets the same treatment in Phase 6: landmarks, loops instead of dead ends, shortcuts that reward map knowledge.
 
+**Art pass, step 1 (2026-10-27):** the City's blocks are Kenney City Kit buildings (14 mid-rise, 5 towers; free CC0 art), each turned so its storefront faces a road, towers downtown within 170 studs of the plaza. Named drop-offs carry a giant icon on the roof behind them, so you can look for the drop-off: a burger on The Burger Joint, a pizza standing up on The Pizza Place, a police car, fire truck and ambulance on Police HQ, the Fire Station and the Hospital (on the Beach: an ice cream, a hot dog, a cocktail, a fish). Lighting: mid-afternoon sun (15.6) with warm light and crisp shadows, light haze, a little bloom and color grading, and moving clouds that thicken in rain and snow. Next steps: streets (curbs, lane lines, street furniture, trees), real traffic cars, the Beach's houses.
+
 ## 14. Open questions (not blocking Phase 1)
 
 - Vehicle art: stay parts-built through Phase 4, or commission meshes? (Parts until the loop is proven fun.)

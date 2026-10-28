@@ -16,7 +16,9 @@ local Tags = Config.Tags
 local DevBlockout = {}
 
 type Blockout = typeof(Config.Map.City.Blockout)
-type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string }
+-- buildings / icons: the imported art (Config.Art); boxes: every building's collision box, for finding roofs
+type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string, buildings: { Model }, icons: { [string]: Model }, boxes: { BasePart } }
+type BuildingFit = { template: Model, facing: Vector3, scale: number, weight: number, footprint: Vector3 }
 type Spot = { position: Vector3, look: Vector3 }
 type Lot = { x: number, z: number, w: number, d: number }
 
@@ -334,48 +336,110 @@ local function buildSign(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: num
 	glow.Material = Enum.Material.Neon
 end
 
--- Imported building meshes (ReplicatedStorage.MapModels.Buildings.*) replace the boxes when present.
-local function buildingTemplates(): { Model }
-	local list: { Model } = {}
-	local folder = ReplicatedStorage:FindFirstChild("MapModels")
-	local buildings = if folder then folder:FindFirstChild("Buildings") else nil
-	if buildings then
-		for _, child in buildings:GetChildren() do
+-- The imported art in ReplicatedStorage.MapModels.<folderName> (Config.Art), by name.
+local function artModels(folderName: string): { [string]: Model }
+	local found: { [string]: Model } = {}
+	local art = ReplicatedStorage:FindFirstChild("MapModels")
+	local folder = if art then art:FindFirstChild(folderName) else nil
+	if folder then
+		for _, child in folder:GetChildren() do
 			if child:IsA("Model") then
-				table.insert(list, child)
+				found[child.Name] = child
 			end
 		end
+	end
+	return found
+end
+
+-- A clone of an art template, scaled by `scale`, its box's bottom center at `base`, turned by `rotation` about that
+-- point. Looks only: anchored, no collision, no queries, no touches.
+local function placeArt(template: Model, parent: Instance, scale: number, base: Vector3, rotation: CFrame): Model
+	local clone = template:Clone()
+	clone:ScaleTo(clone:GetScale() * scale)
+	for _, part in clone:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+		end
+	end
+	local box, size = clone:GetBoundingBox()
+	local pivotFromBox = box:ToObjectSpace(clone:GetPivot())
+	clone:PivotTo(CFrame.new(base) * rotation * CFrame.new(0, size.Y / 2, 0) * pivotFromBox)
+	clone.Parent = parent
+	return clone
+end
+
+-- Which way a lot's storefront may face: toward the road on each side it's pushed to (a centered lot: any side).
+local function lotFacings(lot: Lot, cx: number, cz: number): { Vector3 }
+	local list: { Vector3 } = {}
+	if math.abs(lot.x - cx) > 1 then
+		table.insert(list, Vector3.new(math.sign(lot.x - cx), 0, 0))
+	end
+	if math.abs(lot.z - cz) > 1 then
+		table.insert(list, Vector3.new(0, 0, math.sign(lot.z - cz)))
+	end
+	if #list == 0 then
+		list = { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis }
 	end
 	return list
 end
 
-local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, templates: { Model }): boolean
-	local template = templates[ctx.rng:NextInteger(1, #templates)]
-	local clone = template:Clone()
-	local _, bounds = clone:GetBoundingBox()
-	local scale = math.min(lot.w / math.max(bounds.X, 0.01), lot.d / math.max(bounds.Z, 0.01))
-	clone:ScaleTo(clone:GetScale() * scale)
-	local _, scaled = clone:GetBoundingBox()
-	for _, part in clone:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.Anchored = true
-			part.CanCollide = true
-			CollectionService:AddTag(part, Tags.Building)
+-- One lot's imported building (Config.Art.Buildings): a template turned so its storefront faces a road, scaled evenly to
+-- cover Fill of the lot, kept only when its height lands in the block's band (towers downtown), a fuller fit likelier.
+-- An invisible box carries the collision and the Building tag, so physics, near misses and raycasts see one simple
+-- shape; the mesh is looks only. False when nothing fits (the lot gets a box building).
+local function placeBuildingMesh(ctx: Ctx, parent: Folder, lot: Lot, facings: { Vector3 }): boolean
+	local art = Config.Art.Buildings
+	local downtown = Vector3.new(lot.x, 0, lot.z).Magnitude <= art.DowntownRadius
+	local maxHeight = if downtown then art.DowntownMaxHeight else art.MaxHeight
+	local turned = math.abs(math.sin(math.rad(art.FrontYaw))) > 0.5
+	local fits: { BuildingFit } = {}
+	local total = 0
+	for _, template in ctx.buildings do
+		local _, raw = template:GetBoundingBox()
+		local size = if turned then Vector3.new(raw.Z, raw.Y, raw.X) else raw
+		for _, facing in facings do
+			-- a storefront on an X road runs the model's depth along X
+			local alongX = math.abs(facing.X) > 0.5
+			local fx = if alongX then size.Z else size.X
+			local fz = if alongX then size.X else size.Z
+			local scale = math.min(lot.w * art.Fill / fx, lot.d * art.Fill / fz)
+			local height = size.Y * scale
+			if height >= art.MinHeight and height <= maxHeight then
+				local fill = (fx * fz * scale * scale) / (lot.w * lot.d)
+				table.insert(fits, { template = template, facing = facing, scale = scale, weight = fill * fill, footprint = Vector3.new(fx * scale, height, fz * scale) })
+				total += fill * fill
+			end
 		end
 	end
-	clone:PivotTo(CFrame.new(lot.x, 0.5 + scaled.Y / 2, lot.z))
-	clone.Parent = parent
+	if #fits == 0 then
+		return false
+	end
+	local pick = ctx.rng:NextNumber() * total
+	local chosen = fits[#fits]
+	for _, fit in fits do
+		pick -= fit.weight
+		if pick <= 0 then
+			chosen = fit
+			break
+		end
+	end
+	local yaw = math.atan2(chosen.facing.X, chosen.facing.Z) + math.rad(art.FrontYaw)
+	placeArt(chosen.template, parent, chosen.scale, Vector3.new(lot.x, 0.5, lot.z), CFrame.Angles(0, yaw, 0))
+	local box = makePart(string.format("Building_%d_%d", math.round(lot.x), math.round(lot.z)), chosen.footprint, CFrame.new(lot.x, 0.5 + chosen.footprint.Y / 2, lot.z), COLOR_WALL, parent, Tags.Building)
+	box.Transparency = 1
+	box.CastShadow = false
+	table.insert(ctx.boxes, box)
 	return true
 end
 
 local function buildBuildingLot(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: number, li: number)
 	local B = ctx.B
 	local rng = ctx.rng
-	if ctx.theme == "city" then
-		local templates = buildingTemplates()
-		if #templates > 0 and placeBuildingMesh(ctx, parent, lot, templates) then
-			return
-		end
+	if ctx.theme == "city" and #ctx.buildings > 0 and placeBuildingMesh(ctx, parent, lot, lotFacings(lot, cx, cz)) then
+		return
 	end
 	local h = rng:NextNumber(B.BuildingMinHeight, B.BuildingMaxHeight)
 	local palette = if ctx.theme == "beach" then BEACH_PALETTE else CITY_PALETTE
@@ -389,6 +453,7 @@ local function buildBuildingLot(ctx: Ctx, parent: Folder, lot: Lot, cx: number, 
 		Tags.Building
 	)
 	building.Material = if ctx.theme == "beach" then Enum.Material.SmoothPlastic else MATERIALS[rng:NextInteger(1, #MATERIALS)]
+	table.insert(ctx.boxes, building)
 	buildWindows(ctx, parent, lot, h)
 	local cap = decor(makePart("Roof", Vector3.new(lot.w + 1, 0.8, lot.d + 1), CFrame.new(lot.x, 0.5 + h + 0.4, lot.z), Color3.fromRGB(60, 60, 68), parent))
 	cap.Material = Enum.Material.Concrete
@@ -402,6 +467,9 @@ local function buildBuildings(ctx: Ctx, parent: Folder, cx: number, cz: number)
 	local rng = ctx.rng
 	local inner = B.CellSize - 2 * B.Sidewalk
 	local layout = rng:NextInteger(1, 3)
+	if layout == 1 and ctx.theme == "city" and #ctx.buildings > 0 then
+		layout = 3 -- one block-wide mesh would tower: four buildings instead
+	end
 	local lots: { Lot } = {}
 	if layout == 1 then
 		lots = { { x = cx, z = cz, w = inner - 10, d = inner - 10 } }
@@ -813,6 +881,42 @@ local function pickSpread(spots: { Spot }, count: number, minSep: number, avoid:
 	return {}
 end
 
+-- A giant icon on the roof of the building behind a named drop-off (Config.Art.RoofIcons), turned to the street; with
+-- no building behind it, it floats over the drop-off's rooftop sign.
+local function buildRoofIcon(ctx: Ctx, parent: Instance, spot: Spot, name: string)
+	local spec = Config.Art.RoofIcons[name]
+	local template = if spec then ctx.icons[spec.Model] else nil
+	if not spec or not template then
+		return
+	end
+	-- the building nearest a point inside the block behind it (a drop-off often faces the gap between two buildings)
+	local probe = spot.position - spot.look * Config.Art.RoofIconProbe
+	local roof: BasePart? = nil
+	local nearest = Config.Art.RoofIconSearch
+	for _, box in ctx.boxes do
+		local rel = box.CFrame:PointToObjectSpace(probe)
+		local dx = math.max(math.abs(rel.X) - box.Size.X / 2, 0)
+		local dz = math.max(math.abs(rel.Z) - box.Size.Z / 2, 0)
+		local d = math.sqrt(dx * dx + dz * dz)
+		if d < nearest then
+			roof = box
+			nearest = d
+		end
+	end
+	local base = spot.position + Vector3.new(0, Config.Destinations.SignHeight + Config.Art.RoofIconFloat, 0)
+	if roof then
+		-- on the street-side edge of the roof, a little up, so it shows over the parapet from the road
+		local half = if math.abs(spot.look.X) > math.abs(spot.look.Z) then roof.Size.X / 2 else roof.Size.Z / 2
+		local toEdge = math.max(half - spec.Size * Config.Art.RoofIconInset, 0)
+		base = roof.Position + Vector3.new(0, roof.Size.Y / 2 + Config.Art.RoofIconLift, 0) + spot.look * toEdge
+	end
+	local _, size = template:GetBoundingBox()
+	local scale = spec.Size / math.max(size.X, size.Y, size.Z)
+	local yaw = math.atan2(spot.look.X, spot.look.Z) + math.rad(spec.Yaw)
+	local icon = placeArt(template, parent, scale, base, CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(spec.Tilt), 0, 0))
+	icon.Name = "RoofIcon_" .. spec.Model
+end
+
 local function buildPoints(ctx: Ctx, spots: { Spot })
 	local B = ctx.B
 	local rng = ctx.rng
@@ -870,6 +974,7 @@ local function buildPoints(ctx: Ctx, spots: { Spot })
 		if part then
 			part:SetAttribute("Destination", name)
 		end
+		buildRoofIcon(ctx, points, spot, name)
 	end
 end
 
@@ -1163,7 +1268,17 @@ function DevBlockout.Generate(mapName: string?): Folder
 		rng = Random.new(mapCfg.Blockout.Seed),
 		map = map,
 		mapName = name,
+		buildings = {},
+		icons = artModels("Icons"),
+		boxes = {},
 	}
+	for _, model in artModels("Buildings") do
+		table.insert(ctx.buildings, model)
+	end
+	-- a steady order, so the seeded layout repeats however the folder lists them
+	table.sort(ctx.buildings, function(a: Model, b: Model): boolean
+		return a.Name < b.Name
+	end)
 
 	buildGround(ctx)
 	buildRoads(ctx)

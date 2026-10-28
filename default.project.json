@@ -6,7 +6,8 @@
       "Shared": { "$path": "src/shared" },
       "Packages": { "$path": "Packages" },
       "VehicleTemplates": { "$path": "models/VehicleTemplates.rbxmx" },
-      "ItemModels": { "$path": "models/ItemModels.rbxmx" }
+      "ItemModels": { "$path": "models/ItemModels.rbxmx" },
+      "MapModels": { "$path": "models/MapModels.rbxmx" }
     },
     "ServerScriptService": {
       "Server": { "$path": "src/server" },
@@ -26,42 +27,43 @@
     "Lighting": {
       "$properties": {
         "Technology": "Future",
-        "ClockTime": 14.5,
-        "Brightness": 2.4,
+        "ClockTime": 15.6,
+        "Brightness": 2.6,
         "GlobalShadows": true,
-        "ShadowSoftness": 0.3,
-        "EnvironmentDiffuseScale": 0.5,
-        "EnvironmentSpecularScale": 0.5,
+        "ShadowSoftness": 0.15,
+        "EnvironmentDiffuseScale": 1,
+        "EnvironmentSpecularScale": 1,
         "ExposureCompensation": 0.1,
-        "Ambient": [0.3, 0.3, 0.34],
-        "OutdoorAmbient": [0.45, 0.47, 0.53]
+        "Ambient": [0.28, 0.28, 0.33],
+        "ColorShift_Top": [1, 0.93, 0.82],
+        "OutdoorAmbient": [0.5, 0.5, 0.56]
       },
       "Atmosphere": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.32,
-          "Offset": 0.3,
-          "Color": [0.78, 0.82, 0.88],
-          "Decay": [0.55, 0.6, 0.7],
-          "Glare": 0.25,
-          "Haze": 1.8
+          "Density": 0.26,
+          "Offset": 0.2,
+          "Color": [0.8, 0.86, 0.95],
+          "Decay": [0.95, 0.78, 0.62],
+          "Glare": 0.4,
+          "Haze": 0.9
         }
       },
       "Sky": {
         "$className": "Sky",
-        "$properties": { "SunAngularSize": 14 }
+        "$properties": { "SunAngularSize": 12 }
       },
       "Bloom": {
         "$className": "BloomEffect",
-        "$properties": { "Intensity": 0.35, "Size": 24, "Threshold": 1.1 }
+        "$properties": { "Intensity": 0.5, "Size": 24, "Threshold": 0.95 }
       },
       "SunRays": {
         "$className": "SunRaysEffect",
-        "$properties": { "Intensity": 0.08, "Spread": 0.6 }
+        "$properties": { "Intensity": 0.12, "Spread": 0.6 }
       },
       "ColorCorrection": {
         "$className": "ColorCorrectionEffect",
-        "$properties": { "Saturation": 0.12, "Contrast": 0.06 }
+        "$properties": { "Saturation": 0.2, "Contrast": 0.12, "TintColor": [1, 0.98, 0.95] }
       }
     }
   }

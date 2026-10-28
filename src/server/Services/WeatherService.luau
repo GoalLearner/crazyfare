@@ -1,7 +1,7 @@
 --!strict
 -- Per-round weather (Config.Chaos.Weather): RoundService rolls one at every race round's setup and goes back to Clear
 -- for Arcade and between matches. The server owns the sky, so everyone (late joiners too) sees the same: Lighting's
--- clock and brightness, the Atmosphere's fog, and a WeatherTint color correction. The rules ride along: fares (Night
+-- clock and brightness, the Atmosphere's fog, the clouds' cover (Config.Sky) and a WeatherTint color correction. The rules ride along: fares (Night
 -- pays more), traffic speed, bot speed. Each client adds the rain or snow around its camera and the grip change.
 
 local Lighting = game:GetService("Lighting")
@@ -24,6 +24,7 @@ local current = "Clear"
 local rng = Random.new()
 local atmosphere: Atmosphere
 local tint: ColorCorrectionEffect
+local clouds: Clouds
 local base = { brightness = 2, density = 0.3, haze = 0 } -- the place's own sky, captured at boot
 
 local function find(id: string): Config.WeatherDef?
@@ -44,6 +45,7 @@ local function apply(def: Config.WeatherDef)
 	atmosphere.Density = if def.FogDensity >= 0 then def.FogDensity else base.density
 	atmosphere.Haze = if def.Haze >= 0 then def.Haze else base.haze
 	tint.TintColor = def.Tint
+	clouds.Cover = if def.CloudCover >= 0 then def.CloudCover else Config.Sky.CloudCover
 	tint.Saturation = def.Saturation
 	FareService.SetWeatherPay(def.PayMult, if def.PayLine ~= "" then def.PayLine else nil)
 	TrafficService.SetSpeedMult(def.TrafficSpeedMult)
@@ -113,6 +115,16 @@ function WeatherService.Init()
 	base.brightness = Lighting.Brightness
 	base.density = atmosphere.Density
 	base.haze = atmosphere.Haze
+	local existingClouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if existingClouds then
+		clouds = existingClouds
+	else
+		local made = Instance.new("Clouds")
+		made.Parent = workspace.Terrain
+		clouds = made
+	end
+	clouds.Density = Config.Sky.CloudDensity
+	clouds.Color = Config.Sky.CloudColor
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "WeatherTint"
 	cc.Parent = Lighting

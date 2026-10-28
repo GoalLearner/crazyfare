@@ -50,6 +50,7 @@ export type WeatherDef = {
 	Weight: number,
 	Maps: { [string]: boolean }?, -- nil = any map
 	Color: Color3, -- the banner's color
+	CloudCover: number, -- 0..1 sky covered by clouds (-1 = Config.Sky.CloudCover)
 	Particle: string, -- Config.Chaos.Weather.Particles key ("" = nothing falls)
 	ClockTime: number,
 	Brightness: number, -- times the place's own
@@ -980,13 +981,13 @@ Config.Chaos = {
 	-- (VehicleController), traffic and bots alike. The banner replaces READ THE BOARD while the round gets ready.
 	Weather = {
 		List = {
-			{ Id = "Clear", Name = "", Sub = "", Weight = 4, Color = Color3.new(1, 1, 1), Particle = "", ClockTime = -1, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 1, BotSpeedMult = 1 },
-			{ Id = "Rain", Name = "RAIN!", Sub = "SLICK ROADS. DRIFTS FILL BOOST FAST", Weight = 2, Color = Color3.fromRGB(120, 180, 255), Particle = "Rain", ClockTime = -1, Brightness = 0.6, FogDensity = 0.42, Haze = 1.5, Tint = Color3.fromRGB(205, 215, 230), Saturation = -0.3, GripMult = 0.75, TopSpeedMult = 1, DriftBoostMult = 1.6, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.9, BotSpeedMult = 0.92 },
+			{ Id = "Clear", Name = "", Sub = "", Weight = 4, Color = Color3.new(1, 1, 1), CloudCover = -1, Particle = "", ClockTime = -1, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 1, BotSpeedMult = 1 },
+			{ Id = "Rain", Name = "RAIN!", Sub = "SLICK ROADS. DRIFTS FILL BOOST FAST", Weight = 2, Color = Color3.fromRGB(120, 180, 255), CloudCover = 0.95, Particle = "Rain", ClockTime = -1, Brightness = 0.6, FogDensity = 0.42, Haze = 1.5, Tint = Color3.fromRGB(205, 215, 230), Saturation = -0.3, GripMult = 0.75, TopSpeedMult = 1, DriftBoostMult = 1.6, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.9, BotSpeedMult = 0.92 },
 			-- Fog is OFF (owner 2026-10-27: "way too foggy", then not sure he likes it at all): Weight 0 never rolls; Studio's
 			-- Weather button still shows it. Weight 1 brings it back (already lightened from Density 0.7 / Haze 2.5).
-			{ Id = "Fog", Name = "FOG!", Sub = "HARD TO SEE. FOLLOW THE ARROW", Weight = 0, Color = Color3.fromRGB(200, 205, 215), Particle = "", ClockTime = -1, Brightness = 0.95, FogDensity = 0.48, Haze = 1, Tint = Color3.fromRGB(235, 235, 240), Saturation = -0.2, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.85, BotSpeedMult = 0.9 },
-			{ Id = "Night", Name = "NIGHT SHIFT!", Sub = "NIGHT RATES: FARES x1.25", Weight = 1, Color = Color3.fromRGB(170, 140, 255), Particle = "", ClockTime = 0, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1.25, PayLine = "NIGHT RATES x1.25", TrafficSpeedMult = 1, BotSpeedMult = 1 },
-			{ Id = "Snow", Name = "SNOW!", Sub = "ICY ROADS. EASY ON THE TURNS", Weight = 1, Maps = { City = true }, Color = Color3.fromRGB(220, 240, 255), Particle = "Snow", ClockTime = -1, Brightness = 1.1, FogDensity = 0.4, Haze = 1, Tint = Color3.fromRGB(225, 235, 255), Saturation = -0.25, GripMult = 0.6, TopSpeedMult = 0.92, DriftBoostMult = 1.2, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.8, BotSpeedMult = 0.85 },
+			{ Id = "Fog", Name = "FOG!", Sub = "HARD TO SEE. FOLLOW THE ARROW", Weight = 0, Color = Color3.fromRGB(200, 205, 215), CloudCover = 0.8, Particle = "", ClockTime = -1, Brightness = 0.95, FogDensity = 0.48, Haze = 1, Tint = Color3.fromRGB(235, 235, 240), Saturation = -0.2, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.85, BotSpeedMult = 0.9 },
+			{ Id = "Night", Name = "NIGHT SHIFT!", Sub = "NIGHT RATES: FARES x1.25", Weight = 1, Color = Color3.fromRGB(170, 140, 255), CloudCover = -1, Particle = "", ClockTime = 0, Brightness = 1, FogDensity = -1, Haze = -1, Tint = Color3.new(1, 1, 1), Saturation = 0, GripMult = 1, TopSpeedMult = 1, DriftBoostMult = 1, PayMult = 1.25, PayLine = "NIGHT RATES x1.25", TrafficSpeedMult = 1, BotSpeedMult = 1 },
+			{ Id = "Snow", Name = "SNOW!", Sub = "ICY ROADS. EASY ON THE TURNS", Weight = 1, Maps = { City = true }, Color = Color3.fromRGB(220, 240, 255), CloudCover = 0.85, Particle = "Snow", ClockTime = -1, Brightness = 1.1, FogDensity = 0.4, Haze = 1, Tint = Color3.fromRGB(225, 235, 255), Saturation = -0.25, GripMult = 0.6, TopSpeedMult = 0.92, DriftBoostMult = 1.2, PayMult = 1, PayLine = "", TrafficSpeedMult = 0.8, BotSpeedMult = 0.85 },
 		} :: { WeatherDef },
 		Particles = {
 			Rain = { Texture = "rbxasset://textures/particles/smoke_main.dds", Color = Color3.fromRGB(205, 220, 240), Transparency = 0.15, Size = 0.8, Squash = -3, Rate = 500, Lifetime = 0.7, SpeedMin = 90, SpeedMax = 110, Drift = Vector3.zero, Spin = 0, Streaks = true, Area = 60, Height = 28, Ahead = 28 },
@@ -1413,6 +1414,45 @@ Config.Destinations = {
 	SignIdleDistance = 110, -- every other drop-off's sign only this close
 }
 
+-- Imported art (Kenney kits, CC0, from assets/kenney; the meshes live in ReplicatedStorage.MapModels =
+-- models/MapModels.rbxmx). Buildings replace the City's boxes; roof icons stand on the building behind named drop-offs
+-- so you can look for "the giant burger". Nothing here changes a rule: looks only.
+Config.Art = {
+	Buildings = {
+		FrontYaw = 0, -- degrees that turn a template so its storefront points along +Z (Kenney's front)
+		Fill = 0.9, -- a building covers this share of its lot's width and depth
+		MinHeight = 22, -- studs: a template that comes out shorter or taller than this for its lot is skipped there
+		MaxHeight = 100,
+		DowntownRadius = 170, -- studs from the map center: blocks this close take towers up to DowntownMaxHeight
+		DowntownMaxHeight = 190,
+	},
+	-- Destination name -> icon (ReplicatedStorage.MapModels.Icons.<Model>). Size: its longest side in studs; Yaw: degrees
+	-- added so its best side faces the street; Tilt: degrees it leans toward the street (a pizza stands up).
+	RoofIcons = {
+		["THE BURGER JOINT"] = { Model = "burger", Size = 24, Yaw = 0, Tilt = 25 },
+		["THE PIZZA PLACE"] = { Model = "pizza", Size = 26, Yaw = 0, Tilt = 70 },
+		["POLICE HQ"] = { Model = "police", Size = 24, Yaw = 90, Tilt = 0 },
+		["THE FIRE STATION"] = { Model = "firetruck", Size = 26, Yaw = 90, Tilt = 0 },
+		["THE HOSPITAL"] = { Model = "ambulance", Size = 26, Yaw = 90, Tilt = 0 },
+		["THE ICE CREAM HUT"] = { Model = "ice-cream", Size = 20, Yaw = 0, Tilt = 0 },
+		["THE SNACK SHACK"] = { Model = "hot-dog", Size = 20, Yaw = 0, Tilt = 0 },
+		["THE BEACH CLUB"] = { Model = "cocktail", Size = 20, Yaw = 0, Tilt = 0 },
+		["THE AQUARIUM"] = { Model = "fish", Size = 22, Yaw = 90, Tilt = 0 },
+	} :: { [string]: { Model: string, Size: number, Yaw: number, Tilt: number } },
+	RoofIconProbe = 20, -- studs inward from a drop-off: the point its building is looked for around
+	RoofIconSearch = 24, -- the building's footprint must come this close to that point
+	RoofIconFloat = 12, -- no building behind it: the icon floats this far above the rooftop sign
+	RoofIconInset = 0.35, -- it stands this share of its Size back from the roof's street edge
+	RoofIconLift = 3, -- studs above the roof
+}
+
+-- Sky: dynamic clouds over every map (WeatherService makes them; a weather's CloudCover overrides the cover).
+Config.Sky = {
+	CloudCover = 0.5,
+	CloudDensity = 0.55,
+	CloudColor = Color3.fromRGB(255, 255, 255),
+}
+
 -- Delivery grade: how much of the fare timer was left at the drop-off. The tip already pays for speed; the stamp says it out loud.
 Config.Grades = {
 	SpeedyFrac = 0.6, -- this share of the timer left or more: SPEEDY
@@ -1436,7 +1476,7 @@ Config.Map = {
 		DisplayName = "City",
 		Theme = "city",
 		UnlockGems = 0,
-		ClockTime = 14.5,
+		ClockTime = 15.6, -- mid-afternoon: warm light, long shadows (was 14.5 before the art pass)
 		Blockout = {
 			Half = 320, -- playable area is -Half..Half on X and Z
 			RoadCoords = { -300, -180, -60, 60, 180, 300 }, -- road center lines on both axes
