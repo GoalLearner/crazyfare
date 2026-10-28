@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Post-Match Drops</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#e8a400; --ok:#2f8f4e; --warn:#b5651d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#ffc83a; --ok:#5cc47e; --warn:#f0a35e; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:980px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+h2 b { background:var(--accent); color:#1d1b22; border-radius:999px; min-width:28px; height:28px; display:inline-grid; place-items:center; font-size:15px; }
+ul, ol { margin:6px 0 0; padding-left:22px; }
+li { margin:4px 0; }
+.pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:2px 9px; border:1px solid var(--line); color:var(--muted); }
+.pill.ok { color:var(--ok); border-color:var(--ok); }
+code { font-family:ui-monospace, Consolas, monospace; font-size:14px; }
+.table { width:100%; overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Post-match drops, part 1 of 3</h1>
+<p class="sub">October 28, 2026, 11:45 AM PST. Built, tested in Studio, committed, <b>not published</b>. Live is still v14. Next: part 2 (trails, horns, Weirdo cards), then part 3 (the Phantom car).</p>
+
+<section>
+<h2><b>1</b> What players get</h2>
+<ul>
+<li>A <b>free crate after every match</b>, on the podium. 1st place gets a Gold crate, 2nd and 3rd Silver, everyone else Bronze. Better crates have better odds.</li>
+<li>The crate drops in beside the podium, shakes, bursts in its rarity's color and shows the prize. Already own it? It says <b>ALREADY YOURS +N GEMS</b>.</li>
+<li>Prizes so far: Gems, paints (including four you can only get from drops: Sunset, Lime, Bubblegum, Teal), "start your next match holding a Tomato" style tokens, the Gem cars at Epic, Rocket Cab and Armored Limo at Legendary, 2,500 Gems or <b>the Phantom</b> at Mythic.</li>
+<li><b>Pity:</b> an Epic or better is guaranteed by the 30th drop since your last one.</li>
+<li>The <b>i</b> button shows every crate's odds and the Phantom's chance (1 in 23,256 from Bronze, 7,752 from Silver, 4,651 from Gold; about 1 in 10,000 overall).</li>
+<li>A <b>Mythic pull</b> puts a gold banner ("FITXVERT PULLED THE PHANTOM!"), a flash and a chime on every screen in the server.</li>
+<li>Free and earned only: nothing can buy, reroll or improve a crate, VIP doesn't double drop Gems, and bots get none.</li>
+</ul>
+</section>
+
+<section>
+<h2><b>2</b> What I saw working in Studio <span class="pill ok">tested</span></h2>
+<ul>
+<li>Every rarity's reveal, the Phantom banner, the odds card, duplicates turning into Gems.</li>
+<li>Pity: 5 times out of 5, a player one drop away from the guarantee got an Epic.</li>
+<li>The odds are right: 100,000 simulated Gold crates gave 0.503% Mythic and 21 Phantoms (expected 0.5% and about 21).</li>
+<li>Real match ends: 1st place opened a Gold crate, 2nd place a Silver one, beside the podium. One real Gold crate even rolled the Phantom (genuine luck).</li>
+<li>On a small phone the crate fits left of the podium (it brushes the money counter on the smallest screens).</li>
+<li>Fixed: the Starter Pack card covered the podium; it now shows only in the depot.</li>
+</ul>
+</section>
+
+<section>
+<h2><b>3</b> Your Studio test</h2>
+<ol>
+<li>Test, PLAY, then in the left debug panel scroll to <b>Drop: Common ... Drop: Mythic</b>, <b>Phantom pull</b>, <b>30 drops</b>, <b>Pity 29</b> then <b>1 drop</b>.</li>
+<li>Finish a match (the debug <b>End round</b> button, then READY at the Pit Stop) to see the real crate on the podium.</li>
+<li>Press the <b>i</b> on the crate card for the odds.</li>
+</ol>
+</section>
+
+<section>
+<h2><b>4</b> Knobs <span class="pill">Config.Drops</span></h2>
+<div class="table">
+<table>
+<tr><th>Knob</th><th>Now</th><th>What it does</th></tr>
+<tr><td><code>TierOdds</code></td><td>Bronze 70 / 22 / 6.4 / 1.5 / 0.1</td><td>Rarity odds per crate (Silver and Gold shift up)</td></tr>
+<tr><td><code>TierByPlace</code></td><td>Gold, Silver, Silver</td><td>Which places get which crate (the rest Bronze)</td></tr>
+<tr><td><code>Pool</code></td><td>33 prizes</td><td>What can drop, at which rarity and weight</td></tr>
+<tr><td><code>PhantomWeight</code></td><td>4.3</td><td>The Phantom's share of Mythic drops (about 1 in 10,000 overall)</td></tr>
+<tr><td><code>PityEpic</code></td><td>30</td><td>Drops until an Epic or better is guaranteed</td></tr>
+<tr><td><code>DuplicateGems</code></td><td>10 / 30 / 100 / 400 / 1,500</td><td>Gems for something you already own</td></tr>
+<tr><td><code>Reveal</code></td><td>about 2.7 s to the prize</td><td>The crate's timing</td></tr>
+</table>
+</div>
+</section>
+</main>
+</body>
+</html>
