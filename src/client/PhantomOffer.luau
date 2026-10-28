@@ -11,19 +11,26 @@ local PhantomOffer = {}
 
 local P = Config.Vehicles.Phantom
 
--- Seconds until the offer ends (0 = no offer running).
+-- Seconds until the offer ends (0 = no offer running; math.huge = on sale with no end date).
 function PhantomOffer.SecondsLeft(): number
 	local w = Config.Monetization.PhantomOffer
 	local now = workspace:GetServerTimeNow()
-	if w.EndUtc <= 0 or now < w.StartUtc or now >= w.EndUtc then
+	if w.StartUtc <= 0 or now < w.StartUtc then
 		return 0
 	end
-	return w.EndUtc - now
+	if w.EndUtc <= 0 then
+		return math.huge
+	end
+	return math.max(0, w.EndUtc - now)
 end
 
--- "R$ OFFER: 2D 4H LEFT", or MYTHIC DROP ONLY outside the window.
+-- "R$ OFFER: 2D 4H LEFT", ON SALE NOW with no end date, or MYTHIC DROP ONLY outside the window.
 function PhantomOffer.StatusText(): string
-	local left = math.floor(PhantomOffer.SecondsLeft())
+	local seconds = PhantomOffer.SecondsLeft()
+	if seconds == math.huge then
+		return P.OpenOfferLine
+	end
+	local left = math.floor(seconds)
 	if left <= 0 then
 		return P.DropOnlyLine
 	end

@@ -1073,6 +1073,7 @@ Config.Vehicles = {
 		DropOnlyLine = "MYTHIC DROP ONLY",
 		DropOnlyButton = "DROP ONLY", -- the buy button outside the offer window
 		OfferLine = "R$ OFFER: %s LEFT",
+		OpenOfferLine = "ON SALE NOW", -- an offer with no end date
 		YoursLine = "YOURS IS #%d", -- the Garage row once you own it
 		SerialLine = "#%d",
 		BoardTitle = "PHANTOM OWNERS",
@@ -1554,9 +1555,10 @@ Config.Monetization = {
 		Phantom = 3723363979, -- sold only inside PhantomOffer
 	} :: { [string]: number },
 	VehicleRobux = { NightCab = 149, IceCreamTruck = 149, RocketCab = 499, ArmoredLimo = 399, Phantom = 999 } :: { [string]: number },
-	-- The Phantom's limited-time Robux offer: unix seconds (UTC). Outside the window it reads MYTHIC DROP ONLY and can't
-	-- be bought; set both to 0 for no offer.
-	PhantomOffer = { StartUtc = 0, EndUtc = 0 },
+	-- The Phantom's Robux offer: unix seconds (UTC). Outside the window it reads MYTHIC DROP ONLY and can't be bought.
+	-- StartUtc 0 = no offer; EndUtc 0 = on sale from StartUtc with no end (ON SALE NOW, no countdown).
+	-- Owner 2026-10-28 "Make it available for purchase": on sale from the v16 publish, no end date yet.
+	PhantomOffer = { StartUtc = 1793220319, EndUtc = 0 },
 	-- Permanent upgrades sold for Robux (developer products), applied by StoreService once Roblox confirms the purchase.
 	-- (The in-match boosts Item Drop, Tomato Barrage, Nitro Refill, Patch Up and Cash Boost were cut 2026-10-28, owner:
 	-- no temporary upgrades. Their products are off sale in Creator Hub.)
