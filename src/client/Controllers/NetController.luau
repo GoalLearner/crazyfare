@@ -207,6 +207,11 @@ function NetController.Init()
 			State.ProfileChanged:Fire()
 		end
 	end)
+	Remotes.Get("DropEvent").OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" then
+			State.DropEvent:Fire(payload :: Types.DropEventPayload)
+		end
+	end)
 	Remotes.Get("QuestSync").OnClientEvent:Connect(function(payload: any)
 		if typeof(payload) == "table" then
 			local quests = payload :: Types.QuestPayload

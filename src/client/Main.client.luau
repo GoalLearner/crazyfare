@@ -52,6 +52,7 @@ local ordered: { Controller } = {
 	require(Controllers.ProgressController),
 	require(Controllers.ShopController),
 	require(Controllers.RadarController),
+	require(Controllers.DropController),
 	require(Controllers.OptionsController),
 	require(Controllers.CreditsController),
 	require(Controllers.TitleController),

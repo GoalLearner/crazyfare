@@ -96,6 +96,7 @@ local riderSaid: Signal.Signal<string> = Signal.new()
 local sessionChanged: Signal.Signal<string> = Signal.new()
 local rideChanged: Signal.Signal<nil> = Signal.new()
 local settingsChanged: Signal.Signal<nil> = Signal.new()
+local dropEvent: Signal.Signal<Types.DropEventPayload> = Signal.new()
 
 State.VehicleChanged = vehicleChanged
 State.FareEvent = fareEvent
@@ -116,6 +117,7 @@ State.RiderSaid = riderSaid -- your own passenger said this (shown in the HUD's 
 State.SessionChanged = sessionChanged -- your session state changed (driving, on foot, in the depot)
 State.RideChanged = rideChanged -- you got into (or out of) someone's cab as their passenger
 State.SettingsChanged = settingsChanged -- OPTIONS changed (or arrived with your profile): volumes, shake, speed effects
+State.DropEvent = dropEvent -- your post-match drop, or someone's Mythic pull (Types.DropEventPayload)
 
 -- The cab the camera, popups and arrow follow: the one you ride in, else your own.
 function State.ViewChassis(): BasePart?

@@ -158,19 +158,30 @@ local function renderPaint(profile: Types.ProfilePayload)
 		end
 	end
 	local affordable = profile.gems >= Config.Paint.Price
+	local ownedPaints = if profile.inventory then profile.inventory.Paints or {} else {}
 	for i, entry in Config.Paint.Colors do
+		-- paints won in drops apply free (a check mark); drop-only colors show only once you own them
+		local owned = (ownedPaints[entry.Name] or 0) > 0
+		if entry.DropOnly and not owned then
+			continue
+		end
 		local current = profile.paint == entry.Name
+		local usable = owned or affordable
 		local b = UI.New("TextButton", {
 			Size = UDim2.fromOffset(28, 28),
 			LayoutOrder = i,
 			BackgroundColor3 = entry.Color,
 			BorderSizePixel = 0,
-			Text = "",
-			AutoButtonColor = affordable and not current,
+			Font = UI.Font,
+			TextSize = 14,
+			TextColor3 = UI.White,
+			TextStrokeTransparency = 0.3,
+			Text = if owned and not current then "\u{2713}" else "",
+			AutoButtonColor = usable and not current,
 		}, paintRow) :: TextButton
 		UI.Corner(14, b)
 		UI.Stroke(if current then UI.White else Color3.fromRGB(40, 40, 48), if current then 3 else 1, b)
-		if not current and affordable then
+		if not current and usable then
 			b.Activated:Connect(function()
 				action:FireServer("Paint", entry.Name)
 			end)
@@ -266,8 +277,8 @@ local function build()
 	upgradeList = UI.Frame({ Position = UDim2.fromOffset(0, 42), Size = UDim2.new(1, 0, 0, 160), BackgroundTransparency = 1 }, right)
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, upgradeList)
 	UI.Label({ Position = UDim2.fromOffset(0, 220), Size = UDim2.fromOffset(200, 22), Text = string.format("PAINT  ·  %d GEMS", Config.Paint.Price), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium }, right)
-	paintRow = UI.Frame({ Position = UDim2.fromOffset(0, 248), Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, right)
-	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
+	paintRow = UI.Frame({ Position = UDim2.fromOffset(0, 248), Size = UDim2.new(1, 0, 0, 64), BackgroundTransparency = 1 }, right)
+	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Wraps = true, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, paintRow)
 end
 
 -- The title screen's GARAGE button.

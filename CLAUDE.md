@@ -20,7 +20,7 @@ src/
     VehicleBuilder.luau parts-built vehicle models (Yellow Cab)
   server/              → ServerScriptService.Server
     Main.server.luau   boots services in a fixed order: Init() all, then Start() all
-    Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Store, Walker, Depot, Match, Round, Replication, Debug...)
+    Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Store, Drop, Walker, Depot, Match, Round, Replication, Debug...)
     Studio/DevBlockout.luau  Studio-only city generator (parts, CollectionService-tagged)
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau   boots controllers the same way
@@ -126,6 +126,6 @@ Known v1 limitation: physics is client-authoritative, so positions are trusted. 
 ## Product rules every change must respect
 
 - All art, names and vehicles are original. No licensed vehicles, characters or music, ever.
-- Pay-to-win is the monetization strategy (owner decision 2026-10-27: "100% pay to win"). Passes are `MonetizationService.HasPass(player, key)` on the server and `Pass_<Key>` player attributes on the client; Robux upgrades (Max Upgrades) are handled in `StoreService`. Passes, cars and upgrades may sell speed, boost, passenger HP, items, cash and upgrade levels. Everything sold is permanent: no temporary, in-match boosts (owner decision 2026-10-28). Every purchase is applied on the server by the service that owns that stat (ProcessReceipt idempotent by receipt id); the client never grants itself anything. Paid random items show their odds first and are hidden where `PolicyService` restricts them.
+- Pay-to-win is the monetization strategy (owner decision 2026-10-27: "100% pay to win"). Passes are `MonetizationService.HasPass(player, key)` on the server and `Pass_<Key>` player attributes on the client; Robux upgrades (Max Upgrades) are handled in `StoreService`. Passes, cars and upgrades may sell speed, boost, passenger HP, items, cash and upgrade levels. Everything sold is permanent: no temporary, in-match boosts (owner decision 2026-10-28). Free post-match drops (`DropService`, `Config.Drops`) may include one-match item tokens; nothing may ever buy, reroll or improve a drop (that would make it a paid random item). Every purchase is applied on the server by the service that owns that stat (ProcessReceipt idempotent by receipt id); the client never grants itself anything. Paid random items show their odds first and are hidden where `PolicyService` restricts them.
 - Copy is short and funny; the HUD shows only what a player acts on. No tutorial text for things that are self-explanatory.
 - Tune by Config, then playtest. Playtest beats theory.

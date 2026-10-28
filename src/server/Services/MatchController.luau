@@ -31,6 +31,7 @@ local GemService = require(script.Parent.GemService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local QuestService = require(script.Parent.QuestService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local DropService = require(script.Parent.DropService)
 
 export type MatchOptions = { mode: string } -- "Race" | "Arcade"
 
@@ -235,6 +236,7 @@ function MatchController.MatchEnd(results: { Types.PodiumEntry }): { Types.Podiu
 			LeaderboardService.AddWeeklyGems(player, entry.gems or 0)
 		end
 	end
+	DropService.AwardMatch(awarded) -- a free crate each, by place (bots get none)
 	SessionService.ReadyAll()
 	onSlotsChanged:Fire()
 	return awarded

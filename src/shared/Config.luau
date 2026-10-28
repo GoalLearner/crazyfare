@@ -138,6 +138,9 @@ export type GamePassDef = { Id: number, Label: string, Effect: string, Robux: nu
 -- A Robux upgrade (Config.Monetization.Boosts); FallbackGems are paid when it can't apply (already maxed).
 export type BoostDef = { Id: number, Label: string, Effect: string, Robux: number, FallbackGems: number, Color: Color3 }
 export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: number, GemMult: number }
+-- One prize in the post-match drop pool (Config.Drops.Pool). Kind: "Gems" (Amount), "Paint" | "Vehicle" (Ref: a
+-- Config.Paint / Config.Vehicles id), "Boost" (Ref: a Config.Items.Pool id: you start next match holding it).
+export type DropEntry = { Id: string, Kind: string, Rarity: string, Weight: number, Amount: number?, Ref: string? }
 export type EventWindow = { Kind: string, Day: number, HourUtc: number, Hours: number } -- Day: 1 = Sunday ... 7 = Saturday
 
 local Config = {}
@@ -1031,7 +1034,12 @@ Config.Paint = {
 		{ Name = "Grape", Color = Color3.fromRGB(150, 80, 220) },
 		{ Name = "Snow", Color = Color3.fromRGB(245, 245, 245) },
 		{ Name = "Midnight", Color = Color3.fromRGB(25, 25, 35) },
-	} :: { { Name: string, Color: Color3 } },
+		-- drop-only (Config.Drops): never for sale, applied free once owned
+		{ Name = "Sunset", Color = Color3.fromRGB(255, 120, 60), DropOnly = true },
+		{ Name = "Lime", Color = Color3.fromRGB(170, 240, 60), DropOnly = true },
+		{ Name = "Bubblegum", Color = Color3.fromRGB(255, 130, 210), DropOnly = true },
+		{ Name = "Teal", Color = Color3.fromRGB(30, 190, 180), DropOnly = true },
+	} :: { { Name: string, Color: Color3, DropOnly: boolean? } },
 }
 
 -- Player level: XP per match, level thresholds grow linearly. The level shows as a badge by the name.
@@ -1408,6 +1416,106 @@ Config.Monetization = {
 	},
 }
 
+-- Post-match drops (owner spec 2026-10-28): one free crate per match finished, never sold and never improved by any
+-- purchase (Gems and Robux can't buy, reroll or upgrade a drop: that would make it a paid random item). Placement picks
+-- the tier, the tier's odds pick the rarity, weights pick the prize. A car or paint you already own pays Gems instead.
+-- Pity: an Epic or better is guaranteed by the PityEpic-th drop since the last one. Bots get no drops.
+Config.Drops = {
+	Rarities = { "Common", "Rare", "Epic", "Legendary", "Mythic" },
+	Colors = {
+		Common = Color3.fromRGB(190, 195, 205),
+		Rare = Color3.fromRGB(70, 150, 255),
+		Epic = Color3.fromRGB(175, 90, 255),
+		Legendary = Color3.fromRGB(255, 190, 40),
+		Mythic = Color3.fromRGB(255, 70, 160),
+	} :: { [string]: Color3 },
+	-- placement -> crate tier; any place not listed is Bronze
+	TierByPlace = { "Gold", "Silver", "Silver" },
+	DefaultTier = "Bronze",
+	TierNames = { Gold = "GOLD CRATE", Silver = "SILVER CRATE", Bronze = "BRONZE CRATE" } :: { [string]: string },
+	TierColors = {
+		Gold = Color3.fromRGB(255, 200, 50),
+		Silver = Color3.fromRGB(200, 210, 225),
+		Bronze = Color3.fromRGB(205, 130, 70),
+	} :: { [string]: Color3 },
+	-- percent per rarity (each tier adds to 100)
+	TierOdds = {
+		Bronze = { Common = 70, Rare = 22, Epic = 6.4, Legendary = 1.5, Mythic = 0.1 },
+		Silver = { Common = 60, Rare = 27, Epic = 9.5, Legendary = 3.2, Mythic = 0.3 },
+		Gold = { Common = 48, Rare = 32, Epic = 14, Legendary = 5.5, Mythic = 0.5 },
+	} :: { [string]: { [string]: number } },
+	PityEpic = 30, -- an Epic or better by this many drops since the last one
+	DuplicateGems = { Common = 10, Rare = 30, Epic = 100, Legendary = 400, Mythic = 1500 } :: { [string]: number },
+	-- The Phantom's weight inside the Mythic pool (the pool's other Mythic weights add to 100 - this). A 6-car match
+	-- averages a 0.23% Mythic chance per drop, so 4.3 makes the Phantom about 1 in 10,000 drops.
+	PhantomWeight = 4.3,
+	PhantomRef = "Phantom",
+	Pool = {
+		-- Common
+		{ Id = "Gems15", Kind = "Gems", Rarity = "Common", Weight = 22, Amount = 15 },
+		{ Id = "Gems25", Kind = "Gems", Rarity = "Common", Weight = 16, Amount = 25 },
+		{ Id = "Gems40", Kind = "Gems", Rarity = "Common", Weight = 10, Amount = 40 },
+		{ Id = "PaintCherry", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Cherry" },
+		{ Id = "PaintMint", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Mint" },
+		{ Id = "PaintSky", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Sky" },
+		{ Id = "PaintGrape", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Grape" },
+		{ Id = "PaintSnow", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Snow" },
+		{ Id = "PaintMidnight", Kind = "Paint", Rarity = "Common", Weight = 4, Ref = "Midnight" },
+		{ Id = "BoostTomato", Kind = "Boost", Rarity = "Common", Weight = 6, Ref = "Tomato" },
+		{ Id = "BoostBanana", Kind = "Boost", Rarity = "Common", Weight = 5, Ref = "Banana" },
+		{ Id = "BoostOil", Kind = "Boost", Rarity = "Common", Weight = 4, Ref = "OilSlick" },
+		{ Id = "BoostNitro", Kind = "Boost", Rarity = "Common", Weight = 5, Ref = "LemonNitro" },
+		{ Id = "BoostShield", Kind = "Boost", Rarity = "Common", Weight = 4, Ref = "Shield" },
+		{ Id = "BoostSeatbelt", Kind = "Boost", Rarity = "Common", Weight = 4, Ref = "Seatbelt" },
+		-- Rare
+		{ Id = "Gems75", Kind = "Gems", Rarity = "Rare", Weight = 40, Amount = 75 },
+		{ Id = "PaintSunset", Kind = "Paint", Rarity = "Rare", Weight = 15, Ref = "Sunset" },
+		{ Id = "PaintLime", Kind = "Paint", Rarity = "Rare", Weight = 15, Ref = "Lime" },
+		{ Id = "PaintBubblegum", Kind = "Paint", Rarity = "Rare", Weight = 15, Ref = "Bubblegum" },
+		{ Id = "PaintTeal", Kind = "Paint", Rarity = "Rare", Weight = 15, Ref = "Teal" },
+		-- Epic
+		{ Id = "Gems200", Kind = "Gems", Rarity = "Epic", Weight = 40, Amount = 200 },
+		{ Id = "CarGoKart", Kind = "Vehicle", Rarity = "Epic", Weight = 12, Ref = "GoKart" },
+		{ Id = "CarShoppingCart", Kind = "Vehicle", Rarity = "Epic", Weight = 12, Ref = "ShoppingCart" },
+		{ Id = "CarHorse", Kind = "Vehicle", Rarity = "Epic", Weight = 12, Ref = "Horse" },
+		{ Id = "CarNightCab", Kind = "Vehicle", Rarity = "Epic", Weight = 12, Ref = "NightCab" },
+		{ Id = "CarIceCreamTruck", Kind = "Vehicle", Rarity = "Epic", Weight = 12, Ref = "IceCreamTruck" },
+		-- Legendary
+		{ Id = "Gems600", Kind = "Gems", Rarity = "Legendary", Weight = 40, Amount = 600 },
+		{ Id = "CarRocketCab", Kind = "Vehicle", Rarity = "Legendary", Weight = 30, Ref = "RocketCab" },
+		{ Id = "CarArmoredLimo", Kind = "Vehicle", Rarity = "Legendary", Weight = 30, Ref = "ArmoredLimo" },
+		-- Mythic (the Phantom joins below with PhantomWeight)
+		{ Id = "Gems2500", Kind = "Gems", Rarity = "Mythic", Weight = 95.7, Amount = 2500 },
+	} :: { DropEntry },
+	-- names on the reveal ("%s" is the prize's own name, or the Gem amount)
+	Names = {
+		Gems = "%s GEMS",
+		Paint = "%s PAINT",
+		Vehicle = "%s",
+		Boost = "START NEXT MATCH WITH %s",
+	} :: { [string]: string },
+	DuplicateLine = "ALREADY YOURS  +%d GEMS",
+	PityLine = "EPIC OR BETTER WITHIN %d DROPS",
+	MythicBanner = "%s PULLED THE PHANTOM!",
+	MythicPrizeBanner = "%s PULLED A MYTHIC!",
+	-- the reveal over the podium (seconds)
+	Reveal = {
+		Delay = 1.2, -- after the podium appears
+		DropSeconds = 0.35, -- the crate falls in
+		ShakeSeconds = 1.1,
+		ShakeDegrees = 9,
+		BurstSeconds = 0.45,
+		HoldSeconds = 8, -- the prize stays up this long after the reveal (the podium is 12 s)
+		BannerSeconds = 4, -- a Mythic pull's banner for everyone
+		FlashAlpha = 0.35, -- the screen flash's strongest opacity (0 = solid)
+	},
+	OddsTitle = "DROP ODDS",
+	OddsNote = "Free after every match. Better places get better crates.",
+	PhantomOddsLine = "THE PHANTOM: 1 in %s",
+}
+-- the Phantom joins the Mythic pool at its own weight (D3 builds the car; until then a pull owns it and shows the banner)
+table.insert(Config.Drops.Pool, { Id = "CarPhantom", Kind = "Vehicle", Rarity = "Mythic", Weight = Config.Drops.PhantomWeight, Ref = Config.Drops.PhantomRef })
+
 -- Sounds. Asset ids are placeholders until the owner uploads audio; 0 = silent. Everything plays through SoundController.
 Config.Sounds = {
 	Volume = 0.5,
@@ -1450,6 +1558,8 @@ Config.Sounds = {
 		Golden = 9116394545, -- Magic Glows Soft Clusters Of Chiming Hits 1 (Pro Sound Effects), 1 s: a Golden Fare boards
 		NewBest = 9120686092, -- Whistle Ta Da 2 (Pro Sound Effects), 2 s: the license plate says NEW BEST
 		Win = 9120974911, -- Wrestling Crowd 1 (Pro Sound Effects), 5 s: you won the match
+		Mythic = 9116394545, -- slot: a Mythic drop pull, for everyone in the server (reuses the Golden chime until one is picked)
+		DropReveal = 9120686092, -- slot: an Epic or better reveal (reuses the ta-da)
 	} :: { [string]: number },
 	StingVolume = 0.6,
 	ComboStingChains = { 5, 10 } :: { number },
@@ -1521,6 +1631,9 @@ Config.Data = {
 		ArcadeBestLicense = 0,
 		CoachDone = false, -- the first-match coach prompts have all been shown
 		Settings = { Music = 5, Sfx = 5, Shake = true, SpeedFx = true }, -- OPTIONS: volume steps (Config.Options.VolumeSteps) and switches
+		DropCount = 0, -- post-match drops opened, ever
+		PityCounter = 0, -- drops since the last Epic or better (Config.Drops.PityEpic)
+		Inventory = { Paints = {}, Boosts = {} } :: { [string]: { [string]: number } }, -- owned paints (1), boost tokens (count)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)
 	},

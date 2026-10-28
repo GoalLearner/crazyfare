@@ -17,10 +17,29 @@ local MapService = require(script.Parent.MapService)
 local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local DropService = require(script.Parent.DropService)
 
 local DebugService = {}
 
 local commands: { [string]: (player: Player, arg: any) -> () } = {
+	-- a post-match crate right now: a rarity ("Common" ... "Mythic") or "Phantom"
+	ForceDrop = function(player, arg)
+		if typeof(arg) == "string" then
+			DropService.DebugDrop(player, arg)
+		end
+	end,
+	-- that many crates in a row (only the last one revealed): the pity shows in the Output
+	DropBurst = function(player, arg)
+		if typeof(arg) == "number" then
+			DropService.DebugBurst(player, math.clamp(math.floor(arg), 1, Config.Drops.PityEpic * 2))
+		end
+	end,
+	-- the pity counter (PityEpic - 1 makes the next natural drop an Epic or better)
+	Pity = function(player, arg)
+		if typeof(arg) == "number" then
+			DropService.DebugSetPity(player, arg)
+		end
+	end,
 	-- the shop's TEST buttons (ids still 0): as if this pass or product was just bought
 	Grant = function(player, arg)
 		if typeof(arg) == "string" then

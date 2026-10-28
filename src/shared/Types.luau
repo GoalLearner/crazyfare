@@ -112,6 +112,22 @@ export type ProfilePayload = {
 	arcadeBestLicense: number,
 	coachDone: boolean,
 	settings: SettingsPayload,
+	inventory: { [string]: { [string]: number } }, -- Paints (owned = 1), Boosts (tokens: next match starts holding one)
+	dropCount: number,
+	pity: number, -- drops since the last Epic or better
+}
+
+-- A post-match drop (DropService -> the player who opened it), or a Mythic pull told to everyone (kind "Mythic").
+export type DropEventPayload = {
+	kind: string, -- "Drop" | "Mythic"
+	tier: string?, -- "Gold" | "Silver" | "Bronze"
+	rarity: string?,
+	prize: string?, -- Config.Drops.Pool Id
+	name: string?, -- what the reveal says ("ROCKET CAB", "75 GEMS")
+	duplicateGems: number?, -- you had it: Gems instead
+	pity: number?, -- drops since the last Epic or better, after this one
+	who: string?, -- "Mythic": the puller's display name
+	phantom: boolean?, -- "Mythic": the prize was the Phantom
 }
 
 -- OPTIONS: volume steps index Config.Options.VolumeSteps (1 = off); the switches turn camera shake and speed effects off.

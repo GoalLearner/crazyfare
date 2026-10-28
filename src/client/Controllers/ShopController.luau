@@ -196,9 +196,9 @@ end
 function updateStarter()
 	local profile = State.profile
 	local phase = State.GetPhase()
-	-- the depot and the podium only: during a round's setup or the Pit Stop it would sit on the Pit Stop panel
-	-- (and not over the shop panel itself)
-	local show = profile ~= nil and profile.showStarterPack and (phase == "Waiting" or phase == "MatchEnd") and State.sessionState ~= "Title" and not isOpen
+	-- the depot only: anywhere else it sits on the podium (and its drop crate) or the Pit Stop panel, and never over the
+	-- shop panel itself
+	local show = profile ~= nil and profile.showStarterPack and phase == "Waiting" and State.sessionState ~= "Title" and not isOpen
 	starterCard.Visible = show
 end
 

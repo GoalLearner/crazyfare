@@ -266,6 +266,22 @@ function SoundController.Init()
 	State.ItemEvent:Connect(onItem)
 	State.RoundChanged:Connect(onRound)
 	State.Honk:Connect(onHonk)
+	-- post-match drops: a chime for an Epic or better, a coin otherwise, when the prize shows (Config.Drops.Reveal); a
+	-- Mythic pull anywhere in the server rings for everyone
+	State.DropEvent:Connect(function(payload: Types.DropEventPayload)
+		local r = Config.Drops.Reveal
+		local at = r.Delay + r.DropSeconds + r.ShakeSeconds
+		if payload.kind == "Mythic" then
+			task.delay(at, sting, "Mythic")
+		elseif payload.kind == "Drop" then
+			local rarity = table.find(Config.Drops.Rarities, payload.rarity or "") or 1
+			if rarity >= (table.find(Config.Drops.Rarities, "Epic") or 3) and payload.rarity ~= "Mythic" then
+				task.delay(at, sting, "DropReveal")
+			elseif payload.rarity ~= "Mythic" then
+				task.delay(at, SoundController.PlayOneShot, "Coin", 1.1)
+			end
+		end
+	end)
 	State.Hopped:Connect(function()
 		SoundController.PlayOneShot(Config.Chaos.Hop.Sound, Config.Chaos.Hop.SoundPitch)
 	end)

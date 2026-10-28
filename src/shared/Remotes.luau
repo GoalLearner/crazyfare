@@ -16,6 +16,7 @@ local EVENT_NAMES = {
 	"ProfileSync", -- (Types.ProfilePayload) whenever the profile changes
 	"QuestSync", -- (Types.QuestPayload) when quests, streak or progress change
 	"LeaderboardSync", -- (Types.LeaderboardPayload) on request and on refresh
+	"DropEvent", -- (Types.DropEventPayload) your post-match drop; a Mythic pull goes to everyone
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)

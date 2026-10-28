@@ -36,6 +36,9 @@ export type ProfileData = {
 	ReferredBy: number,
 	ReferralsPaid: number,
 	Settings: { Music: number, Sfx: number, Shake: boolean, SpeedFx: boolean },
+	DropCount: number,
+	PityCounter: number,
+	Inventory: { [string]: { [string]: number } },
 }
 
 local DataService = {}
@@ -106,6 +109,9 @@ function DataService.Sync(player: Player)
 		arcadeBestLicense = d.ArcadeBestLicense,
 		coachDone = d.CoachDone,
 		settings = { music = d.Settings.Music, sfx = d.Settings.Sfx, shake = d.Settings.Shake, speedFx = d.Settings.SpeedFx },
+		inventory = d.Inventory,
+		dropCount = d.DropCount,
+		pity = d.PityCounter,
 	}
 	syncEvent:FireClient(player, payload)
 end
@@ -253,9 +259,11 @@ function DataService.BuyPaint(player: Player, colorName: string): boolean
 		return false
 	end
 	local found = false
+	local dropOnly = false
 	for _, entry in Config.Paint.Colors do
 		if entry.Name == colorName then
 			found = true
+			dropOnly = entry.DropOnly == true
 			break
 		end
 	end
@@ -265,7 +273,9 @@ function DataService.BuyPaint(player: Player, colorName: string): boolean
 	if d.Paint == colorName then
 		return false
 	end
-	if colorName ~= "" and not DataService.SpendGems(player, Config.Paint.Price) then
+	-- a paint won from a drop applies free; drop-only colors can't be bought at all
+	local owned = colorName ~= "" and (d.Inventory.Paints[colorName] or 0) > 0
+	if colorName ~= "" and not owned and (dropOnly or not DataService.SpendGems(player, Config.Paint.Price)) then
 		return false
 	end
 	d.Paint = colorName

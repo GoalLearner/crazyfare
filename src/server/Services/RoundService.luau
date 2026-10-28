@@ -31,6 +31,7 @@ local WorldEventService = require(script.Parent.WorldEventService)
 local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
 local MatchController = require(script.Parent.MatchController)
+local DropService = require(script.Parent.DropService)
 
 local MapService = require(script.Parent.MapService)
 
@@ -153,6 +154,15 @@ local function beginRoundSetup()
 	FareService.SetQuota(Config.Round.Quotas[math.min(roundIndex, #Config.Round.Quotas)])
 	ComboService.ResetAll()
 	ItemService.ClearAll()
+	-- a match's first round: anyone holding a boost token from a drop starts with that item
+	if roundIndex == 1 and mode == "Race" then
+		for _, player in SessionService.GetDrivers() do
+			local item = DropService.TakeStartToken(player)
+			if item then
+				ItemService.Give(player, item)
+			end
+		end
+	end
 	VehicleService.ResetAllToGrid()
 	PitStopService.ApplyBoosts()
 	PassengerService.EnsureCount(FareService.TargetNpcCount())
