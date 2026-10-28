@@ -51,6 +51,7 @@ local ordered: { Controller } = {
 	require(Controllers.GarageController),
 	require(Controllers.ProgressController),
 	require(Controllers.ShopController),
+	require(Controllers.RadarController),
 	require(Controllers.OptionsController),
 	require(Controllers.CreditsController),
 	require(Controllers.TitleController),

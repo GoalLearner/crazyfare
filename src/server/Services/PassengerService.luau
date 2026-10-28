@@ -18,6 +18,7 @@ local Events = require(ReplicatedStorage.Shared.Events)
 local Ticking = require(ReplicatedStorage.Shared.Ticking)
 local MapService = require(script.Parent.MapService)
 local VehicleService = require(script.Parent.VehicleService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 export type Npc = {
 	id: number,
@@ -806,6 +807,9 @@ function PassengerService.ApplyDamage(player: Player, amount: number, source: st
 	local armor = player:GetAttribute("Pit_ArmoredSeats")
 	if typeof(armor) == "number" then
 		amount *= armor
+	end
+	if MonetizationService.HasPass(player, "ArmoredSeats") then
+		amount *= Config.Monetization.ArmoredSeatsDamageMult -- the Robux pass, on top of the Pit Stop card
 	end
 	local entry = VehicleService.GetEntry(player)
 	local stats = if entry then Config.Vehicles.Stats[entry.vehicleId] else nil

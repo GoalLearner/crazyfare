@@ -57,6 +57,7 @@ local hopBar: UI.Bar
 local speedLabel: TextLabel
 local itemSlot: Frame
 local itemLabel: TextLabel
+local itemCountLabel: TextLabel -- "+2": items waiting behind the held one
 local itemKey: TextLabel
 
 -- Where to: the passenger's shout over the cab, the arrival banner, the countdown by the cab
@@ -471,6 +472,7 @@ local function build()
 	UI.Corner(14, itemSlot)
 	UI.Stroke(Color3.fromRGB(60, 60, 70), 2, itemSlot)
 	itemLabel = UI.Label({ Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 1, -16), Text = "" }, itemSlot)
+	itemCountLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.fromOffset(44, 22), Text = "", TextColor3 = UI.Warn, TextXAlignment = Enum.TextXAlignment.Right }, itemSlot)
 	itemKey = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 16), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, itemSlot)
 	-- The slot names its key; on a phone the ITEM button shows the item instead, so the slot goes
 	local function fitInput(inputMode: string)
@@ -1007,7 +1009,9 @@ local function update(dt: number)
 		itemLabel.Text = string.upper(def.DisplayName)
 		itemLabel.TextColor3 = def.Color
 		itemSlot.BackgroundTransparency = 0.1
+		itemCountLabel.Text = if State.itemCount > 0 then string.format("+%d", State.itemCount) else ""
 	else
+		itemCountLabel.Text = ""
 		itemLabel.Text = ""
 		itemSlot.BackgroundTransparency = 0.5
 	end

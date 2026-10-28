@@ -41,6 +41,7 @@ local State = {
 	round = nil :: Types.RoundStatePayload?,
 	fare = nil :: FareInfo?,
 	item = "",
+	itemCount = 0, -- items waiting behind the held one (Double Item pass, bought items)
 	pitStop = nil :: Types.PitStopOfferPayload?,
 	profile = nil :: Types.ProfilePayload?,
 	quests = nil :: Types.QuestPayload?,

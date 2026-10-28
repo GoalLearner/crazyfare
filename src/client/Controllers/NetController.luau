@@ -125,8 +125,10 @@ local function onItemEvent(payload: Types.ItemEventPayload)
 	local kind = payload.kind
 	if kind == "Granted" then
 		State.item = payload.item or ""
+		State.itemCount = payload.count or 0
 	elseif kind == "Used" then
 		State.item = ""
+		State.itemCount = 0 -- the next in line arrives with its own "Granted"
 	elseif kind == "Boost" then
 		State.nitroUntil = now() + (payload.seconds or Config.Items.LemonNitro.Seconds)
 	elseif kind == "Spinout" then

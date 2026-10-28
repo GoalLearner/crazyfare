@@ -46,7 +46,7 @@ DataService.OnLoaded = onLoaded
 DataService.OnVehicleSelected = onVehicleSelected -- selection or paint changed; the car may need a respawn
 
 local store = ProfileStore.New(Config.Data.StoreName, Config.Data.Template)
-type Extras = { vip: boolean, pitStopPlus: boolean, showStarterPack: boolean }
+type Extras = { vip: boolean, pitStopPlus: boolean, showStarterPack: boolean, passes: { [string]: boolean } }
 local extrasProvider: ((Player) -> Extras)? = nil
 local profiles: { [Player]: any } = {}
 local syncEvent: RemoteEvent
@@ -85,7 +85,7 @@ function DataService.Sync(player: Player)
 	if not d then
 		return
 	end
-	local extras: Extras = if extrasProvider then extrasProvider(player) else { vip = false, pitStopPlus = false, showStarterPack = false }
+	local extras: Extras = if extrasProvider then extrasProvider(player) else { vip = false, pitStopPlus = false, showStarterPack = false, passes = {} }
 	local payload: Types.ProfilePayload = {
 		gems = d.Gems,
 		level = d.Level,
@@ -98,6 +98,7 @@ function DataService.Sync(player: Player)
 		vip = extras.vip,
 		pitStopPlus = extras.pitStopPlus,
 		showStarterPack = extras.showStarterPack,
+		passes = extras.passes,
 		xpToNext = Config.Progression.LevelBaseXp + (d.Level - 1) * Config.Progression.LevelStepXp,
 		xpIntoLevel = d.Xp,
 		bestLicense = d.BestLicense,
@@ -172,7 +173,7 @@ function DataService.Owns(player: Player, vehicleId: string): boolean
 	if not stats then
 		return false
 	end
-	if stats.GemPrice <= 0 then
+	if stats.GemPrice <= 0 and not stats.RobuxOnly then
 		return true
 	end
 	local d = data(player)
@@ -193,8 +194,8 @@ end
 function DataService.BuyVehicle(player: Player, vehicleId: string): boolean
 	local stats = Config.Vehicles.Stats[vehicleId]
 	local d = data(player)
-	if not stats or not d or DataService.Owns(player, vehicleId) then
-		return false
+	if not stats or not d or stats.RobuxOnly or DataService.Owns(player, vehicleId) then
+		return false -- Robux-only cars come through MonetizationService
 	end
 	if not DataService.SpendGems(player, stats.GemPrice) then
 		return false
@@ -222,6 +223,28 @@ function DataService.BuyUpgrade(player: Player, name: string): boolean
 	applyUpgradeAttributes(player, d)
 	DataService.Sync(player)
 	return true
+end
+
+-- Every upgrade to at least this level (the Starter Pack, Max Upgrades). False when nothing went up.
+function DataService.RaiseUpgrades(player: Player, level: number): boolean
+	local d = data(player)
+	if not d then
+		return false
+	end
+	local raised = false
+	for _, name in Config.Upgrades.Order do
+		local def = Config.Upgrades[name]
+		local target = math.min(level, def.Max)
+		if (d.Upgrades[name] or 0) < target then
+			d.Upgrades[name] = target
+			raised = true
+		end
+	end
+	if raised then
+		applyUpgradeAttributes(player, d)
+		DataService.Sync(player)
+	end
+	return raised
 end
 
 function DataService.BuyPaint(player: Player, colorName: string): boolean

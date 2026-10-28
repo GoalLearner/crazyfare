@@ -20,7 +20,7 @@ src/
     VehicleBuilder.luau parts-built vehicle models (Yellow Cab)
   server/              → ServerScriptService.Server
     Main.server.luau   boots services in a fixed order: Init() all, then Start() all
-    Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Walker, Depot, Match, Round, Replication, Debug...)
+    Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Store, Walker, Depot, Match, Round, Replication, Debug...)
     Studio/DevBlockout.luau  Studio-only city generator (parts, CollectionService-tagged)
   client/              → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau   boots controllers the same way
@@ -116,7 +116,7 @@ Known v1 limitation: physics is client-authoritative, so positions are trusted. 
 1. `Config.Vehicles.<Id>` with the stat budget (`TopSpeed, Accel, Handling, DriftGrip, BoostTank, SteerMax`), `WheelType` (`wheels|legs`), `Gimmick` id, price fields.
 2. Model: `VehicleBuilder.Build(id)` for a parts build, or a Studio model in `ReplicatedStorage.VehicleTemplates.<Id>` with attributes `VehicleId`, `WheelType`, a `Chassis` PrimaryPart, attachments `WheelFL/FR/RL/RR`, `DropPoint`, `Muzzle`, and a `Silhouette` part. The chassis is the only part with mass.
 3. Gimmicks are flags read by the systems they touch (e.g. `ImmuneTo = {Banana=true}` checked in `ItemService`; `PassengerHpBonus` in `PassengerService.Board`). Never branch on vehicle id in gameplay code; branch on the gimmick field.
-4. Ownership/price wiring arrives in Phase 4 (`DataService`).
+4. Price: `GemPrice` (0 = everyone owns it), or `RobuxOnly = true` plus `Config.Monetization.VehicleProducts.<Id>` and `VehicleRobux.<Id>` for a Robux car (MonetizationService grants it).
 
 ### Add a map
 1. `Config.Map.<Name>` with `Bounds`, spawn/tier distance bands, `Gimmicks` (e.g. `SandSlowMult`), unlock cost.
@@ -126,6 +126,6 @@ Known v1 limitation: physics is client-authoritative, so positions are trusted. 
 ## Product rules every change must respect
 
 - All art, names and vehicles are original. No licensed vehicles, characters or music, ever.
-- Pay-to-win is the monetization strategy (owner decision 2026-10-27: "100% pay to win"). Passes, cars and in-match products may sell speed, boost, passenger HP, items, cash and upgrades. Every purchase is applied on the server by the service that owns that stat (ProcessReceipt idempotent by receipt id); the client never grants itself anything. Paid random items show their odds first and are hidden where `PolicyService` restricts them.
+- Pay-to-win is the monetization strategy (owner decision 2026-10-27: "100% pay to win"). Passes are `MonetizationService.HasPass(player, key)` on the server and `Pass_<Key>` player attributes on the client; boosts are handled in `StoreService`. Passes, cars and in-match products may sell speed, boost, passenger HP, items, cash and upgrades. Every purchase is applied on the server by the service that owns that stat (ProcessReceipt idempotent by receipt id); the client never grants itself anything. Paid random items show their odds first and are hidden where `PolicyService` restricts them.
 - Copy is short and funny; the HUD shows only what a player acts on. No tutorial text for things that are self-explanatory.
 - Tune by Config, then playtest. Playtest beats theory.

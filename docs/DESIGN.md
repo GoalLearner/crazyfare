@@ -166,7 +166,8 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 - One raycast chassis drives every vehicle, parameterized from Config. Models only define wheel/leg attachments and `WheelType` (`wheels|legs`) for animation.
 - All designs are original. No licensed vehicles or characters, ever.
 - Mid-tier vehicles cost Gems; premium ones cost Robux but are also buyable with a large Gem price.
-- Permanent car upgrades (speed/handling/boost) are global across vehicles in v1.
+- **Robux-only cars (pay-to-win):** **Rocket Cab** (top speed 105 against the free best of 90, accel 55, boost tank 6) and **Armored Limo** (passengers board with +40 HP and take 30% less damage). `RobuxOnly` in their stats: never free, never for Gems.
+- Permanent car upgrades (speed/handling/boost) are global across vehicles: 10 levels each (+25% speed, +30% handling, +80% boost tank at the top), bought with Gems or all at once with the Max Upgrades product.
 
 ## 7. Pit Stop (between rounds, 30 s)
 
@@ -207,8 +208,11 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 ## 10. Monetization
 
-- Gem packs (dev products) with a one-time Starter Pack offered in the first 2 sessions.
-- VIP gamepass (2× Gems, badge, horn). Pit Stop Plus (6 cards instead of 5). Premium vehicles. Cosmetics. Private servers. Premium Payouts via engagement.
+- Gem packs (dev products) with a one-time Starter Pack offered in the first 2 sessions (300 Gems, the Go-Kart, every upgrade to level 3).
+- Game passes: VIP (2x Gems, +25% cash on every delivery, a gold VIP tag), Turbo Tank (double boost tank, refills 50% faster), Armored Seats (passengers take half damage), Double Item (hold 2), Head Start (+$10 toward the quota every round), Fare Radar (a beacon over every Golden and long fare, through buildings), Pit Stop Plus (6 cards), 2x XP.
+- Robux cars: Night Cab and Ice Cream Truck (also for Gems), Rocket Cab and Armored Limo (Robux only).
+- In-match boosts (developer products) from a quick-buy strip on the HUD while you drive: Item Drop, Tomato Barrage (3 Tomatoes), Nitro Refill, Patch Up (passenger to full HP), +$15 this round; Max Upgrades any time. A boost that can't apply (not driving, no passenger, tank already full) pays Gems instead; the strip greys out a boost that would do nothing.
+- Private servers and Premium Payouts via engagement.
 - **Pay-to-win, fully (owner decision 2026-10-27: "100% pay to win").** Passes and products may sell speed, boost, passenger HP, items, round cash and upgrade levels, including mid-match. This replaces the earlier "never sell HP, damage, speed or quota" rule. Everything is granted on the server; paid random items (a crate) show their odds and are hidden where `PolicyService` restricts them.
 
 ## 11. Controls (keyboard, gamepad, phones)

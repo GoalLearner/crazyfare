@@ -77,6 +77,7 @@ local function onSnapshot(snapshot: Types.Snapshot)
 			seen[p.id] = true
 			local loaded = p.fare > 0
 			tag.name.Text = if p.bot then "BOT " .. p.name else string.format("%s%s  ·  LV %d", if p.vip then "VIP " else "", p.name, p.level or 1)
+			tag.name.TextColor3 = if p.vip then Config.Monetization.VipColor else UI.Muted -- the VIP pass's gold tag
 			local camera = workspace.CurrentCamera
 			local chassis = tag.model.PrimaryPart
 			tag.name.Visible = camera ~= nil and chassis ~= nil and (chassis.Position - camera.CFrame.Position).Magnitude <= Config.Hud.WorldTagNameDistance

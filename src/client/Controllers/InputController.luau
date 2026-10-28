@@ -319,13 +319,16 @@ local function buildTouchControls()
 
 	-- The ITEM button names the item you hold, in its color
 	local shown: string? = nil
+	local shownCount = 0
 	State.SnapshotReceived:Connect(function()
-		if State.item == shown then
+		if State.item == shown and State.itemCount == shownCount then
 			return
 		end
 		shown = State.item
+		shownCount = State.itemCount
 		local def = Config.Items.Pool[State.item]
-		item.Text = if def then string.upper(def.DisplayName) else "ITEM"
+		local extra = if State.itemCount > 0 then string.format(" +%d", State.itemCount) else ""
+		item.Text = if def then string.upper(def.DisplayName) .. extra else "ITEM"
 		item.TextColor3 = if def then def.Color else UI.Muted
 		item.BackgroundTransparency = if def then cfg.Opacity * 0.6 else cfg.Opacity
 	end)

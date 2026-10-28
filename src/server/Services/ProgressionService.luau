@@ -7,6 +7,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local ProgressionService = {}
 
@@ -48,6 +49,9 @@ function ProgressionService.AwardMatch(results: { Types.PodiumEntry })
 		local xp = cfg.MatchBaseXp + entry.fares * cfg.XpPerFare + byPlace
 		local player = game:GetService("Players"):GetPlayerByUserId(entry.id) -- nil for a bot
 		if player then
+			if MonetizationService.HasPass(player, "DoubleXp") then
+				xp *= Config.Monetization.DoubleXpMult
+			end
 			entry.xp = xp
 			entry.levelUp = ProgressionService.AddXp(player, xp)
 		end

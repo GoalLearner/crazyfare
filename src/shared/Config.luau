@@ -30,7 +30,8 @@ export type VehicleStats = {
 	Gimmick: string,
 	Color: Color3,
 	TintMesh: boolean?, -- imported mesh body takes Color and garage paint (VehicleRig marks it Paintable; wheels stay as imported)
-	GemPrice: number, -- 0 = everyone owns it
+	GemPrice: number, -- 0 = everyone owns it (unless RobuxOnly)
+	RobuxOnly: boolean?, -- sold only for Robux (Config.Monetization.VehicleProducts); never free, never for Gems
 	-- Gimmick flags; systems branch on these, never on the vehicle id.
 	Hop: boolean?, -- Space hops instead of drifting
 	HopPower: number?, -- studs/s of upward velocity per hop
@@ -132,8 +133,10 @@ export type PassengerKindDef = {
 
 export type PitStopCardDef = { Name: string, Effect: string, Share: number, Value: number } -- Share: price as a fraction of the next round's quota
 export type QuestDef = { Id: string, Text: string, Goal: number, Reward: number }
-export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string? }
-export type GamePassDef = { Id: number, Label: string, Effect: string }
+export type ProductDef = { Id: number, Gems: number, Label: string, Robux: number, Vehicle: string?, UpgradeLevel: number? }
+export type GamePassDef = { Id: number, Label: string, Effect: string, Robux: number }
+-- A consumable sold mid-match (Config.Monetization.Boosts); FallbackGems are paid when it can't apply right then.
+export type BoostDef = { Id: number, Label: string, Effect: string, Robux: number, FallbackGems: number, Color: Color3 }
 export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: number, GemMult: number }
 export type EventWindow = { Kind: string, Day: number, HourUtc: number, Hours: number } -- Day: 1 = Sunday ... 7 = Saturday
 
@@ -880,7 +883,7 @@ Config.Items = {
 Config.Vehicles = {
 	Default = "YellowCab",
 	-- Sidegrades: roughly equal budgets, one gimmick each. Order here is the garage order.
-	Order = { "YellowCab", "GoKart", "ShoppingCart", "Horse", "NightCab", "IceCreamTruck" },
+	Order = { "YellowCab", "GoKart", "ShoppingCart", "Horse", "NightCab", "IceCreamTruck", "RocketCab", "ArmoredLimo" },
 	Stats = {
 		YellowCab = {
 			DisplayName = "Yellow Cab",
@@ -973,15 +976,49 @@ Config.Vehicles = {
 			GemPrice = 400,
 			PassengerHpBonus = 20,
 		},
+		-- Robux only (pay-to-win): faster and tougher than anything Gems buy
+		RocketCab = {
+			DisplayName = "Rocket Cab",
+			Description = "Fastest car in the city. Huge boost tank.",
+			WheelType = "wheels",
+			TopSpeed = 105,
+			Accel = 55,
+			Handling = 6.5,
+			DriftGrip = 0.3,
+			BoostTank = 6,
+			SteerMax = 32,
+			Gimmick = "rocket",
+			Color = Color3.fromRGB(235, 70, 40),
+			GemPrice = 0,
+			RobuxOnly = true,
+		},
+		ArmoredLimo = {
+			DisplayName = "Armored Limo",
+			Description = "Passengers board with +40 HP and take 30% less damage.",
+			WheelType = "wheels",
+			TopSpeed = 92,
+			Accel = 46,
+			Handling = 6,
+			DriftGrip = 0.25,
+			BoostTank = 4.5,
+			SteerMax = 30,
+			Gimmick = "armor",
+			Color = Color3.fromRGB(28, 28, 34),
+			GemPrice = 0,
+			RobuxOnly = true,
+			PassengerDamageMult = 0.7,
+			PassengerHpBonus = 40,
+		},
 	} :: { [string]: VehicleStats },
 }
 
 -- Permanent upgrades (Gems), global across vehicles in v1. Applied as player attributes Up_<Name> = 1 + Per * level.
 Config.Upgrades = {
 	Order = { "Speed", "Handling", "Boost" },
-	Speed = { Per = 0.03, Max = 5, Costs = { 60, 90, 130, 180, 240 } },
-	Handling = { Per = 0.04, Max = 5, Costs = { 60, 90, 130, 180, 240 } },
-	Boost = { Per = 0.08, Max = 5, Costs = { 50, 80, 120, 170, 230 } },
+	-- 10 levels (pay-to-win: Gem packs and Max Upgrades are the fast way up); the server's speed check follows Per * Max
+	Speed = { Per = 0.025, Max = 10, Costs = { 60, 90, 130, 180, 240, 320, 420, 540, 680, 850 } },
+	Handling = { Per = 0.03, Max = 10, Costs = { 60, 90, 130, 180, 240, 320, 420, 540, 680, 850 } }, -- +30% at 10 (more grip rolls the car in hard turns)
+	Boost = { Per = 0.08, Max = 10, Costs = { 50, 80, 120, 170, 230, 300, 390, 500, 630, 800 } },
 } :: { Order: { string }, [string]: any }
 
 -- Cosmetics v1: paint. One price, pick any colour; "" = the vehicle's own colour.
@@ -1306,25 +1343,78 @@ Config.Leaderboards = {
 -- Monetization. Product and pass ids come from the Roblox Creator Dashboard; 0 = not configured (shop hides it).
 -- Nothing here touches passenger HP, item damage, speed or quota.
 Config.Monetization = {
+	-- Pay-to-win (owner decision 2026-10-27, "100% pay to win"): passes, Robux-only cars and in-match boosts sell real
+	-- advantage. Ids are pasted from Creator Hub (docs/STORE-SETUP.html); an id of 0 shows COMING SOON (TEST in Studio,
+	-- which grants it through the Debug remote so every effect can be tried before the ids exist).
 	Products = {
 		GemsSmall = { Id = 0, Gems = 120, Label = "120 Gems", Robux = 49 },
 		GemsMedium = { Id = 0, Gems = 320, Label = "320 Gems", Robux = 99 },
 		GemsLarge = { Id = 0, Gems = 900, Label = "900 Gems", Robux = 249 },
-		StarterPack = { Id = 0, Gems = 300, Label = "Starter Pack", Robux = 79, Vehicle = "GoKart" }, -- one-time, first 2 sessions
+		-- one-time, first 2 sessions: Gems, the Go-Kart, and every upgrade raised to at least UpgradeLevel
+		StarterPack = { Id = 0, Gems = 300, Label = "Starter Pack", Robux = 79, Vehicle = "GoKart", UpgradeLevel = 3 },
 	} :: { [string]: ProductDef },
 	ProductOrder = { "GemsSmall", "GemsMedium", "GemsLarge" },
 	GamePasses = {
-		VIP = { Id = 0, Label = "VIP", Effect = "2x Gems, VIP badge, VIP horn" },
-		PitStopPlus = { Id = 0, Label = "Pit Stop Plus", Effect = "6 cards at every Pit Stop" },
+		VIP = { Id = 0, Label = "VIP", Effect = "2x Gems, +25% cash on every fare, gold VIP tag", Robux = 399 },
+		TurboTank = { Id = 0, Label = "Turbo Tank", Effect = "Double boost tank, refills 50% faster", Robux = 249 },
+		ArmoredSeats = { Id = 0, Label = "Armored Seats", Effect = "Your passengers take half damage", Robux = 299 },
+		DoubleItem = { Id = 0, Label = "Double Item", Effect = "Hold 2 items at once", Robux = 299 },
+		HeadStart = { Id = 0, Label = "Head Start", Effect = "Start every round with $10 toward the quota", Robux = 199 },
+		FareRadar = { Id = 0, Label = "Fare Radar", Effect = "Golden and long fares glow from anywhere", Robux = 149 },
+		PitStopPlus = { Id = 0, Label = "Pit Stop Plus", Effect = "6 cards at every Pit Stop", Robux = 149 },
+		DoubleXp = { Id = 0, Label = "2x XP", Effect = "Double XP from every match", Robux = 149 },
 	} :: { [string]: GamePassDef },
+	PassOrder = { "VIP", "TurboTank", "ArmoredSeats", "DoubleItem", "HeadStart", "FareRadar", "PitStopPlus", "DoubleXp" },
 	VipGemMult = 2,
+	VipCashMult = 1.25, -- every delivery's payout
+	VipCashLine = "VIP +25%",
+	VipColor = Color3.fromRGB(255, 205, 50), -- the VIP tag over your cab
 	PitStopPlusCards = 6,
+	TurboTankMult = 2, -- boost tank size
+	TurboFillMult = 1.5, -- boost refill from drifts and near misses
+	ArmoredSeatsDamageMult = 0.5,
+	DoubleItemSlots = 2, -- items held with Double Item (1 without); bought items can go past it
+	HeadStartDollars = 10, -- added at the start of every round (and when you take a seat mid-match)
+	HeadStartLine = "HEAD START",
+	DoubleXpMult = 2,
 	StarterPackSessions = 2, -- offered during the player's first N sessions
-	-- Premium vehicles: Robux product OR their (large) Gem price.
+	-- Premium vehicles: a Robux product (VehicleRobux is the price shown); the Gem price too unless the car is RobuxOnly.
 	VehicleProducts = {
 		NightCab = 0,
 		IceCreamTruck = 0,
+		RocketCab = 0,
+		ArmoredLimo = 0,
 	} :: { [string]: number },
+	VehicleRobux = { NightCab = 149, IceCreamTruck = 149, RocketCab = 499, ArmoredLimo = 399 } :: { [string]: number },
+	-- In-match boosts (developer products): applied by the server the moment Roblox confirms the purchase.
+	Boosts = {
+		ItemDrop = { Id = 0, Label = "ITEM", Effect = "A random item in your slot, right now", Robux = 25, FallbackGems = 60, Color = Color3.fromRGB(240, 170, 40) },
+		TomatoBarrage = { Id = 0, Label = "TOMATO x3", Effect = "3 Tomatoes. Aim for the leader", Robux = 49, FallbackGems = 120, Color = Color3.fromRGB(230, 60, 50) },
+		NitroRefill = { Id = 0, Label = "NITRO", Effect = "A full boost tank, right now", Robux = 15, FallbackGems = 35, Color = Color3.fromRGB(80, 200, 255) },
+		PatchUp = { Id = 0, Label = "PATCH UP", Effect = "Your passenger back to full HP", Robux = 25, FallbackGems = 60, Color = Color3.fromRGB(90, 220, 120) },
+		CashBoost = { Id = 0, Label = "+$15", Effect = "+$15 this round", Robux = 49, FallbackGems = 120, Color = Color3.fromRGB(120, 240, 130) },
+		MaxUpgrades = { Id = 0, Label = "MAX UPGRADES", Effect = "Every upgrade to the top level", Robux = 199, FallbackGems = 500, Color = Color3.fromRGB(170, 110, 255) },
+	} :: { [string]: BoostDef },
+	BoostOrder = { "ItemDrop", "TomatoBarrage", "NitroRefill", "PatchUp", "CashBoost", "MaxUpgrades" },
+	BarrageCount = 3, -- Tomatoes in a Tomato Barrage
+	CashBoostDollars = 15,
+	-- The quick-buy strip on the HUD while you drive a round (only boosts that have an id, or TEST in Studio): left of
+	-- the screen on a computer; on a phone a shorter one under the minimap, clear of the driving pads
+	QuickBuy = { "ItemDrop", "TomatoBarrage", "NitroRefill", "PatchUp", "CashBoost" },
+	QuickBuyTouch = { "ItemDrop", "NitroRefill", "PatchUp" },
+	BoughtLine = "%s!", -- the HUD line when a boost lands
+	FallbackLine = "%s COULDN'T APPLY  +%d GEMS", -- not driving, no passenger, already maxed...
+	Tabs = { "PASSES", "CARS", "BOOSTS", "GEMS" },
+	-- Fare Radar pass: a beacon over every waiting Golden and long (Red) fare, seen through buildings from anywhere,
+	-- while you drive with nobody aboard
+	Radar = {
+		CheckSeconds = 0.25,
+		Lift = 6, -- studs above the passenger...
+		RaiseBySize = 1.1, -- ...then this many of its own heights higher, so it clears their badge at any distance
+		Size = 54, -- px
+		GoldenText = "$$$",
+		LongText = "$$",
+	},
 }
 
 -- Sounds. Asset ids are placeholders until the owner uploads audio; 0 = silent. Everything plays through SoundController.

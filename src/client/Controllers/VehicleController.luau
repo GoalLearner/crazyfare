@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local InputController = require(script.Parent.InputController)
 
@@ -27,6 +28,11 @@ type Wheel = {
 local VehicleController = {}
 
 local localPlayer = Players.LocalPlayer
+
+-- Turbo Tank pass: drifts and near misses fill the boost tank faster.
+local function turboFill(): number
+	return if localPlayer:GetAttribute("Pass_TurboTank") == true then Config.Monetization.TurboFillMult else 1
+end
 
 local C = Config.Chassis
 local chassis: BasePart? = nil
@@ -175,7 +181,7 @@ local function checkNearMiss(ch: BasePart, now: number)
 		end
 		recentNearMiss[part] = now
 		nearMissCooldownUntil = now + C.NearMissCooldown
-		State.boostTank = math.min(State.boostTankMax, State.boostTank + C.BoostFillPerNearMiss)
+		State.boostTank = math.min(State.boostTankMax, State.boostTank + C.BoostFillPerNearMiss * turboFill())
 		reportCombo("NearMiss", 1)
 		return
 	end
@@ -288,7 +294,8 @@ local function step(rawDt: number)
 	local upHandling = localPlayer:GetAttribute("Up_Handling")
 	local handlingMult = if typeof(upHandling) == "number" then upHandling else 1
 	local bigTank = localPlayer:GetAttribute("Pit_BigTank")
-	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1) * (if typeof(upBoost) == "number" then upBoost else 1)
+	local turbo = if localPlayer:GetAttribute("Pass_TurboTank") == true then Config.Monetization.TurboTankMult else 1 -- Robux pass
+	local tankMax = stats.BoostTank * (if typeof(bigTank) == "number" then bigTank else 1) * (if typeof(upBoost) == "number" then upBoost else 1) * turbo
 	State.boostTankMax = tankMax
 	local weather = weatherNow()
 	local topSpeed = stats.TopSpeed * speedMult * (if weather then weather.TopSpeedMult else 1)
@@ -475,7 +482,7 @@ local function step(rawDt: number)
 	local drifting = grounded and handbrake and speed > C.DriftMinSpeed and rearSide > C.DriftMinSide
 	if drifting then
 		driftAccumulator += dt
-		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * (if weather then weather.DriftBoostMult else 1) * dt)
+		State.boostTank = math.min(tankMax, State.boostTank + C.BoostFillPerDriftSecond * (if weather then weather.DriftBoostMult else 1) * turboFill() * dt)
 		if driftAccumulator >= Config.Stunts.UnitSeconds then
 			reportCombo("Drift", driftAccumulator)
 			driftAccumulator = 0
@@ -523,6 +530,12 @@ function VehicleController.Init()
 	end)
 	InputController.OnHop:Connect(function()
 		hopPressedAt = os.clock()
+	end)
+	-- Nitro Refill (a Robux boost): the server says the tank is full now
+	State.ItemEvent:Connect(function(payload: Types.ItemEventPayload)
+		if payload.kind == "Refill" then
+			State.boostTank = State.boostTankMax
+		end
 	end)
 	workspace.ChildAdded:Connect(function(child: Instance)
 		if child.Name == "Map" or child.Name == "Depot" then

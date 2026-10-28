@@ -22,6 +22,7 @@ local PassengerService = require(script.Parent.PassengerService)
 local ComboService = require(script.Parent.ComboService)
 local GemService = require(script.Parent.GemService)
 local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(ReplicatedStorage.Shared.RateLimiter)
 local Racers = require(script.Parent.Parent.Racers)
 
@@ -98,6 +99,18 @@ function FareService.GetMatchEarned(player: Player): number
 	return matchEarned[player] or 0
 end
 
+-- Head Start pass: a little money toward the quota at the start of every round (and on taking a seat mid-match).
+local function headStart(player: Player)
+	if not MonetizationService.HasPass(player, "HeadStart") then
+		return
+	end
+	local cents = Money.Cents(Config.Monetization.HeadStartDollars)
+	wallet[player] = (wallet[player] or 0) + cents
+	roundEarned[player] = (roundEarned[player] or 0) + cents
+	matchEarned[player] = (matchEarned[player] or 0) + cents
+	fire(player, { kind = "Cash", payout = cents, line = Config.Monetization.HeadStartLine })
+end
+
 -- A driver joining mid-match (MatchController): starts with this much round progress (also their cash) and match total.
 function FareService.StartDriver(player: Player, roundCents: number, matchCents: number)
 	fares[player] = nil
@@ -106,6 +119,7 @@ function FareService.StartDriver(player: Player, roundCents: number, matchCents:
 	matchEarned[player] = matchCents
 	delivered[player] = 0
 	bestTip[player] = 0
+	headStart(player)
 end
 
 -- Money earned (cents): banks it, counts toward this round's quota and toward the match total.
@@ -315,6 +329,9 @@ function FareService.ResetRound()
 	table.clear(fares)
 	for _, player in Racers.All() do
 		roundEarned[player] = math.floor((wallet[player] or 0) * Config.PitStop.CarryFrac)
+	end
+	for _, player in Racers.All() do
+		headStart(player) -- every round, round 1 included (this runs after ResetMatch)
 	end
 end
 
@@ -608,11 +625,17 @@ local function finishDelivery(player: Player, fare: Types.Fare, npc: PassengerSe
 			bonus = if bonus then bonus .. "  ·  " .. line else line
 		end
 	end
+	local vipMult = if MonetizationService.IsVip(player) then Config.Monetization.VipCashMult else 1
+	if vipMult ~= 1 then
+		payout = math.round(payout * vipMult)
+		local line = Config.Monetization.VipCashLine
+		bonus = if bonus then bonus .. "  ·  " .. line else line
+	end
 	local grades = Config.Grades
 	local grade = if not allowTip then "Slow" elseif timeFrac >= grades.SpeedyFrac then "Speedy" elseif timeFrac >= grades.OnTimeFrac then "OnTime" else "Slow"
 	-- A person riding rates the trip first: their share of the tip waits for the stars (paid in resolveRating).
 	local rider = riderOf[player]
-	local ratedTip = if rider and rider.Parent then math.round(tipShown * payMult * weatherMult) else 0
+	local ratedTip = if rider and rider.Parent then math.round(tipShown * payMult * weatherMult * vipMult) else 0
 	payout -= ratedTip
 
 	fares[player] = nil

@@ -5,6 +5,7 @@
 -- ProfileSync, which redraws the panel.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 
@@ -28,7 +29,7 @@ local openButton: TextButton
 local panel: Frame
 local content: Frame
 local gemsLabel: TextLabel
-local vehicleList: Frame
+local vehicleList: ScrollingFrame
 local upgradeList: Frame
 local paintRow: Frame
 local isOpen = false
@@ -68,9 +69,9 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		if not stats then
 			continue
 		end
-		local owned = stats.GemPrice <= 0 or profile.owned[id] == true
+		local owned = (stats.GemPrice <= 0 and not stats.RobuxOnly) or profile.owned[id] == true
 		local selected = profile.selected == id
-		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 72), LayoutOrder = i, BackgroundTransparency = if selected then 0.1 else 0.45, BackgroundColor3 = if selected then Color3.fromRGB(30, 50, 40) else UI.Panel }, vehicleList)
+		local row = UI.Frame({ Size = UDim2.new(1, -10, 0, 72), LayoutOrder = i, BackgroundTransparency = if selected then 0.1 else 0.45, BackgroundColor3 = if selected then Color3.fromRGB(30, 50, 40) else UI.Panel }, vehicleList)
 		UI.Corner(10, row)
 		local swatch = UI.Frame({ Position = UDim2.fromOffset(12, 10), Size = UDim2.fromOffset(14, 52), BackgroundColor3 = stats.Color, BackgroundTransparency = 0 }, row)
 		UI.Corner(4, swatch)
@@ -80,6 +81,26 @@ local function renderVehicles(profile: Types.ProfilePayload)
 		statBar(stat, 0, "SPEED", stats.TopSpeed / 100)
 		statBar(stat, 18, "ACCEL", stats.Accel / 70)
 		statBar(stat, 36, "GRIP", stats.Handling / 9)
+		local productId = Config.Monetization.VehicleProducts[id] or 0
+		local robux = Config.Monetization.VehicleRobux[id] or 0
+		-- Robux-only cars: the button buys with Robux (TEST in Studio while the id is 0)
+		if stats.RobuxOnly and not owned then
+			local canBuy = productId > 0 or RunService:IsStudio()
+			local text = if productId > 0 then string.format("R$ %d", robux) elseif canBuy then "TEST" else "SOON"
+			local rb = button(text, Color3.fromRGB(60, 140, 80), UDim2.fromOffset(88, 30), row, canBuy)
+			rb.AnchorPoint = Vector2.new(1, 0.5)
+			rb.Position = UDim2.new(1, -12, 0.5, 0)
+			if canBuy then
+				rb.Activated:Connect(function()
+					if productId > 0 then
+						MarketplaceService:PromptProductPurchase(Players.LocalPlayer, productId)
+					else
+						Remotes.Get("Debug"):FireServer("Grant", id)
+					end
+				end)
+			end
+			continue
+		end
 		local label = if selected then "SELECTED" elseif owned then "SELECT" else string.format("%d GEMS", stats.GemPrice)
 		local affordable = owned or profile.gems >= stats.GemPrice
 		local b = button(label, if owned then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 110, 190), UDim2.fromOffset(88, 30), row, affordable and not selected)
@@ -90,8 +111,7 @@ local function renderVehicles(profile: Types.ProfilePayload)
 				action:FireServer(if owned then "Select" else "Buy", id)
 			end)
 		end
-		local productId = Config.Monetization.VehicleProducts[id]
-		if not owned and productId and productId > 0 then
+		if not owned and productId > 0 then
 			local rb = button("R$", Color3.fromRGB(60, 140, 80), UDim2.fromOffset(44, 30), row, true)
 			rb.AnchorPoint = Vector2.new(1, 0.5)
 			rb.Position = UDim2.new(1, -104, 0.5, 0)
@@ -113,11 +133,11 @@ local function renderUpgrades(profile: Types.ProfilePayload)
 		local level = profile.upgrades[name] or 0
 		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 46), LayoutOrder = i, BackgroundTransparency = 0.45 }, upgradeList)
 		UI.Corner(8, row)
-		UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.fromOffset(140, 20), Text = string.upper(name), TextXAlignment = Enum.TextXAlignment.Left }, row)
+		UI.Label({ Position = UDim2.fromOffset(12, 5), Size = UDim2.fromOffset(90, 20), Text = string.upper(name), TextXAlignment = Enum.TextXAlignment.Left }, row)
+		UI.Label({ Position = UDim2.fromOffset(104, 8), Size = UDim2.fromOffset(70, 14), Text = string.format("+%s%%/LV", tostring(math.round(def.Per * 1000) / 10)), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, row)
 		for pip = 1, def.Max do
-			UI.Frame({ Position = UDim2.fromOffset(12 + (pip - 1) * 14, 30), Size = UDim2.fromOffset(10, 10), BackgroundColor3 = if pip <= level then UI.Accent else Color3.fromRGB(50, 50, 58), BackgroundTransparency = 0 }, row)
+			UI.Frame({ Position = UDim2.fromOffset(12 + (pip - 1) * 15, 30), Size = UDim2.fromOffset(11, 10), BackgroundColor3 = if pip <= level then UI.Accent else Color3.fromRGB(50, 50, 58), BackgroundTransparency = 0 }, row)
 		end
-		UI.Label({ Position = UDim2.fromOffset(12 + def.Max * 14 + 6, 27), Size = UDim2.fromOffset(80, 16), Text = string.format("+%d%% / level", math.round(def.Per * 100)), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, row)
 		local maxed = level >= def.Max
 		local cost = if maxed then 0 else def.Costs[level + 1]
 		local b = button(if maxed then "MAX" else string.format("%d GEMS", cost), Color3.fromRGB(70, 110, 190), UDim2.fromOffset(84, 30), row, not maxed and profile.gems >= cost)
@@ -229,7 +249,15 @@ local function build()
 	content = UI.Frame({ Position = UDim2.fromOffset(0, STANDALONE_CONTENT_Y), Size = UDim2.fromOffset(CONTENT_WIDTH, CONTENT_HEIGHT), BackgroundTransparency = 1 }, panel)
 	gemsLabel = UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 0), Size = UDim2.fromOffset(200, 24), Text = "", TextColor3 = UI.Accent, TextXAlignment = Enum.TextXAlignment.Right }, content)
 
-	vehicleList = UI.Frame({ Position = UDim2.fromOffset(24, 28), Size = UDim2.fromOffset(490, 480), BackgroundTransparency = 1 }, content)
+	vehicleList = UI.New("ScrollingFrame", {
+		Position = UDim2.fromOffset(24, 28),
+		Size = UDim2.fromOffset(500, 480),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, content) :: ScrollingFrame
 	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, vehicleList)
 
 	local right = UI.Frame({ Position = UDim2.fromOffset(530, 28), Size = UDim2.fromOffset(266, 480), BackgroundTransparency = 1 }, content)

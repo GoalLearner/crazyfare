@@ -19,6 +19,7 @@ local VehicleService = require(script.Parent.VehicleService)
 local PassengerService = require(script.Parent.PassengerService)
 local Racers = require(script.Parent.Parent.Racers)
 local FareService = require(script.Parent.FareService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 type Box = { part: BasePart, activeAt: number }
 type Stand = { model: Model, pivot: CFrame, activeAt: number } -- a fruit stall; activeAt > 0 while it's smashed
@@ -48,6 +49,7 @@ local onSmash: Signal.Signal<Player> = Signal.new()
 ItemService.OnSmash = onSmash -- (driver) drove through a fruit stand
 
 local held: { [Player]: string } = {}
+local spare: { [Player]: { string } } = {} -- items waiting behind the held one (Double Item, bought items), in order
 local shieldHits: { [Player]: number } = {} -- hits a player's shield can still absorb
 local boxRespawn: number? = nil -- Frenzy: boxes come back this fast
 local boxes: { Box } = {}
@@ -120,6 +122,54 @@ function ItemService.GetHeld(player: Player): string
 	return held[player] or ""
 end
 
+-- Items waiting behind the held one.
+local function spareCount(player: Player): number
+	local list = spare[player]
+	return if list then #list else 0
+end
+
+function ItemService.GetSpareCount(player: Player): number
+	return spareCount(player)
+end
+
+-- Room for one more from a box or a stand: one slot, two with the Double Item pass.
+local function hasRoom(player: Player): boolean
+	local slots = if MonetizationService.HasPass(player, "DoubleItem") then Config.Monetization.DoubleItemSlots else 1
+	local count = (if held[player] then 1 else 0) + spareCount(player)
+	return count < slots
+end
+
+-- Into the slot if it's empty, else into the queue behind it; tells the client what it holds and how many wait.
+local function addItem(player: Player, item: string)
+	if not held[player] then
+		held[player] = item
+	else
+		local list = spare[player] or {}
+		table.insert(list, item)
+		spare[player] = list
+	end
+	fire(player, { kind = "Granted", item = held[player], count = spareCount(player) })
+end
+
+-- What a box would give this player right now (their rank's weights).
+function ItemService.Roll(player: Player): string
+	return roll(FareService.GetRankBucket(player))
+end
+
+-- Bought items (StoreService): `count` of `item`, past the slot limit if need be.
+function ItemService.GiveExtra(player: Player, item: string, count: number)
+	if not Config.Items.Pool[item] then
+		return
+	end
+	for _ = 1, count do
+		addItem(player, item)
+	end
+end
+
+function ItemService.IsEnabled(): boolean
+	return enabled
+end
+
 function ItemService.HasShield(player: Player): boolean
 	return (shieldHits[player] or 0) > 0
 end
@@ -129,7 +179,7 @@ function ItemService.Give(player: Player, item: string)
 		return
 	end
 	held[player] = item
-	fire(player, { kind = "Granted", item = item })
+	fire(player, { kind = "Granted", item = item, count = spareCount(player) })
 end
 
 function ItemService.SetEnabled(value: boolean)
@@ -419,6 +469,13 @@ function ItemService.Use(player: Player)
 	end
 	held[player] = nil
 	fire(player, { kind = "Used", item = item })
+	-- the next one in line moves up into the slot
+	local list = spare[player]
+	local nextItem = if list then table.remove(list, 1) else nil
+	if list and nextItem then
+		held[player] = nextItem
+		fire(player, { kind = "Granted", item = nextItem, count = #list })
+	end
 	print(string.format("[ItemService] %s used %s", player.Name, item))
 
 	if Config.Items.SelfCostItems[item] then
@@ -598,13 +655,11 @@ local function stepBoxes()
 			continue
 		end
 		for player, entry in VehicleService.GetAll() do
-			if held[player] or entry.chassis.Anchored then
+			if not hasRoom(player) or entry.chassis.Anchored then
 				continue
 			end
 			if (entry.chassis.Position - box.part.Position).Magnitude <= Config.Items.BoxRadius then
-				local item = roll(FareService.GetRankBucket(player))
-				held[player] = item
-				fire(player, { kind = "Granted", item = item })
+				addItem(player, roll(FareService.GetRankBucket(player)))
 				box.activeAt = t + (boxRespawn or Config.Items.BoxRespawnSeconds)
 				setBoxActive(box, false)
 				break
@@ -633,15 +688,10 @@ local function stepStands()
 			if VecUtil.FlatDistance(entry.chassis.Position, stand.pivot.Position) <= cfg.Radius then
 				stand.activeAt = t + cfg.RespawnSeconds
 				setStandActive(stand, false, VecUtil.FlatUnit(velocity))
-				local item: string? = nil
-				if not held[player] then
-					local rolled = roll(FareService.GetRankBucket(player))
-					held[player] = rolled
-					item = rolled
-				end
+				local item: string? = if hasRoom(player) then roll(FareService.GetRankBucket(player)) else nil
 				fire(player, { kind = "Smash", item = item })
 				if item then
-					fire(player, { kind = "Granted", item = item })
+					addItem(player, item)
 				end
 				onSmash:Fire(player)
 				break
@@ -665,6 +715,7 @@ function ItemService.ClearAll()
 	end
 	table.clear(traps)
 	table.clear(held)
+	table.clear(spare)
 	for player in shieldHits do
 		VehicleService.SetHighlight(player, nil, 0)
 	end
@@ -686,6 +737,7 @@ end
 -- A bot went home: drop what it held (players are forgotten on PlayerRemoving).
 function ItemService.Forget(player: Player)
 	held[player] = nil
+	spare[player] = nil
 	shieldHits[player] = nil
 end
 
@@ -718,6 +770,7 @@ function ItemService.Init()
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		held[player] = nil
+		spare[player] = nil
 		shieldHits[player] = nil
 	end)
 end

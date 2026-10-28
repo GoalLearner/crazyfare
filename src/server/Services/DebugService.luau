@@ -16,10 +16,17 @@ local VehicleService = require(script.Parent.VehicleService)
 local MapService = require(script.Parent.MapService)
 local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local DebugService = {}
 
 local commands: { [string]: (player: Player, arg: any) -> () } = {
+	-- the shop's TEST buttons (ids still 0): as if this pass or product was just bought
+	Grant = function(player, arg)
+		if typeof(arg) == "string" then
+			MonetizationService.DebugGrant(player, arg)
+		end
+	end,
 	GiveItem = function(player, arg)
 		if typeof(arg) == "string" then
 			ItemService.Give(player, arg)
@@ -231,8 +238,12 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 		local index = table.find(ids, DataService.GetSelectedVehicle(player)) or 0
 		local nextId = ids[index % #ids + 1]
 		if not DataService.Owns(player, nextId) then
-			DataService.AddGems(player, Config.Vehicles.Stats[nextId].GemPrice)
-			DataService.BuyVehicle(player, nextId)
+			if Config.Vehicles.Stats[nextId].RobuxOnly then
+				MonetizationService.DebugGrant(player, nextId) -- Studio: as if bought for Robux
+			else
+				DataService.AddGems(player, Config.Vehicles.Stats[nextId].GemPrice)
+				DataService.BuyVehicle(player, nextId)
+			end
 		end
 		DataService.SelectVehicle(player, nextId)
 		if SessionService.IsDriver(player) then

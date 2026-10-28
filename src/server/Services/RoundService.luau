@@ -420,7 +420,7 @@ function RoundService.Init()
 		end
 		local item = ItemService.GetHeld(player)
 		if item ~= "" then
-			Remotes.Get("ItemEvent"):FireClient(player, { kind = "Granted", item = item })
+			Remotes.Get("ItemEvent"):FireClient(player, { kind = "Granted", item = item, count = ItemService.GetSpareCount(player) })
 		end
 	end)
 

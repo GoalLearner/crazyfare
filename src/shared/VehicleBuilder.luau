@@ -221,6 +221,49 @@ local function buildIceCreamTruck(model: Model, color: Color3)
 	finish(model, chassis, -5.5, 5.5)
 end
 
+-- Rocket Cab (Robux only): a low cab with twin rocket boosters, glowing nozzles and a tail fin.
+local function buildRocketCab(model: Model, color: Color3)
+	local chassis = makeChassis(model, Vector3.new(6, 1.4, 11.5), color)
+	local cabin = paintable(makePart("Cabin", Vector3.new(4.6, 1.5, 4.6), CFrame.new(0, 1.4, 0.6), color, model))
+	weld(chassis, cabin)
+	glassPart("Windshield", Vector3.new(4.4, 1.1, 0.3), CFrame.new(0, 1.45, -1.8), chassis, model)
+	local nose = paintable(makePart("Nose", Vector3.new(5, 0.7, 2.2), CFrame.new(0, 0.95, -4.6), color, model))
+	weld(chassis, nose)
+	for _, side in { -1, 1 } do
+		local booster = makePart("Booster", Vector3.new(3.4, 1.2, 1.2), CFrame.new(1.9 * side, 1.5, 4.4) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(200, 200, 210), model)
+		booster.Shape = Enum.PartType.Cylinder
+		weld(chassis, booster)
+		neon("Nozzle", Vector3.new(0.9, 0.9, 0.4), CFrame.new(1.9 * side, 1.5, 6.15), Color3.fromRGB(255, 150, 40), chassis, model)
+	end
+	local fin = paintable(makePart("Fin", Vector3.new(0.3, 1.6, 2), CFrame.new(0, 2.6, 3.6), color, model))
+	weld(chassis, fin)
+	lights(model, chassis, 2.1, -5.8, 5.8)
+	makeWheels(model, chassis, 2.6, 3.9, false, DARK)
+	finish(model, chassis, -5.75, 5.75)
+end
+
+-- Armored Limo (Robux only): long and black, tinted glass all round, a gold trim line.
+local function buildArmoredLimo(model: Model, color: Color3)
+	local chassis = makeChassis(model, Vector3.new(6, 1.7, 14), color)
+	local cabin = paintable(makePart("Cabin", Vector3.new(5.2, 1.9, 9), CFrame.new(0, 1.75, 0.6), color, model))
+	weld(chassis, cabin)
+	for _, z in { -2.4, 0.6, 3.6 } do
+		for _, side in { -1, 1 } do
+			local window = glassPart("Window", Vector3.new(0.2, 1.1, 2.4), CFrame.new(2.62 * side, 1.9, z), chassis, model)
+			window.Color = Color3.fromRGB(40, 50, 60)
+		end
+	end
+	glassPart("Windshield", Vector3.new(5, 1.3, 0.3), CFrame.new(0, 1.8, -3.95), chassis, model)
+	for _, side in { -1, 1 } do
+		local trim = makePart("Trim", Vector3.new(0.15, 0.3, 13.6), CFrame.new(3.02 * side, 0.4, 0), Color3.fromRGB(230, 185, 60), model)
+		weld(chassis, trim)
+	end
+	neon("RoofLight", Vector3.new(1.6, 0.35, 0.8), CFrame.new(0, 2.85, -1), Color3.fromRGB(255, 210, 80), chassis, model)
+	lights(model, chassis, 2.1, -7.05, 7.05)
+	makeWheels(model, chassis, 2.6, 5, false, DARK)
+	finish(model, chassis, -7, 7)
+end
+
 function VehicleBuilder.Build(vehicleId: string): Model
 	local stats = Config.Vehicles.Stats[vehicleId]
 	if not stats then
@@ -242,6 +285,10 @@ function VehicleBuilder.Build(vehicleId: string): Model
 		buildIceCreamTruck(model, stats.Color)
 	elseif vehicleId == "NightCab" then
 		buildCab(model, stats.Color, Color3.fromRGB(170, 60, 255))
+	elseif vehicleId == "RocketCab" then
+		buildRocketCab(model, stats.Color)
+	elseif vehicleId == "ArmoredLimo" then
+		buildArmoredLimo(model, stats.Color)
 	else
 		buildCab(model, stats.Color, Color3.fromRGB(255, 140, 30))
 	end

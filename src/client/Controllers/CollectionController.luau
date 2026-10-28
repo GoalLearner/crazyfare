@@ -36,7 +36,7 @@ local function render()
 	local owned = 0
 	for i, id in order do
 		local stats = Config.Vehicles.Stats[id]
-		local has = profile.owned[id] == true or (stats ~= nil and stats.GemPrice == 0)
+		local has = profile.owned[id] == true or (stats ~= nil and stats.GemPrice == 0 and not stats.RobuxOnly)
 		if has then
 			owned += 1
 		end

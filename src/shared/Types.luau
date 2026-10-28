@@ -104,6 +104,7 @@ export type ProfilePayload = {
 	vip: boolean,
 	pitStopPlus: boolean,
 	showStarterPack: boolean, -- first sessions only, until bought
+	passes: { [string]: boolean }, -- game passes owned (Config.Monetization.GamePasses keys)
 	xpToNext: number, -- XP needed to reach the next level
 	xpIntoLevel: number, -- XP earned since the current level began
 	bestLicense: number, -- index into Config.License.Grades (0 = none yet)
@@ -194,6 +195,7 @@ export type ItemEventPayload = {
 	position: Vector3?,
 	attacker: string?,
 	push: Vector3?, -- "Rammed": studs/s to add to your car
+	count: number?, -- "Granted": items waiting behind this one (Double Item, bought items)
 }
 
 -- Client -> server combo report. kind: "Drift" | "Airtime" | "NearMiss"; value = seconds for Drift/Airtime
