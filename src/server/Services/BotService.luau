@@ -693,7 +693,8 @@ local function addBot()
 	}
 	bots[driver] = bot
 	table.insert(order, driver)
-	VehicleService.SpawnBot(driver, cfg.VehicleId, cfg.Colors[(slot - 1) % #cfg.Colors + 1])
+	local cars = Config.Art.BotCars
+	VehicleService.SpawnBot(driver, cfg.VehicleId, cfg.Colors[(slot - 1) % #cfg.Colors + 1], cars[(slot - 1) % #cars + 1])
 end
 
 local function removeBot(driver: Player)

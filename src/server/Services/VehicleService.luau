@@ -38,6 +38,7 @@ export type VehicleEntry = {
 	strikes: number, -- consecutive frames that failed it
 	isBot: boolean, -- an AI rival taxi (server-owned physics, never sent anything)
 	paint: Color3?, -- a bot's paint, kept for respawns
+	art: string?, -- a bot's Kenney car (Config.Art.BotCars), kept for respawns
 }
 
 local VehicleService = {}
@@ -313,9 +314,10 @@ function VehicleService.Spawn(player: Player)
 	onSpawned:Fire(player, entry)
 end
 
--- An AI rival's taxi: the parts build of the vehicle (paint takes on every panel, so each bot has its own color; the
--- imported cab mesh keeps its yellow texture), on a free grid pad, in the Bots collision group.
-function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3)
+-- An AI rival's taxi: the parts build of the vehicle painted its own color (the imported cab mesh keeps its yellow
+-- texture), dressed as a Kenney car (`art`, Config.Art.BotCars) with a roof sign in that color when imported, on a free
+-- grid pad, in the Bots collision group.
+function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3, art: string?)
 	if entries[bot] then
 		VehicleService.Despawn(bot)
 	end
@@ -326,6 +328,14 @@ function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3)
 		end
 	end
 	VehicleBuilder.ApplyPaint(model, paint)
+	if art then
+		VehicleBuilder.DressBot(model, art, paint)
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.CollisionGroup = Config.CollisionGroups.Bots
+			end
+		end
+	end
 	local chassis = model.PrimaryPart
 	if not chassis then
 		model:Destroy()
@@ -359,6 +369,7 @@ function VehicleService.SpawnBot(bot: Player, vehicleId: string, paint: Color3)
 		strikes = 0,
 		isBot = true,
 		paint = paint,
+		art = art,
 	}
 	entries[bot] = entry
 	applyRelease(entry)
@@ -384,7 +395,7 @@ end
 function VehicleService.RespawnAll()
 	for player, entry in entries do
 		if entry.isBot then
-			VehicleService.SpawnBot(player, entry.vehicleId, entry.paint or Config.Vehicles.Stats[entry.vehicleId].Color)
+			VehicleService.SpawnBot(player, entry.vehicleId, entry.paint or Config.Vehicles.Stats[entry.vehicleId].Color, entry.art)
 		else
 			VehicleService.Spawn(player)
 		end

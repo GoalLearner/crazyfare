@@ -393,7 +393,7 @@ local function spawnCar(cruise: number, kind: string, surge: boolean?): boolean
 			continue
 		end
 		local palette = if kind == "Bus" then cfg.BusColors else cfg.Colors
-		local model, body = VehicleBuilder.BuildTraffic(kind, palette[rng:NextInteger(1, #palette)])
+		local model, body = VehicleBuilder.BuildTraffic(kind, palette[rng:NextInteger(1, #palette)], rng:NextInteger(1, 1000))
 		for _, part in model:GetDescendants() do
 			if part:IsA("BasePart") then
 				part.CollisionGroup = Config.CollisionGroups.Traffic

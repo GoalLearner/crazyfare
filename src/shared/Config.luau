@@ -1462,6 +1462,14 @@ Config.Art = {
 	TreeSpacing = 22, -- studs between street trees along a block
 	TreeInset = 2, -- studs inside the sidewalk's inner edge: behind the walkers, in front of the buildings
 	TrunkSize = Vector3.new(1.2, 6, 1.2), -- the invisible collider under each tree
+	-- Kenney cars (MapModels.Cars), looks only: traffic keeps its collider box and wears a car picked from its kind's
+	-- list (an empty list keeps the parts body: Kenney has no bus); each bot wears one by its slot over its hidden parts
+	-- cab, with a roof sign in the bot's color so it reads as a rival cab. Traffic and bots use different models.
+	TrafficCars = { Sedan = { "sedan", "suv", "truck" }, Van = { "van", "delivery" }, Bus = {} } :: { [string]: { string } },
+	BotCars = { "sedan-sports", "hatchback-sports", "suv-luxury" },
+	CarYaw = 0, -- degrees: imported Kenney cars already face -Z like ours (checked in Studio: a spoiler showed up front at 180)
+	CarWidthSlack = 1.1, -- a car may come out this much wider than its collider
+	BotSignSize = Vector3.new(2.2, 0.6, 1),
 	-- Road markings and curbs (City). Markings never cross a junction.
 	Roads = {
 		CenterLine = 0.35, -- each of the two yellow center lines, studs wide

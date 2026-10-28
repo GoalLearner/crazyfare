@@ -6,6 +6,8 @@
 --   attributes VehicleId and WheelType. Parts tagged with attribute Paintable = true take the player's paint.
 -- Models are built at the origin facing -Z; the caller PivotTo()s them into place.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Config = require(script.Parent.Config)
 
 local VehicleBuilder = {}
@@ -321,7 +323,75 @@ local function buildBusBody(model: Model, body: Part, size: Vector3)
 	trafficWheels(model, body, size, 2.6, 4)
 end
 
-function VehicleBuilder.BuildTraffic(kind: string, color: Color3): (Model, Part)
+-- Imported car art (Config.Art; ReplicatedStorage.MapModels.Cars): a clone welded to `anchor`, `length` long (no wider
+-- than `maxWidth`), facing -Z like every vehicle here, the bottom of its wheels `drop` below the anchor's center. Looks
+-- only: massless, no collision, queries or touches. Nil when that model isn't imported.
+function VehicleBuilder.AttachArt(model: Model, anchor: BasePart, artName: string, length: number, maxWidth: number, drop: number): Model?
+	local art = ReplicatedStorage:FindFirstChild("MapModels")
+	local cars = if art then art:FindFirstChild("Cars") else nil
+	local template = if cars then cars:FindFirstChild(artName) else nil
+	if not template or not template:IsA("Model") then
+		return nil
+	end
+	local clone = template:Clone()
+	local _, size = clone:GetBoundingBox()
+	clone:ScaleTo(clone:GetScale() * math.min(length / size.Z, maxWidth / size.X))
+	local box, scaled = clone:GetBoundingBox()
+	local pivotFromBox = box:ToObjectSpace(clone:GetPivot())
+	clone:PivotTo(anchor.CFrame * CFrame.new(0, scaled.Y / 2 - drop, 0) * CFrame.Angles(0, math.rad(Config.Art.CarYaw), 0) * pivotFromBox)
+	for _, part in clone:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = false
+			part.Massless = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = anchor
+			w.Part1 = part
+			w.Parent = part
+		end
+	end
+	clone.Name = "Art"
+	clone.Parent = model
+	return clone
+end
+
+-- A bot's cab in Kenney clothes (Config.Art.BotCars): the parts cab stays (the chassis still collides and drives) but
+-- hides, a Kenney car rides on the chassis and a glowing roof sign in the bot's color sits on its roof. False when the
+-- model isn't imported (the bot keeps its painted parts cab).
+function VehicleBuilder.DressBot(model: Model, artName: string, signColor: Color3): boolean
+	local chassis = model.PrimaryPart
+	if not chassis then
+		return false
+	end
+	local art = VehicleBuilder.AttachArt(model, chassis, artName, chassis.Size.Z, chassis.Size.X * Config.Art.CarWidthSlack, Config.Bots.RideHeight)
+	if not art then
+		return false
+	end
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and not part:IsDescendantOf(art) then
+			part.Transparency = 1
+		end
+	end
+	local box, size = art:GetBoundingBox()
+	local roof = chassis.CFrame:PointToObjectSpace(box.Position).Y + size.Y / 2
+	local sign = makePart("BotSign", Config.Art.BotSignSize, chassis.CFrame * CFrame.new(0, roof + Config.Art.BotSignSize.Y / 2, 0), signColor, model)
+	sign.Material = Enum.Material.Neon
+	sign.Anchored = false
+	sign.Massless = true
+	sign.CanCollide = false
+	sign.CanQuery = false
+	sign.CanTouch = false
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = chassis
+	w.Part1 = sign
+	w.Parent = sign
+	return true
+end
+
+-- `pick` chooses the car among the kind's Config.Art.TrafficCars (wrapping); with none imported, the parts body.
+function VehicleBuilder.BuildTraffic(kind: string, color: Color3, pick: number?): (Model, Part)
 	local cfg = Config.Traffic
 	local kindCfg = cfg.Kinds[kind] or cfg.Kinds.Sedan
 	local size = kindCfg.Size
@@ -339,6 +409,14 @@ function VehicleBuilder.BuildTraffic(kind: string, color: Color3): (Model, Part)
 	body.CustomPhysicalProperties = PhysicalProperties.new(kindCfg.Density, 0.3, 0.1, 1, 1)
 	body.Parent = model
 	model.PrimaryPart = body
+	local cars = Config.Art.TrafficCars[kind]
+	if cars and #cars > 0 then
+		local artName = cars[((pick or 1) - 1) % #cars + 1]
+		if VehicleBuilder.AttachArt(model, body, artName, size.Z, size.X * Config.Art.CarWidthSlack, size.Y / 2 + Config.Traffic.RideHeight) then
+			body.Transparency = 1
+			return model, body
+		end
+	end
 	if kind == "Bus" then
 		buildBusBody(model, body, size)
 	elseif kind == "Van" then
