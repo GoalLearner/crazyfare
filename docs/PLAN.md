@@ -337,3 +337,4 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [x] Fixed while testing: the Starter Pack card sat on the podium (now the depot only)
 - [ ] Not seen yet: a boost token starting the next match (the code path is the round 1 setup), two clients both seeing a Mythic banner (D3 tests it with the Phantom); on a small phone the crate card brushes the money counter
 - [ ] D2 trails, horns, drop paint materials, Weirdo cards; D3 the Phantom (car, shield, target rules, owners board, Robux offer window)
+- [x] Owner decision 2026-10-28: **the Phantom is a mythic ghost horse** ("kids will easily recognize that it is valuable"). A new vehicle built on the Horse's body (matte black, glowing purple eyes, purple flame mane and tail, hoof sparks) with every Phantom ability; it keeps the Horse's hop. The plain Horse stays the cheap Gem car and an Epic drop
