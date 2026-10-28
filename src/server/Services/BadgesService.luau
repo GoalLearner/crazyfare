@@ -27,9 +27,10 @@ local function award(player: Player, key: string)
 	if not def or not d or Racers.IsBot(player) or d.BadgesGiven[key] then
 		return
 	end
-	if def.Id <= 0 then
+	if def.Id <= 0 or RunService:IsStudio() then
 		if RunService:IsStudio() then
-			print(string.format("[BadgesService] %s earned %s (no badge id yet, nothing sent)", player.Name, key))
+			-- Studio tests never award real badges
+			print(string.format("[BadgesService] %s earned %s (%s)", player.Name, key, if def.Id > 0 then "Studio: not sent" else "no badge id yet, nothing sent"))
 		end
 		return
 	end

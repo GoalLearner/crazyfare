@@ -418,18 +418,18 @@ Config.MapVote = {
 	RowHeight = 44,
 }
 
--- Roblox badges (checklist move 4, 2026-10-28), awarded by BadgesService. Each needs creating in Creator Hub
--- (Creator Hub > the experience > Engagement > Badges, with art from docs/badges); paste its id here. Id 0 = not
--- created yet: nothing is awarded.
+-- Roblox badges (checklist move 4, 2026-10-28), awarded by BadgesService. All five created in Creator Hub on
+-- 2026-10-28 (the experience > Engagement > Badges, art from docs/badges). A new badge: create it there and paste its
+-- id here; Id 0 = not created yet, nothing is awarded.
 Config.Badges = {
 	Level = 10, -- "Level10" badge at this level
 	Order = { "FirstFare", "FirstWin", "Level10", "LegendLicense", "PhantomOwner" },
 	List = {
-		FirstFare = { Id = 0, Name = "First Fare", Description = "Delivered your first passenger. The meter is running!" },
-		FirstWin = { Id = 0, Name = "Top Cab", Description = "Won a match in CrazyFare. Honk if you're winning!" },
-		Level10 = { Id = 0, Name = "Road Regular", Description = "Reached level 10 in CrazyFare." },
-		LegendLicense = { Id = 0, Name = "Legend License", Description = "Earned a LEGEND license in a match." },
-		PhantomOwner = { Id = 0, Name = "Phantom Rider", Description = "Owns the mythic Phantom horse." },
+		FirstFare = { Id = 3267473249403012, Name = "First Fare", Description = "Delivered your first passenger. The meter is running!" },
+		FirstWin = { Id = 2467740453657469, Name = "Top Cab", Description = "Won a match in CrazyFare. Honk if you're winning!" },
+		Level10 = { Id = 3831939711209788, Name = "Road Regular", Description = "Reached level 10 in CrazyFare." },
+		LegendLicense = { Id = 779093546565712, Name = "Legend License", Description = "Earned a LEGEND license in a match." },
+		PhantomOwner = { Id = 594834536870125, Name = "Phantom Rider", Description = "Owns the mythic Phantom horse." },
 	} :: { [string]: { Id: number, Name: string, Description: string } },
 }
 
