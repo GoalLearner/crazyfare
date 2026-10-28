@@ -209,11 +209,12 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 | Reset car | R | Back |
 
 Phones (`Config.Touch`, owner call 2026-10-27; most Roblox players are on phones):
-- The cab drives forward by itself, so the right thumb is free for DRIFT and BOOST.
-- BRAKE slows to a stop and holds the car there for 0.7 s (time to pick up or drop off), then reverses. A short BRAKE tap at a standstill is a Dash.
+- Hold GAS to drive forward (owner 2026-10-27: no auto-forward; a forward and a backwards button). Let go and the cab coasts.
+- BRAKE slows to a stop and holds the car there for 0.7 s (time to pick up or drop off), then reverses; it reads REVERSE once the cab is stopped. BRAKE then GAS at low speed is a Dash, as on a keyboard.
 - Steering is an analog strip on the left: the farther your thumb from its middle, the harder you turn.
-- ITEM (above the strip) shows the item you hold in its color; tap to use. HONK beside it.
-- Right side: DRIFT in the corner where the thumb rests, BRAKE beside it, BOOST above.
+- ITEM (above the strip) shows the item you hold in its color; tap to use. HOP and HONK beside it.
+- Right side: GAS in the corner where the thumb rests, BRAKE beside it, BOOST above GAS, DRIFT above BRAKE.
+- The buttons show only during the 3-2-1 and the round, so menus between rounds are never under them; the fare card sits beside the minimap, clear of the buttons; every HUD screen keeps clear of a notch or Dynamic Island.
 - A controller on a phone hides the pads and drives like a gamepad.
 
 ## 12. Tech architecture (summary; conventions in CLAUDE.md)

@@ -1150,22 +1150,27 @@ Config.Shake = {
 }
 
 -- Touch controls (phones/tablets): on-screen buttons sized in pixels.
--- Phones: the car drives forward by itself (AutoGas) so one thumb is free for DRIFT and BOOST. BRAKE slows to a stop,
--- holds there for ReverseDelay (time to pick up or drop off), then reverses; a short BRAKE tap at a standstill is a
--- Dash. Steering is an analog strip.
+-- Phones: hold GAS to drive (owner 2026-10-27: no auto-forward, a forward and a backwards button). BRAKE slows to a
+-- stop, holds there for ReverseDelay (time to pick up or drop off), then reverses, reading REVERSE once stopped; BRAKE
+-- then GAS at low speed is a Dash, as on a keyboard. Steering is an analog strip.
 Config.Touch = {
-	ButtonSize = 64, -- px: BRAKE, HONK
-	BigButton = 84, -- px: DRIFT (and BOOST's width), where the right thumb rests
+	ButtonSize = 64, -- px: BRAKE, DRIFT, HOP, HONK
+	BigButton = 84, -- px: GAS (and BOOST's width), where the right thumb rests
 	ItemButton = Vector2.new(104, 64), -- px: wide enough for the item's name
 	Margin = 18,
 	Gap = 10,
 	Opacity = 0.45,
-	AutoGas = true,
 	HoldSpeed = 4, -- studs/s: slower than this, a held BRAKE holds the car still (fares claim under 5)...
 	ReverseDelay = 0.7, -- ...for this long, then reverses
 	SteerPad = Vector2.new(200, 84), -- px: the steering strip, bottom-left
 	SteerKnob = 56,
 	SteerDeadzone = 0.12, -- share of the strip's half-width around the middle that steers nothing
+	ReverseTextSize = 13, -- BRAKE reads REVERSE while the cab is stopped or backing up (holding it there reverses)
+	FareCardGap = 12, -- px (before phone scaling): on touch the fare card sits left of the minimap, clear of the buttons
+	FareCardWidth = 200, -- px (before phone scaling) on touch, so it clears the timer on narrow phones
+	-- The driving buttons show only while you can drive, so menus between rounds (GARAGE, SHOP, INVITE...) are never
+	-- under them (owner 2026-10-27, phone pass)
+	ShowInPhases = { Countdown = true, Playing = true } :: { [string]: boolean },
 }
 
 -- Persistent profile (ProfileStore). Bump StoreName to wipe everyone in a test place.
@@ -1219,8 +1224,8 @@ Config.Arcade = {
 -- time), once per account. Words per input: keyboard / touch / gamepad.
 Config.Coach = {
 	Steps = {
-		{ Id = "pickup", Keyboard = "STOP NEXT TO A $ TO PICK UP", Touch = "HOLD BRAKE NEXT TO A $ TO PICK UP", Gamepad = "STOP NEXT TO A $ TO PICK UP", MaxSeconds = 0 },
-		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, BRAKE IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
+		{ Id = "pickup", Keyboard = "STOP NEXT TO A $ TO PICK UP", Touch = "STOP NEXT TO A $ TO PICK UP", Gamepad = "STOP NEXT TO A $ TO PICK UP", MaxSeconds = 0 },
+		{ Id = "deliver", Keyboard = "FOLLOW THE ARROW, STOP IN THE RING", Touch = "FOLLOW THE ARROW, STOP IN THE RING", Gamepad = "FOLLOW THE ARROW, STOP IN THE RING", MaxSeconds = 0 },
 		{ Id = "drift", Keyboard = "HOLD SPACE WHILE TURNING TO DRIFT", Touch = "HOLD DRIFT WHILE TURNING", Gamepad = "HOLD A WHILE TURNING TO DRIFT", MaxSeconds = 14 },
 		{ Id = "boost", Keyboard = "HOLD SHIFT TO BOOST", Touch = "HOLD BOOST", Gamepad = "HOLD B TO BOOST", MaxSeconds = 12 },
 		{ Id = "hop", Keyboard = "PRESS E TO HOP", Touch = "TAP HOP TO JUMP", Gamepad = "PRESS R1 TO HOP", MaxSeconds = 12 },
@@ -1391,7 +1396,10 @@ Config.Hud = {
 	-- Phones: when the screen below Roblox's top bar is smaller than FitSize, every HUD and panel shrinks to fit (never
 	-- below FitMinScale), each piece staying in its corner. Touch pads and full-screen effects keep their size.
 	FitSize = Vector2.new(900, 580), -- the garage (820 x 580) is the biggest panel
-	FitMinScale = 0.5,
+	-- 0.5 left HUD text near 7 points on a 360-point-tall phone (owner 2026-10-27, phone pass); big centered panels
+	-- (garage, Pit Stop, progress, shop) shrink themselves further when they'd still overflow (UI.CenterBelowTopbar)
+	FitMinScale = 0.65,
+	PanelFitMargin = 0.96, -- a self-fitting panel uses at most this share of the space below the top bar
 	TopbarHeight = 58, -- px: Roblox's top bar, which the top-left money block sits under (it never scales)
 	EventChipY = 196, -- px from the top: the live-event line under the Gems
 }

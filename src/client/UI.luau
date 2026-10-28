@@ -75,6 +75,18 @@ function UI.FitScale(): number
 	return fitScale
 end
 
+-- A GUI point (AbsolutePosition space, which starts below Roblox's top bar) as an offset inside `screen`: minus where
+-- the screen starts (a safe-area screen starts past the notch), divided by the phone scale.
+function UI.ToScreen(screen: ScreenGui, point: Vector2): Vector2
+	return (point - screen.AbsolutePosition) / fitScale
+end
+
+-- The same for a WorldToViewportPoint result, which counts from the very top of the screen.
+function UI.ViewportToScreen(screen: ScreenGui, point: Vector2): Vector2
+	local inset = game:GetService("GuiService"):GetGuiInset()
+	return UI.ToScreen(screen, point - Vector2.new(0, inset.Y))
+end
+
 -- Runs now and whenever the phone scale changes (for pieces placed by UI.BelowTopbar or UI.CenterBelowTopbar).
 function UI.OnFit(listener: () -> ())
 	table.insert(fitListeners, listener)
@@ -87,15 +99,30 @@ function UI.BelowTopbar(designY: number): number
 	return designY + topbar() / fitScale - Config.Hud.TopbarHeight
 end
 
--- A centered panel (AnchorPoint 0.5, 0.5) centers in the space below the top bar, so a tall one never slides under it.
+-- A centered panel (AnchorPoint 0.5, 0.5) centers in the space below the top bar, so a tall one never slides under it,
+-- and shrinks itself (a UIScale of its own) when it would still overflow that space at the screen's scale.
 function UI.CenterBelowTopbar(panel: GuiObject)
-	UI.OnFit(function()
+	local own = UI.New("UIScale", { Name = "PanelFit" }, panel) :: UIScale
+	local function fit()
 		panel.Position = UDim2.new(0.5, 0, 0.5, topbar() / fitScale / 2)
-	end)
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+		local view = camera.ViewportSize
+		local margin = Config.Hud.PanelFitMargin
+		local w = math.max(panel.Size.X.Offset * fitScale, 1)
+		local h = math.max(panel.Size.Y.Offset * fitScale, 1)
+		own.Scale = math.min(1, view.X * margin / w, (view.Y - topbar()) * margin / h)
+	end
+	UI.OnFit(fit)
+	panel:GetPropertyChangedSignal("Size"):Connect(fit)
 end
 
--- `fixed` screens keep their size on phones (touch pads, full-screen effects).
-function UI.Screen(name: string, displayOrder: number?, fixed: boolean?): ScreenGui
+-- `fixed` screens keep their size on phones (touch pads, full-screen effects). `safe` screens keep clear of a phone's
+-- notch, Dynamic Island, rounded corners and home bar (ScreenInsets.DeviceSafeInsets); it defaults to on for scaled
+-- screens and off for fixed ones, so full-screen effects still reach the edges.
+function UI.Screen(name: string, displayOrder: number?, fixed: boolean?, safe: boolean?): ScreenGui
 	local player = game:GetService("Players").LocalPlayer
 	local gui = UI.New("ScreenGui", {
 		Name = name,
@@ -104,6 +131,10 @@ function UI.Screen(name: string, displayOrder: number?, fixed: boolean?): Screen
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = displayOrder or 0,
 	}, player:WaitForChild("PlayerGui")) :: ScreenGui
+	local keepSafe = if safe == nil then not fixed else safe
+	if keepSafe then
+		gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	end
 	if not fixed then
 		watchFit()
 		local scale = UI.New("UIScale", { Name = "Fit", Scale = fitScale }, gui) :: UIScale

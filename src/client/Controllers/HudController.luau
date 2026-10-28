@@ -68,6 +68,9 @@ local countdownLabel: TextLabel
 local countdownScale: UIScale
 local lastCountdown = -1
 local COUNTDOWN_OFFSET = Vector2.new(84, 34) -- px from the point above the cab
+local FARE_CARD_SIZE = Vector2.new(240, 142) -- px; on touch the width is Config.Touch.FareCardWidth
+local FARE_CARD_REQUEST_HEIGHT = 164 -- with the passenger's request line
+local fareCardWidth = FARE_CARD_SIZE.X
 local SHOUT_LIFT = 58 -- px above that point
 
 local stampRoot: Frame
@@ -231,11 +234,11 @@ local function popupAnchor(): Vector2
 	if camera and ch then
 		local point, onScreen = camera:WorldToViewportPoint(ch.Position + Vector3.new(0, 7, 0))
 		if onScreen then
-			return Vector2.new(point.X, point.Y) / UI.FitScale()
+			return UI.ViewportToScreen(screen, Vector2.new(point.X, point.Y))
 		end
 	end
 	local size = if camera then camera.ViewportSize else Vector2.new(1280, 720)
-	return Vector2.new(size.X / 2, size.Y * 0.45) / UI.FitScale()
+	return UI.ViewportToScreen(screen, Vector2.new(size.X / 2, size.Y * 0.45))
 end
 
 local function updatePopups()
@@ -262,7 +265,7 @@ local function burstCoins(payout: number)
 	local hud = Config.Hud
 	local count = math.clamp(math.round(payout / 100 * hud.BurstCoinsPerDollar), hud.BurstCoinsMin, hud.BurstCoinsMax)
 	local from = popupAnchor()
-	local to = RollingCounter.GetCenter(totalCounter) / UI.FitScale()
+	local to = UI.ToScreen(screen, RollingCounter.GetCenter(totalCounter))
 	for i = 1, count do
 		local coin = UI.Label({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(from.X, from.Y), Size = UDim2.fromOffset(30, 30), TextColor3 = UI.Cash, TextStrokeTransparency = 0.1, Text = "$" }, popupLayer)
 		local angle = rng:NextNumber(0, math.pi * 2)
@@ -411,7 +414,7 @@ local function build()
 	arrowDistance = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 138), Size = UDim2.fromOffset(120, 20), TextColor3 = UI.Accent, Font = UI.FontMedium, Text = "", Visible = false }, screen)
 
 	-- Fare card (bottom-right)
-	fareCard = UI.Frame({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(240, 142), Visible = false }, screen)
+	fareCard = UI.Frame({ AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(FARE_CARD_SIZE.X, FARE_CARD_SIZE.Y), Visible = false }, screen)
 	UI.Corner(10, fareCard)
 	fareDest = UI.Label({ Position = UDim2.fromOffset(12, 8), Size = UDim2.new(1, -24, 0, 22), TextXAlignment = Enum.TextXAlignment.Left, Text = "" }, fareCard)
 	fareTier = UI.Label({ Position = UDim2.fromOffset(12, 36), Size = UDim2.fromOffset(110, 20), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "SHORT" }, fareCard)
@@ -465,6 +468,18 @@ local function build()
 	itemKey = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.fromOffset(100, 16), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, itemSlot)
 	-- The slot names its key; on a phone the ITEM button shows the item instead, so the slot goes
 	local function fitInput(inputMode: string)
+		-- on a phone the bottom-right corner belongs to the driving buttons: the fare card goes beside the minimap
+		if inputMode == "Touch" then
+			fareCard.AnchorPoint = Vector2.new(1, 0)
+			fareCard.Position = UDim2.new(1, -(24 + Config.Hud.MinimapSize + Config.Touch.FareCardGap), 0, 24)
+			fareCardWidth = Config.Touch.FareCardWidth
+			fareCard.Size = UDim2.fromOffset(fareCardWidth, FARE_CARD_SIZE.Y)
+		else
+			fareCard.AnchorPoint = Vector2.new(1, 1)
+			fareCard.Position = UDim2.new(1, -24, 1, -24)
+			fareCardWidth = FARE_CARD_SIZE.X
+			fareCard.Size = UDim2.fromOffset(fareCardWidth, FARE_CARD_SIZE.Y)
+		end
 		itemSlot.Visible = inputMode ~= "Touch"
 		itemKey.Text = if inputMode == "Gamepad" then (Config.Keys.PadItem.Name:gsub("^Button", "")) else Config.Keys.Item.Name
 	end
@@ -851,7 +866,7 @@ local function update(dt: number)
 		fareHpLabel.Text = string.format("%s %d/%d", kindDef.Label, math.round(State.hp), State.maxHp)
 		local request = requestDef(fare.request)
 		fareRequest.Visible = request ~= nil
-		fareCard.Size = UDim2.fromOffset(240, if request then 164 else 142)
+		fareCard.Size = UDim2.fromOffset(fareCardWidth, if request then FARE_CARD_REQUEST_HEIGHT else FARE_CARD_SIZE.Y)
 		if request then
 			local shown = math.min(fare.requestProgress, request.Goal)
 			local amount = if request.Unit == "" then string.format("%d/%d", math.floor(shown), request.Goal) else string.format("%.1f/%g %s", shown, request.Goal, request.Unit)

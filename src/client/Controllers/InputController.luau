@@ -1,8 +1,9 @@
 --!strict
 -- Keyboard, gamepad and touch. Exposes continuous axes and fires signals for one-shot actions.
--- Bindings live in Config.Keys. Phones (Config.Touch) drive forward by themselves, so one thumb is free for DRIFT and
--- BOOST: BRAKE slows to a stop, holds the car there for a moment (to pick up or drop off), then reverses. Steering is
--- an analog strip on the left; the ITEM button shows the item you hold; HOP greys out while it cools down.
+-- Bindings live in Config.Keys. Phones (Config.Touch): hold GAS to drive; BRAKE slows to a stop, holds the car there for
+-- a moment (to pick up or drop off), then reverses (it reads REVERSE once the car is stopped). Steering is an analog
+-- strip on the left with ITEM, HOP and HONK above it; GAS, BRAKE, BOOST and DRIFT on the right; the ITEM button shows
+-- the item you hold; HOP greys out while it cools down. The buttons show only while you can drive (ShowInPhases).
 
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
@@ -12,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Signal = require(Shared:WaitForChild("Signal"))
+local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 
 local InputController = {}
@@ -28,7 +30,7 @@ InputController.OnHop = onHop
 InputController.ModeChanged = modeChanged -- "Keyboard" | "Gamepad" | "Touch", when the player switches
 
 local keys = { forward = false, back = false, left = false, right = false, drift = false, boost = false }
-local touch: { [string]: boolean } = { back = false, drift = false, boost = false }
+local touch: { [string]: boolean } = { gas = false, back = false, drift = false, boost = false }
 local pad = { steer = 0, throttle = 0, brake = 0, drift = false, boost = false }
 local DEADZONE = 0.18
 local touchBuilt = false
@@ -56,15 +58,16 @@ function InputController.GetMode(): string
 	return mode
 end
 
-local function autoGas(): boolean
-	return Config.Touch.AutoGas and touchBuilt and mode == "Touch"
+local function touchDriving(): boolean
+	return touchBuilt and mode == "Touch"
 end
 
--- Phones: forward unless BRAKE is held; a held BRAKE stops the car, holds it still for ReverseDelay, then reverses.
+-- Phones: GAS drives forward; a held BRAKE (it wins over GAS) stops the car, holds it still for ReverseDelay, then
+-- reverses; neither, the car coasts.
 local function touchThrottle(): number
 	if not touch.back then
 		restSince = nil
-		return 1
+		return if touch.gas then 1 else 0
 	end
 	if math.abs(State.forwardSpeed) > Config.Touch.HoldSpeed then
 		restSince = nil
@@ -81,7 +84,7 @@ function InputController.GetThrottle(): number
 	if keyboard ~= 0 then
 		return keyboard
 	end
-	if autoGas() then
+	if touchDriving() then
 		return touchThrottle()
 	end
 	return math.clamp(pad.throttle - pad.brake, -1, 1)
@@ -90,7 +93,7 @@ end
 -- The brake is down (on a phone a held BRAKE at a standstill reads as throttle 0 while it holds the car; Dash still
 -- counts it as braking).
 function InputController.IsBraking(): boolean
-	return InputController.GetThrottle() < 0 or (autoGas() and touch.back)
+	return InputController.GetThrottle() < 0 or (touchDriving() and touch.back)
 end
 
 function InputController.GetSteer(): number
@@ -133,7 +136,7 @@ end
 local function buildTouchControls()
 	local UI = require(script.Parent.Parent.UI)
 	local cfg = Config.Touch
-	local screen = UI.Screen("CrazyFareTouch", 8, true) -- thumb-sized on every screen
+	local screen = UI.Screen("CrazyFareTouch", 8, true, true) -- thumb-sized on every screen, clear of the notch
 	touchScreen = screen
 	local size = cfg.ButtonSize
 	local big = cfg.BigButton
@@ -274,12 +277,20 @@ local function buildTouchControls()
 	local above = m + cfg.SteerPad.Y + gap
 	local item = button("ITEM", m, above, 0, cfg.ItemButton.X, cfg.ItemButton.Y)
 	tap(item, onItem)
-	tap(button("HONK", m + cfg.ItemButton.X + gap, above, 0, size, size), onHonk)
-	holdFlag(button("DRIFT", -m, m, 1, big, big), "drift")
-	holdFlag(button("BRAKE", -(m + big + gap), m, 1, size, size), "back")
-	holdFlag(button("BOOST", -m, m + big + gap, 1, big, size), "boost")
-	local hop = button("HOP", -(m + big + gap), m + size + gap, 1, size, size)
+	local hop = button("HOP", m + cfg.ItemButton.X + gap, above, 0, size, size)
 	tap(hop, onHop)
+	tap(button("HONK", m + cfg.ItemButton.X + gap + size + gap, above, 0, size, size), onHonk)
+	holdFlag(button("GAS", -m, m, 1, big, big), "gas")
+	local brake = button("BRAKE", -(m + big + gap), m, 1, size, size)
+	holdFlag(brake, "back")
+	-- stopped or backing up, holding it reverses: say so
+	table.insert(frameUpdates, function()
+		local reverse = State.forwardSpeed <= cfg.HoldSpeed
+		brake.Text = if reverse then "REVERSE" else "BRAKE"
+		brake.TextSize = if reverse then cfg.ReverseTextSize else 16
+	end)
+	holdFlag(button("BOOST", -m, m + big + gap, 1, big, size), "boost")
+	holdFlag(button("DRIFT", -(m + big + gap), m + size + gap, 1, size, size), "drift")
 	-- HOP fills from the bottom while it cools down, white when it's ready
 	local fill = UI.New("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), BackgroundColor3 = UI.White, BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = 0 }, hop) :: Frame
 	UI.Corner(math.floor(size / 2), fill)
@@ -288,6 +299,15 @@ local function buildTouchControls()
 		local ready = left <= 0
 		fill.Size = UDim2.fromScale(1, if ready then 0 else 1 - math.clamp(left / Config.Chaos.Hop.Cooldown, 0, 1))
 		hop.TextColor3 = if ready then UI.White else UI.Muted
+	end)
+
+	-- Only while you can drive
+	local function showFor(phase: string)
+		screen.Enabled = cfg.ShowInPhases[phase] == true
+	end
+	showFor(State.GetPhase())
+	State.RoundChanged:Connect(function(payload: Types.RoundStatePayload)
+		showFor(payload.phase)
 	end)
 
 	-- The ITEM button names the item you hold, in its color
