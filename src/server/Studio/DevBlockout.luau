@@ -16,8 +16,8 @@ local Tags = Config.Tags
 local DevBlockout = {}
 
 type Blockout = typeof(Config.Map.City.Blockout)
--- buildings / icons: the imported art (Config.Art); boxes: every building's collision box, for finding roofs
-type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string, buildings: { Model }, icons: { [string]: Model }, boxes: { BasePart } }
+-- buildings / icons / street / trees: the imported art (Config.Art); boxes: every building's collision box, for finding roofs
+type Ctx = { B: Blockout, theme: string, rng: Random, map: Folder, mapName: string, buildings: { Model }, icons: { [string]: Model }, street: { [string]: Model }, trees: { Model }, boxes: { BasePart } }
 type BuildingFit = { template: Model, facing: Vector3, scale: number, weight: number, footprint: Vector3 }
 type Spot = { position: Vector3, look: Vector3 }
 type Lot = { x: number, z: number, w: number, d: number }
@@ -67,6 +67,8 @@ local COLOR_BOARDWALK = Color3.fromRGB(190, 150, 100)
 local COLOR_LINE = Color3.fromRGB(240, 200, 60)
 local COLOR_CROSSWALK = Color3.fromRGB(230, 230, 225)
 local COLOR_SIDEWALK = Color3.fromRGB(190, 190, 185)
+local COLOR_CURB = Color3.fromRGB(222, 222, 216)
+local COLOR_MANHOLE = Color3.fromRGB(62, 62, 66)
 local COLOR_PLAZA = Color3.fromRGB(215, 205, 190)
 local COLOR_WALL = Color3.fromRGB(80, 80, 85)
 local COLOR_PICKUP = Color3.fromRGB(60, 200, 90)
@@ -137,6 +139,41 @@ local function decor(part: Part): Part
 	return part
 end
 
+-- The imported art in ReplicatedStorage.MapModels.<folderName> (Config.Art), by name.
+local function artModels(folderName: string): { [string]: Model }
+	local found: { [string]: Model } = {}
+	local art = ReplicatedStorage:FindFirstChild("MapModels")
+	local folder = if art then art:FindFirstChild(folderName) else nil
+	if folder then
+		for _, child in folder:GetChildren() do
+			if child:IsA("Model") then
+				found[child.Name] = child
+			end
+		end
+	end
+	return found
+end
+
+-- A clone of an art template, scaled by `scale`, its box's bottom center at `base`, turned by `rotation` about that
+-- point. Looks only: anchored, no collision, no queries, no touches.
+local function placeArt(template: Model, parent: Instance, scale: number, base: Vector3, rotation: CFrame): Model
+	local clone = template:Clone()
+	clone:ScaleTo(clone:GetScale() * scale)
+	for _, part in clone:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+		end
+	end
+	local box, size = clone:GetBoundingBox()
+	local pivotFromBox = box:ToObjectSpace(clone:GetPivot())
+	clone:PivotTo(CFrame.new(base) * rotation * CFrame.new(0, size.Y / 2, 0) * pivotFromBox)
+	clone.Parent = parent
+	return clone
+end
+
 local function cellKey(cx: number, cz: number): string
 	return string.format("%d,%d", cx, cz)
 end
@@ -205,6 +242,54 @@ local function buildGround(ctx: Ctx)
 	end
 end
 
+-- Road markings block by block, never through a junction: a double yellow center line, a white line along each curb,
+-- a white stop line across each approach lane before the crosswalk (traffic keeps right, as in TrafficService), and
+-- now and then a manhole. Asphalt roads only (not the Beach's boardwalk).
+local function buildMarkings(ctx: Ctx, parent: Folder, outer: number)
+	local B = ctx.B
+	local R = Config.Art.Roads
+	local half = B.RoadWidth / 2
+	local coords = B.RoadCoords
+	local function stripe(name: string, center: Vector3, alongX: boolean, length: number, width: number, color: Color3, lift: number)
+		local size = if alongX then Vector3.new(length, 0.05, width) else Vector3.new(width, 0.05, length)
+		decor(makePart(name, size, CFrame.new(center + Vector3.new(0, lift, 0)), color, parent))
+	end
+	for _, r in coords do
+		if ctx.theme == "beach" and math.abs(r) == outer then
+			continue
+		end
+		for _, alongX in { false, true } do
+			local along = if alongX then Vector3.xAxis else Vector3.zAxis
+			local across = if alongX then Vector3.zAxis else Vector3.xAxis
+			local lift = if alongX then 0.245 else 0.24 -- the EW road sits 0.01 higher
+			for j = 1, #coords - 1 do
+				local from = coords[j] + half + 4.5 -- past the crosswalks
+				local to = coords[j + 1] - half - 4.5
+				local length = to - from
+				local mid = across * r + along * (from + to) / 2
+				for _, s in { -1, 1 } do
+					stripe("CenterLine", mid + across * s * (R.CenterGap + R.CenterLine) / 2, alongX, length, R.CenterLine, COLOR_LINE, lift)
+					stripe("EdgeLine", mid + across * s * (half - R.EdgeInset), alongX, length, R.EdgeLine, COLOR_CROSSWALK, lift)
+					-- the stop line before the junction this lane runs into: moving `s` along the road, the lane is on its right
+					local dir = along * s
+					local right = Vector3.new(-dir.Z, 0, dir.X)
+					local stopAt = if s > 0 then to - R.StopGap - R.StopLine / 2 else from + R.StopGap + R.StopLine / 2
+					local laneCenter = across * r + right * (half / 2) + along * stopAt
+					local laneWidth = half - R.EdgeInset - R.CenterLine
+					local dims = if alongX then Vector3.new(R.StopLine, 0.05, laneWidth) else Vector3.new(laneWidth, 0.05, R.StopLine)
+					decor(makePart("StopLine", dims, CFrame.new(laneCenter + Vector3.new(0, lift, 0)), COLOR_CROSSWALK, parent))
+				end
+				if ctx.rng:NextNumber() < R.ManholeChance then
+					local at = across * (r + (if ctx.rng:NextNumber() < 0.5 then -1 else 1) * Config.Traffic.LaneOffset) + along * ctx.rng:NextNumber(from + 6, to - 6)
+					local manhole = decor(makePart("Manhole", Vector3.new(0.06, R.ManholeSize, R.ManholeSize), CFrame.new(at + Vector3.new(0, lift, 0)) * CFrame.Angles(0, 0, math.pi / 2), COLOR_MANHOLE, parent))
+					manhole.Shape = Enum.PartType.Cylinder
+					manhole.Material = Enum.Material.DiamondPlate
+				end
+			end
+		end
+	end
+end
+
 local function buildRoads(ctx: Ctx)
 	local B = ctx.B
 	local size = B.Half * 2
@@ -221,11 +306,8 @@ local function buildRoads(ctx: Ctx)
 		ns.Material = material
 		local ew = makePart("RoadEW_" .. i, Vector3.new(size, 0.2, B.RoadWidth), CFrame.new(0, 0.11, r), color, roads, tag)
 		ew.Material = material
-		if not boardwalk then
-			decor(makePart("LineNS_" .. i, Vector3.new(0.6, 0.05, size), CFrame.new(r, 0.24, 0), COLOR_LINE, roads))
-			decor(makePart("LineEW_" .. i, Vector3.new(size, 0.05, 0.6), CFrame.new(0, 0.245, r), COLOR_LINE, roads))
-		end
 	end
+	buildMarkings(ctx, roads, outer)
 	-- Crosswalk stripes on every side of every intersection.
 	local half = B.RoadWidth / 2
 	for _, rx in B.RoadCoords do
@@ -253,7 +335,19 @@ local function buildStartPads(parent: Folder, cx: number, cz: number)
 	end
 end
 
-local function buildTree(parent: Folder, tx: number, tz: number)
+-- A tree: a Kenney tree (Config.Art.Trees, random height and turn) over an invisible trunk collider, or parts.
+local function buildTree(ctx: Ctx, parent: Folder, tx: number, tz: number)
+	if #ctx.trees > 0 then
+		local art = Config.Art
+		local template = ctx.trees[ctx.rng:NextInteger(1, #ctx.trees)]
+		local _, size = template:GetBoundingBox()
+		local height = ctx.rng:NextNumber(art.TreeHeight[1], art.TreeHeight[2])
+		placeArt(template, parent, height / size.Y, Vector3.new(tx, 0.5, tz), CFrame.Angles(0, ctx.rng:NextNumber(0, math.pi * 2), 0))
+		local collider = makePart("Trunk", art.TrunkSize, CFrame.new(tx, 0.5 + art.TrunkSize.Y / 2, tz), COLOR_TRUNK, parent)
+		collider.Transparency = 1
+		collider.CastShadow = false
+		return
+	end
 	local trunk = makePart("Trunk", Vector3.new(1.2, 6, 1.2), CFrame.new(tx, 3.5, tz), COLOR_TRUNK, parent)
 	trunk.Material = Enum.Material.Wood
 	local crown = makePart("Crown", Vector3.new(7, 7, 7), CFrame.new(tx, 9, tz), COLOR_CROWN, parent)
@@ -283,8 +377,45 @@ local function buildTrees(ctx: Ctx, parent: Folder, cx: number, cz: number, clea
 		if ctx.theme == "beach" then
 			buildPalm(parent, ctx.rng, tx, tz)
 		else
-			buildTree(parent, tx, tz)
+			buildTree(ctx, parent, tx, tz)
 		end
+	end
+end
+
+-- Street trees on the strip between the sidewalk and the buildings, TreeSpacing apart along every side (behind the
+-- walkers' line, in front of the facades). Only with imported trees.
+local function buildStreetTrees(ctx: Ctx, parent: Folder, cx: number, cz: number)
+	if #ctx.trees == 0 then
+		return
+	end
+	local art = Config.Art
+	local d = ctx.B.CellSize / 2 - ctx.B.Sidewalk - art.TreeInset
+	local count = math.floor(2 * d / art.TreeSpacing) + 1
+	local first = -(count - 1) * art.TreeSpacing / 2
+	for _, side in { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis } do
+		local along = Vector3.new(side.Z, 0, side.X)
+		for k = 0, count - 1 do
+			local offset = first + k * art.TreeSpacing
+			-- the X sides leave the corners to the Z sides, so no corner gets a pair
+			if math.abs(side.X) > 0.5 and math.abs(offset) > d - art.TreeSpacing / 2 then
+				continue
+			end
+			local p = Vector3.new(cx, 0, cz) + side * d + along * offset
+			buildTree(ctx, parent, p.X, p.Z)
+		end
+	end
+end
+
+-- A curb along each edge of a block: a lighter strip standing CurbLip above the sidewalk. Looks only.
+local function buildCurbs(ctx: Ctx, parent: Folder, cx: number, cz: number)
+	local R = Config.Art.Roads
+	local size = ctx.B.CellSize
+	local height = 0.5 + R.CurbLip
+	local inset = size / 2 - R.CurbWidth / 2
+	for _, side in { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis } do
+		local dims = if math.abs(side.X) > 0.5 then Vector3.new(R.CurbWidth, height, size) else Vector3.new(size, height, R.CurbWidth)
+		local curb = decor(makePart("Curb", dims, CFrame.new(cx + side.X * inset, height / 2, cz + side.Z * inset), COLOR_CURB, parent))
+		curb.Material = Enum.Material.Concrete
 	end
 end
 
@@ -334,41 +465,6 @@ local function buildSign(ctx: Ctx, parent: Folder, lot: Lot, cx: number, cz: num
 	label.Parent = gui
 	local glow = decor(makePart("SignGlow", Vector3.new(width + 0.6, 0.3, 0.6), cf * CFrame.new(0, -1.5, 0), color, parent))
 	glow.Material = Enum.Material.Neon
-end
-
--- The imported art in ReplicatedStorage.MapModels.<folderName> (Config.Art), by name.
-local function artModels(folderName: string): { [string]: Model }
-	local found: { [string]: Model } = {}
-	local art = ReplicatedStorage:FindFirstChild("MapModels")
-	local folder = if art then art:FindFirstChild(folderName) else nil
-	if folder then
-		for _, child in folder:GetChildren() do
-			if child:IsA("Model") then
-				found[child.Name] = child
-			end
-		end
-	end
-	return found
-end
-
--- A clone of an art template, scaled by `scale`, its box's bottom center at `base`, turned by `rotation` about that
--- point. Looks only: anchored, no collision, no queries, no touches.
-local function placeArt(template: Model, parent: Instance, scale: number, base: Vector3, rotation: CFrame): Model
-	local clone = template:Clone()
-	clone:ScaleTo(clone:GetScale() * scale)
-	for _, part in clone:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.Anchored = true
-			part.CanCollide = false
-			part.CanQuery = false
-			part.CanTouch = false
-		end
-	end
-	local box, size = clone:GetBoundingBox()
-	local pivotFromBox = box:ToObjectSpace(clone:GetPivot())
-	clone:PivotTo(CFrame.new(base) * rotation * CFrame.new(0, size.Y / 2, 0) * pivotFromBox)
-	clone.Parent = parent
-	return clone
 end
 
 -- Which way a lot's storefront may face: toward the road on each side it's pushed to (a centered lot: any side).
@@ -756,7 +852,10 @@ local function buildCells(ctx: Ctx): { Spot }
 				cells,
 				if sandCell then Tags.Sand else Tags.Sidewalk
 			)
-			slab.Material = if sandCell then Enum.Material.Sand else Enum.Material.Concrete
+			slab.Material = if sandCell then Enum.Material.Sand elseif ctx.theme == "city" and not isPlaza then Enum.Material.Pavement else Enum.Material.Concrete
+			if ctx.theme == "city" then
+				buildCurbs(ctx, cells, cx, cz)
+			end
 			if isPlaza then
 				buildStartPads(cells, cx, cz)
 			elseif sandCell then
@@ -775,10 +874,14 @@ local function buildCells(ctx: Ctx): { Spot }
 				buildRunout(ctx, cells, cx, cz)
 			elseif kind == "alley" then
 				buildAlley(ctx, cells, cx, cz)
+				buildStreetTrees(ctx, cells, cx, cz)
 			elseif kind == "jump" then
 				buildJumpBlock(ctx, cells, cx, cz)
 			else
 				buildBuildings(ctx, cells, cx, cz)
+				if ctx.theme == "city" then
+					buildStreetTrees(ctx, cells, cx, cz)
+				end
 			end
 			if not isPlaza then
 				buildProps(ctx, cells, cx, cz)
@@ -799,14 +902,9 @@ local function buildCells(ctx: Ctx): { Spot }
 	return spots
 end
 
--- Streetlights on two corners and a traffic light on a third, at every inner intersection (city only).
-local function buildStreetFurniture(ctx: Ctx)
+-- The parts-built furniture (no imported street models): streetlights on two corners and a traffic light on a third.
+local function buildStreetFurnitureParts(ctx: Ctx, folder: Folder, outer: number, offset: number)
 	local B = ctx.B
-	local folder = Instance.new("Folder")
-	folder.Name = "Street"
-	folder.Parent = ctx.map
-	local outer = math.max(math.abs(B.RoadCoords[1]), math.abs(B.RoadCoords[#B.RoadCoords]))
-	local offset = B.RoadWidth / 2 + 2
 	for _, rx in B.RoadCoords do
 		for _, rz in B.RoadCoords do
 			if math.abs(rx) == outer or math.abs(rz) == outer then
@@ -834,6 +932,122 @@ local function buildStreetFurniture(ctx: Ctx)
 				lightPart.Material = if k == lit then Enum.Material.Neon else Enum.Material.SmoothPlastic
 				if k ~= lit then
 					lightPart.Color = color:Lerp(Color3.new(0, 0, 0), 0.6)
+				end
+			end
+		end
+	end
+end
+
+-- One Kenney street piece (Config.Art.Street[key]) standing at `base`, its meant-front along `facing`. False when the
+-- model isn't imported.
+local function placeStreetPiece(ctx: Ctx, parent: Folder, key: string, base: Vector3, facing: Vector3): boolean
+	local spec = Config.Art.Street[key]
+	local template = if spec then ctx.street[spec.Model] else nil
+	if not spec or not template then
+		return false
+	end
+	local _, size = template:GetBoundingBox()
+	local yaw = math.atan2(facing.X, facing.Z) + math.rad(spec.Yaw)
+	placeArt(template, parent, spec.Height / size.Y, base, CFrame.Angles(0, yaw, 0))
+	return true
+end
+
+-- A Kenney streetlight with a glowing bulb under its head (its arm reaches along `arm`).
+local function placeStreetlight(ctx: Ctx, parent: Folder, base: Vector3, arm: Vector3)
+	if not placeStreetPiece(ctx, parent, "Streetlight", base, arm) then
+		return
+	end
+	local glow = Config.Art.LampGlow
+	local height = Config.Art.Street.Streetlight.Height
+	local at = base + Vector3.new(0, height * glow.Up, 0) + arm * (height * glow.Out)
+	local bulb = decor(makePart("Lamp", glow.Size, CFrame.lookAt(at, at + arm), COLOR_LAMP, parent))
+	bulb.Material = Enum.Material.Neon
+end
+
+-- Flat distance from `pos` to the nearest point of a part's (or model's) box.
+local function flatDistance(inst: Instance, pos: Vector3): number
+	local cf: CFrame
+	local size: Vector3
+	if inst:IsA("BasePart") then
+		cf, size = inst.CFrame, inst.Size
+	elseif inst:IsA("Model") then
+		cf, size = inst:GetBoundingBox()
+	else
+		return math.huge
+	end
+	local p = cf:PointToObjectSpace(pos)
+	local half = size / 2
+	local nearest = cf:PointToWorldSpace(Vector3.new(math.clamp(p.X, -half.X, half.X), math.clamp(p.Y, -half.Y, half.Y), math.clamp(p.Z, -half.Z, half.Z)))
+	return Vector3.new(pos.X - nearest.X, 0, pos.Z - nearest.Z).Magnitude
+end
+
+-- Street furniture (City). Inner junctions: streetlights on two corners with their arms over the road, a traffic light
+-- on a third, a street sign on the fourth. Where an inner road meets the outer road: a stop sign on the inner road's
+-- right. Along inner roads: streetlights at MidBlockLights, alternating sides, clear of stops, stalls, hydrants, walls
+-- and the drawbridge. Kenney pieces when imported; the old parts otherwise.
+local function buildStreetFurniture(ctx: Ctx)
+	local B = ctx.B
+	local art = Config.Art
+	local folder = Instance.new("Folder")
+	folder.Name = "Street"
+	folder.Parent = ctx.map
+	local outer = math.max(math.abs(B.RoadCoords[1]), math.abs(B.RoadCoords[#B.RoadCoords]))
+	local offset = B.RoadWidth / 2 + 2
+	if not ctx.street[art.Street.Streetlight.Model] then
+		buildStreetFurnitureParts(ctx, folder, outer, offset)
+		return
+	end
+	for _, rx in B.RoadCoords do
+		for _, rz in B.RoadCoords do
+			local outerX, outerZ = math.abs(rx) == outer, math.abs(rz) == outer
+			if outerX and outerZ then
+				continue -- the city's corners
+			elseif outerX or outerZ then
+				-- the inner road's approach to the outer road: moving toward it, the stop sign stands on the right
+				local toward = if outerX then Vector3.new(math.sign(rx), 0, 0) else Vector3.new(0, 0, math.sign(rz))
+				local right = Vector3.new(-toward.Z, 0, toward.X)
+				local at = Vector3.new(rx, 0.5, rz) - toward * offset + right * offset
+				placeStreetPiece(ctx, folder, "StopSign", at, -toward)
+				continue
+			end
+			for _, s in { -1, 1 } do
+				placeStreetlight(ctx, folder, Vector3.new(rx + s * offset, 0.5, rz + s * offset), Vector3.new(-s, 0, 0))
+			end
+			placeStreetPiece(ctx, folder, "TrafficLight", Vector3.new(rx + offset, 0.5, rz - offset), Vector3.new(1, 0, 0))
+			placeStreetPiece(ctx, folder, "StreetSign", Vector3.new(rx - offset, 0.5, rz + offset), Vector3.new(-1, 0, 0))
+		end
+	end
+	-- what a mid-block streetlight keeps away from
+	local avoid: { Instance } = {}
+	for _, inst in ctx.map:GetDescendants() do
+		for _, tagName in { Tags.PickupPoint, Tags.DropoffPoint, Tags.FruitStand, Tags.Hydrant, Tags.Wall, Tags.Drawbridge } do
+			if CollectionService:HasTag(inst, tagName) then
+				table.insert(avoid, inst)
+				break
+			end
+		end
+	end
+	local coords = B.RoadCoords
+	local curb = B.RoadWidth / 2 + art.LightCurbInset
+	local alternate = 1
+	for i = 2, #coords - 1 do
+		for _, alongX in { false, true } do
+			local along = if alongX then Vector3.xAxis else Vector3.zAxis
+			local across = if alongX then Vector3.zAxis else Vector3.xAxis
+			for j = 1, #coords - 1 do
+				for _, frac in art.MidBlockLights do
+					alternate = -alternate
+					local at = across * (coords[i] + alternate * curb) + along * (coords[j] + (coords[j + 1] - coords[j]) * frac) + Vector3.new(0, 0.5, 0)
+					local clear = true
+					for _, inst in avoid do
+						if flatDistance(inst, at) < art.FurnitureClearance then
+							clear = false
+							break
+						end
+					end
+					if clear then
+						placeStreetlight(ctx, folder, at, across * -alternate)
+					end
 				end
 			end
 		end
@@ -1270,8 +1484,16 @@ function DevBlockout.Generate(mapName: string?): Folder
 		mapName = name,
 		buildings = {},
 		icons = artModels("Icons"),
+		street = artModels("Street"),
+		trees = {},
 		boxes = {},
 	}
+	for _, treeName in Config.Art.Trees do
+		local tree = ctx.street[treeName]
+		if tree then
+			table.insert(ctx.trees, tree)
+		end
+	end
 	for _, model in artModels("Buildings") do
 		table.insert(ctx.buildings, model)
 	end

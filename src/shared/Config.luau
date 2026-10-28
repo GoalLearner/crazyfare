@@ -1444,6 +1444,37 @@ Config.Art = {
 	RoofIconFloat = 12, -- no building behind it: the icon floats this far above the rooftop sign
 	RoofIconInset = 0.35, -- it stands this share of its Size back from the roof's street edge
 	RoofIconLift = 3, -- studs above the roof
+	-- Street pieces (MapModels.Street; City only): Model, Height in studs, Yaw = degrees that turn the model to face the
+	-- way the generator means (a streetlight's arm over the road, a sign or signal's face toward oncoming drivers).
+	Street = {
+		Streetlight = { Model = "light-curved", Height = 13, Yaw = 180 },
+		TrafficLight = { Model = "traffic-light", Height = 11, Yaw = -90 },
+		StreetSign = { Model = "road-sign-street", Height = 9, Yaw = 0 },
+		StopSign = { Model = "road-sign-stop", Height = 8, Yaw = -90 },
+	} :: { [string]: { Model: string, Height: number, Yaw: number } },
+	-- a glowing bulb under each streetlight's head (the mesh has none): up and out along the arm as shares of its Height
+	LampGlow = { Up = 0.92, Out = 0.25, Size = Vector3.new(1.1, 0.3, 1.3) },
+	MidBlockLights = { 0.35, 0.65 }, -- streetlights along inner roads, as fractions of the way between junctions
+	LightCurbInset = 1.5, -- studs onto the sidewalk from the curb
+	FurnitureClearance = 10, -- studs from stops, stalls, hydrants, walls and the drawbridge
+	Trees = { "tree-large", "tree-small" }, -- MapModels.Street models; parks and the strip between sidewalk and buildings
+	TreeHeight = { 15, 21 }, -- studs, random between
+	TreeSpacing = 22, -- studs between street trees along a block
+	TreeInset = 2, -- studs inside the sidewalk's inner edge: behind the walkers, in front of the buildings
+	TrunkSize = Vector3.new(1.2, 6, 1.2), -- the invisible collider under each tree
+	-- Road markings and curbs (City). Markings never cross a junction.
+	Roads = {
+		CenterLine = 0.35, -- each of the two yellow center lines, studs wide
+		CenterGap = 0.35,
+		EdgeLine = 0.35, -- the white line along each curb
+		EdgeInset = 1.2, -- studs in from the curb
+		StopLine = 0.9, -- the white bar across each approach lane
+		StopGap = 1, -- studs before the crosswalk
+		ManholeChance = 0.5, -- per block of road
+		ManholeSize = 3,
+		CurbWidth = 1,
+		CurbLip = 0.12, -- studs above the sidewalk (looks only: the curb never collides)
+	},
 }
 
 -- Sky: dynamic clouds over every map (WeatherService makes them; a weather's CloudCover overrides the cover).
