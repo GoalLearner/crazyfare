@@ -372,14 +372,14 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [x] Client: QUESTS shows the next `NextCount` rewards as rarity-colored chips under the streak; the Garage paint row teases the next level paint (faded, "LV20"); Debug `AddXp` + DebugPanel "+1000 XP"
 - [x] Studio-tested 2026-10-28 (1 client, after the post-publish Studio restart): +1000 XP from level 1 -> level 5, Lv2/Lv3/Lv5 paid, "3 LEVEL REWARDS UNLOCKED!", Gems 5 -> 55; +1000 -> level 8, "LEVEL 7 100 GEMS UNLOCKED!"; +2000 -> level 11, Checkered; QUESTS chips LV 12 / 15 / 20; Garage Bronze owned + LV20 teaser; Bronze + Checkered seen on the moving cab; metrics `Level:Lv2`, `Level:Lv7`; no errors. Report: docs/LEVELS.html
 - [ ] Not seen yet: join-time catch-up on an older profile, the duplicate path, the chips on a phone
-- [ ] Ships with the next publish (v19)
+- [x] **PUBLISHED as v19 2026-10-28 6:49 PM PT** (commit de687b9, owner's go "Publish v19"; Creator Hub shows 19 as the published version)
 
 ## Lifetime fares on the name tag (checklist: "A big lifetime stat everyone can see", 2026-10-28)
 - [x] The Roblox player list stays off (hidden 2026-10-26: it covers the minimap), so the stat goes where every rival looks: under the name on each cab's world tag, "1,234 FARES" in gold, only while that driver carries nobody (the fare's value takes the line otherwise) and only within `WorldTagNameDistance`. Bots and players with 0 show nothing
 - [x] `DataService` mirrors profile `Stats[Config.Hud.LifetimeStat]` ("Fares", added at each match end by GemService) to the `LifetimeFares` player attribute on load and in `AddStat`; `ReplicationService` puts it in `PlayerSnap.lifetime`; `UI.Count` adds thousands commas
 - [x] Studio-tested 2026-10-28 (2 clients): attributes set from the server command bar (Player1 1234567, Player2 4812); Player2 saw "Player1 · LV 1" over "1,234,567 FARES" on Player1's cab; no errors. Gotcha: a server-side PivotTo of a cab trips the speed sanity check and snaps back, so look from the other client instead
 - [ ] Not seen yet: the number rising at a real match end; the line hiding while the rival carries a passenger
-- [ ] Ships with the next publish (v19)
+- [x] **PUBLISHED as v19 2026-10-28 6:49 PM PT** (commit de687b9, owner's go "Publish v19"; Creator Hub shows 19 as the published version)
 
 ## 7-day streak calendar (checklist: "A 7-day reward calendar, framed as loss", 2026-10-28)
 - [x] `Config.Streak.Calendar` replaces PerDay x days (5..35 Gems): 10 / 15 / 20 Gems, a Lemon Nitro start token, 30 / 40 Gems, the ON FIRE trail on DAY 7 (streak-only, in `EarnedTrailOrder` with the level trails; an owned one pays DuplicateGems Epic = 100). Past DAY 7 the run keeps counting and the calendar goes round again; a missed UTC day starts at DAY 1 (unchanged rule)
@@ -387,7 +387,7 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [x] `CalendarController`: a card with 7 tiles (done ticked, today outlined in gold), "Come back tomorrow for DAY n: X" and "Miss a day and it's back to DAY 1." in red, NICE!; it waits for a quiet moment (the lobby once the Starter Pack offer is closed, a pit stop, or not driving), closes when a race starts, and after `AutoCloseSeconds`. Matches run back to back with no lobby between them, so the pit stop is where a racing player sees it
 - [x] Studio-tested 2026-10-28 (1 client): day 1 paid on join while on the title screen, card held until the Starter Pack LATER, then shown; closed at the race start; day 4 fired mid-race waited for the pit stop and showed there; day 7 showed ON FIRE TRAIL with all days ticked and "DAY 8: 10 GEMS"; a second day 7 paid +100 Gems (10 -> 110); metrics `TimedReward Streak:Day1`; no errors
 - [ ] Not seen yet: the card on a phone screen; the ON FIRE trail on the car
-- [ ] Ships with the next publish (v19)
+- [x] **PUBLISHED as v19 2026-10-28 6:49 PM PT** (commit de687b9, owner's go "Publish v19"; Creator Hub shows 19 as the published version)
 
 ## Daily rotating shop (checklist: "A daily rotating shop", 2026-10-28)
 - [x] `Config.DailyShop`: 4 cosmetics a UTC day for Gems (Common 60 / Rare 150 / Epic 400), at least one paint, trail and horn. Candidates come from the drop pool's trails, horns and drop-only paints at a priced rarity (Legendary/Mythic stay crate-only; level and streak rewards stay earned; the Garage's own 50-Gem paints are not in it). `src/shared/DailyShop.luau` seeds a shuffle with the UTC day, so every server and client shows the same list with nothing sent
@@ -395,10 +395,11 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [x] SHOP gets a DAILY tab, first (the shop opens on it): "New items in h:mm:ss" ticking, a swatch per item (paint color, trail gradient, tap-to-hear horn), rarity-colored name, price or OWNED. Gems only for now; selling these for Robux would need developer products made in Creator Hub
 - [x] Studio-tested 2026-10-28 (1 client): today's items Teal paint 150, Galaxy trail 400, Mint Breeze trail 150, Euro Beep horn 60; bought Galaxy (1010 -> 610 Gems, OWNED, notice, metrics `Shop Daily:TrailGalaxy`); the server refused TrailRainbow (not for sale today) and a second Galaxy (already owned); the next days' lists vary, each with all three kinds; no errors
 - [ ] Not seen yet: the DAILY tab on a phone; the countdown rolling over at 00:00 UTC (4/5 PM PT) with the panel open
-- [ ] Ships with the next publish (v19)
+- [x] **PUBLISHED as v19 2026-10-28 6:49 PM PT** (commit de687b9, owner's go "Publish v19"; Creator Hub shows 19 as the published version)
 
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
 - [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)
 - [x] The Phantom on sale for 999 R$ (owner 2026-10-28 "Make it available for purchase"): commit 9f8d2bf sets `PhantomOffer.StartUtc` to 1793220319 with `EndUtc` 0 = open-ended, shown as ON SALE NOW (no countdown); checked from the command bar (SecondsLeft inf, buyable). **PUBLISHED as v16 2026-10-28 2:05 PM PST** (owner's go; Creator Hub shows 16 as the published version; product 3723363979 for sale at 999, regional pricing off). To make it limited-time later, set an EndUtc
 - [x] **v18 live 2026-10-28 5:41 PM PST** (commit b4f2320): map voting on the podium and the five badges (see "Map voting and badges")
+- [x] **v19 live 2026-10-28 6:49 PM PT** (commit de687b9, tag v19): level rewards, lifetime fares on the name tag, the 7-day streak calendar and the daily rotating shop. Pre-publish check: Rojo connected, no baked Map, LevelRewardService/DailyShopService/CalendarController/Prizes/DailyShop present and booted, Config.Levels/DailyShop/Lifetime/OnFire in, DailyBuy/StreakEvent remotes, Phantom offer 1793220319/0, no TEMP lines. Studio's File menu now says Publish (Alt+P) instead of Publish to Roblox
