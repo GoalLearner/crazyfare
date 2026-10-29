@@ -31,7 +31,7 @@ td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
 <body>
 <main>
 <h1>Bug hunt: 6 bots, today's features, smarter bots</h1>
-<p class="sub">October 28, 2026, evening PT. Studio tests with 6 bots racing on their own, me driving every new feature, and a separate code review of today's work. Everything below is committed but <b>not published</b> (it would be v20).</p>
+<p class="sub">October 28, 2026, evening PT. 30 Studio matches of bots racing on their own (6 bots, and 4 like a live grid), me driving every new feature, and a separate code review of today's work. Everything below is committed but <b>not published</b> (it would be v20).</p>
 
 <section>
 <h2>Bugs found and fixed</h2>
@@ -82,7 +82,7 @@ td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
 <section>
 <h2>Health</h2>
 <ul id="health">
-<li>HEALTH_LINE</li>
+<li><b>30 matches, 101 rounds, 2,170 bot pickups: 0 script errors</b> on the server and the client, across City and Beach, every weather, Rush Hour and money-truck events.</li><li>No leaks found: over the last 14-match run, server memory leveled off around 1.54 GB, and the workspace returns to the same instance count each time the map comes back around.</li><li>The worst server freeze in the server-only runs was about 0.36 s, at boot and between matches. One 1.8 s freeze showed up once at a City to Beach switch early in the night; worth watching on live servers.</li><li>Since the fixes, no bot got stuck in the last 50+ rounds. A bot can still bump a parked car once in a while, but none were shoved far or flipped.</li>
 </ul>
 </section>
 
