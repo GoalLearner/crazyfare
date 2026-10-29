@@ -214,7 +214,8 @@ function DropService.AwardMatch(results: { Types.PodiumEntry })
 end
 
 -- RoundService, a few seconds into a round: every driver with a new card's weirdo queued gets it as a bonus fare at a
--- free curb (theirs alone for Config.Cosmetics.Bonus.HeadStartSeconds). No free curb: it waits for the next round.
+-- free curb (theirs alone for Config.Cosmetics.Bonus.HeadStartSeconds), or in a plain passenger's place when every curb
+-- is busy (a full grid). Nobody it can replace either: it waits for the next round.
 function DropService.SpawnWeirdos()
 	for _, player in SessionService.GetDrivers() do
 		local d = DataService.Get(player)

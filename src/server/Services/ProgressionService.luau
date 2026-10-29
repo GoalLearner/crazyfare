@@ -2,6 +2,7 @@
 -- Player level (XP per match) and the login streak with its 7-day calendar (Config.Streak). Both live in the profile
 -- (DataService).
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -60,7 +61,7 @@ function ProgressionService.AwardMatch(results: { Types.PodiumEntry })
 	for i, entry in results do
 		local byPlace = if contested then cfg.PlacementXp[math.min(i, #cfg.PlacementXp)] or 0 else 0
 		local xp = cfg.MatchBaseXp + entry.fares * cfg.XpPerFare + byPlace
-		local player = game:GetService("Players"):GetPlayerByUserId(entry.id) -- nil for a bot
+		local player = Players:GetPlayerByUserId(entry.id) -- nil for a bot
 		if player then
 			if MonetizationService.HasPass(player, "DoubleXp") then
 				xp *= Config.Monetization.DoubleXpMult
@@ -85,7 +86,7 @@ end
 -- Match end: each person's license for the match goes into their podium entry; a better one than ever is saved.
 function ProgressionService.AwardLicense(results: { Types.PodiumEntry })
 	for _, entry in results do
-		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)
+		local player = Players:GetPlayerByUserId(entry.id)
 		local d = if player then DataService.Get(player) else nil
 		if not player or not d then
 			continue
@@ -103,7 +104,7 @@ end
 -- Arcade end: the run's grade into the entry; a run better than ever is saved (and flagged), and so is a better grade.
 function ProgressionService.AwardArcade(results: { Types.PodiumEntry })
 	for _, entry in results do
-		local player = game:GetService("Players"):GetPlayerByUserId(entry.id)
+		local player = Players:GetPlayerByUserId(entry.id)
 		local d = if player then DataService.Get(player) else nil
 		if not player or not d then
 			continue
@@ -186,6 +187,27 @@ function ProgressionService.Init()
 	end)
 end
 
-function ProgressionService.Start() end
+function ProgressionService.Start()
+	-- a session that runs past 00:00 UTC claims the new day too, without a rejoin (or the next join would reset the run)
+	local day = utcDay()
+	local nextCheck = 0
+	RunService.Heartbeat:Connect(function()
+		local t = os.clock()
+		if t < nextCheck then
+			return
+		end
+		nextCheck = t + Config.Streak.RolloverCheckSeconds
+		local today = utcDay()
+		if today == day then
+			return
+		end
+		day = today
+		for _, player in Players:GetPlayers() do
+			if DataService.IsLoaded(player) then
+				checkStreak(player)
+			end
+		end
+	end)
+end
 
 return ProgressionService

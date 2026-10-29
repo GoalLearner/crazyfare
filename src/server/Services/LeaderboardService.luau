@@ -247,14 +247,16 @@ local function readOwnerCount()
 	local ok, value = pcall(function()
 		return store:GetAsync("count")
 	end)
-	setOwnerCount(if ok and typeof(value) == "number" then value else memorySerial)
+	if ok and typeof(value) == "number" then
+		setOwnerCount(value) -- a failed read keeps the last count (not "nobody owns one")
+	end
 end
 
 -- A new Phantom owner: the next serial, saved on their profile and the board. Does nothing if they already have one.
 function LeaderboardService.RegisterPhantom(player: Player)
 	local d = DataService.Get(player)
-	if not d or d.PhantomSerial > 0 or Racers.IsBot(player) then
-		return
+	if not d or d.PhantomSerial ~= 0 or Racers.IsBot(player) then
+		return -- has one already, or one is being fetched (-1)
 	end
 	d.PhantomSerial = -1 -- taken while the number is fetched (a second grant can't ask twice)
 	task.spawn(function()
@@ -267,12 +269,18 @@ function LeaderboardService.RegisterPhantom(player: Player)
 					return serial
 				end)
 			end)
-		end
-		if serial <= 0 then
-			memorySerial += 1
+		else
+			memorySerial += 1 -- Studio: numbers for this server only
 			serial = memorySerial
 		end
 		local profile = DataService.Get(player)
+		if serial <= 0 then
+			-- the shared counter couldn't be reached: no made-up number (it could repeat one); try again on their next join
+			if profile then
+				profile.PhantomSerial = 0
+			end
+			return
+		end
 		if profile then
 			profile.PhantomSerial = serial
 			DataService.Sync(player)

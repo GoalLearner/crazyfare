@@ -32,6 +32,11 @@ end
 
 function MetricsService.Init()
 	DataService.OnLoaded:Connect(function(player: Player)
+		local d = DataService.Get(player)
+		if d and d.OnboardingStep == 0 and (d.Stats.Matches or 0) > 0 then
+			d.OnboardingStep = #cfg.Onboarding -- played before the funnel existed: not a new player, logs nothing
+			return
+		end
 		step(player, "Joined")
 	end)
 	SessionService.OnStateChanged:Connect(function(player: Player, old: string, new: string)

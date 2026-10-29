@@ -272,8 +272,8 @@ function VehicleService.SetHighlight(player: Player, color: Color3?, seconds: nu
 end
 
 -- A trail from the rear corners: this week's leaderboard top get the gold one (attribute WeeklyTrail), anyone else
--- the trail they equipped from a drop (Config.Cosmetics.Trails), or none.
-local function applyTrail(entry: VehicleEntry)
+-- the trail they equipped from a drop (Config.Cosmetics.Trails), or none. Race cars and depot cars alike.
+local function applyTrail(entry: { player: Player, model: Model, chassis: BasePart })
 	local existing = entry.model:FindFirstChild("WeeklyTrail")
 	if existing then
 		existing:Destroy()
@@ -377,7 +377,9 @@ function VehicleService.SpawnDepot(player: Player, cframe: CFrame)
 	if not ok then
 		warn("[VehicleService] depot SetNetworkOwner failed for " .. player.Name .. ": " .. tostring(err))
 	end
-	depotEntries[player] = { player = player, model = model, chassis = chassis, vehicleId = vehicleId }
+	local depot: DepotEntry = { player = player, model = model, chassis = chassis, vehicleId = vehicleId }
+	depotEntries[player] = depot
+	applyTrail(depot) -- the depot is where you try a new trail out
 	Remotes.Get("VehicleAssigned"):FireClient(player, model)
 end
 
@@ -606,13 +608,21 @@ function VehicleService.Init()
 			if entry then
 				applyTrail(entry)
 			end
+			local depot = depotEntries[player]
+			if depot then
+				applyTrail(depot)
+			end
 		end)
 	end)
-	-- a trail equipped in the Garage shows on the car right away
+	-- a trail equipped in the Garage shows on the car right away (in a race or in the depot)
 	DataService.OnEquipped:Connect(function(player: Player)
 		local entry = entries[player]
 		if entry then
 			applyTrail(entry)
+		end
+		local depot = depotEntries[player]
+		if depot then
+			applyTrail(depot)
 		end
 	end)
 	-- A garage change while the car is parked (lobby, pit stop) swaps it right away; mid-round it waits for the grid.

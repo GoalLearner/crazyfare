@@ -50,6 +50,11 @@ local ordered: { Service } = {
 	require(Services.BadgesService),
 	require(Services.RoundService),
 }
+if game:GetService("RunService"):IsStudio() then
+	-- Studio-only soak test (Config.Soak), before RoundService so its Start runs first
+	local beforeRound = #ordered
+	table.insert(ordered, beforeRound, require(script.Parent.Studio.SoakMonitor))
+end
 
 for _, service in ordered do
 	service.Init()

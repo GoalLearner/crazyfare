@@ -43,6 +43,16 @@ function MapVoteService.Open()
 	broadcast()
 end
 
+-- RoundService: the podium fell back to the depot (too few to play on): the vote is over and its votes are dropped.
+function MapVoteService.Close()
+	if not open and next(votes) == nil then
+		return
+	end
+	open = false
+	table.clear(votes)
+	broadcast()
+end
+
 -- RoundService: the next match is starting. Returns the map to load (`default` = the rotation's pick).
 function MapVoteService.TakeWinner(default: string): string
 	local wasOpen = open

@@ -6,10 +6,13 @@
 --
 -- Driving: server physics like traffic. Each bot chases a "rabbit" point along a route over the road grid (the center
 -- line, nudged right when another bot comes the other way), slowing for corners, for cars and people in the road ahead
--- and for crossing traffic at junctions, then pulls over next to its passenger or drop-off and stops.
+-- and for crossing traffic at junctions, then pulls over next to its passenger or drop-off and stops. Like a player it
+-- cuts off the road whenever a straight line to a later point of the route is clear (corners, lots, parks), and is
+-- slowed by sand like everyone.
 -- Brain: go for the passenger worth the most per second of driving (Golden Fares above all), think again when they're
 -- taken, deliver, repeat; use items when there's a reason to. Every number is Config.Bots.
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -54,12 +57,18 @@ type Bot = {
 	airY: number, -- thrown into the air (a hydrant): height above the ride height...
 	airVel: number, -- ...and its vertical speed
 	hopReadyAt: number, -- server time its hop is ready again (Config.Chaos.Hop)
+	shortcutAt: number, -- os.clock(): look for a shortcut again at this time
+	surfaceMult: number, -- the ground under it: sand slows, the boardwalk speeds (the map's Gimmicks)
+	blockedFor: number, -- seconds held at a standstill by a car in its way
+	dodgeUntil: number, -- os.clock(): swinging out around that car until then
+	dodgeSide: number, -- 1 = right, -1 = left (flips each time it has to dodge again)
 }
 
 local bots: { [Player]: Bot } = {}
 local order: { Player } = {} -- oldest first; the newest leaves first
 local rng = Random.new()
 local groundParams: RaycastParams? = nil
+local solidParams: RaycastParams? = nil -- the map's solid parts, for shortcut clearance
 local blockers: { { position: Vector3, velocity: Vector3, clearance: number } } = {} -- world-event obstacles
 local speedMult = 1 -- the round's weather (WeatherService)
 
@@ -206,6 +215,7 @@ local function setRoute(bot: Bot, target: Vector3)
 	end
 	bot.route = route
 	bot.stoppedSince = nil
+	bot.shortcutAt = 0 -- look for a way across right away
 end
 
 local function remaining(bot: Bot): number
@@ -381,15 +391,87 @@ local function attachMovers(bot: Bot, entry: VehicleService.VehicleEntry)
 	bot.orient = orient
 end
 
-local function groundY(at: Vector3, fromY: number): number
+local function groundHit(at: Vector3, fromY: number): RaycastResult?
 	local params = groundParams
 	if not params then
 		params = MapService.StaticRaycastParams()
 		groundParams = params
 	end
 	-- From just above the car, so lamp arms and signs over the road never read as ground (ramps still do).
-	local hit = workspace:Raycast(Vector3.new(at.X, fromY + 6, at.Z), Vector3.new(0, -60, 0), params)
+	return workspace:Raycast(Vector3.new(at.X, fromY + 6, at.Z), Vector3.new(0, -60, 0), params)
+end
+
+local function groundY(at: Vector3, fromY: number): number
+	local hit = groundHit(at, fromY)
 	return if hit then hit.Position.Y else 0
+end
+
+-- Whether a car can drive straight from `a` to `b` (flat points): nothing solid in the way at car height, and ground
+-- all along with no big step and no water.
+local function clearLine(a: Vector3, b: Vector3, fromY: number): boolean
+	local cfg = Config.Bots
+	local delta = b - a
+	local length = delta.Magnitude
+	if length < 1 then
+		return true
+	elseif length > cfg.ShortcutMax then
+		return false
+	end
+	local params = solidParams
+	if not params then
+		local fresh = MapService.StaticRaycastParams()
+		fresh.RespectCanCollide = true -- decoration a car drives through doesn't block
+		solidParams = fresh
+		params = fresh
+	end
+	local baseY = groundY(a, fromY)
+	local dir = delta.Unit
+	local lift = baseY + cfg.ShortcutLift
+	local start = CFrame.lookAt(Vector3.new(a.X, lift, a.Z), Vector3.new(b.X, lift, b.Z))
+	local box = Vector3.new(cfg.ShortcutHalfWidth * 2, cfg.ShortcutHalfHeight * 2, 1)
+	if workspace:Blockcast(start, box, dir * length, params) then
+		return false
+	end
+	local steps = math.ceil(length / cfg.ShortcutStep)
+	for i = 1, steps do
+		local hit = groundHit(a + dir * math.min(i * cfg.ShortcutStep, length), baseY)
+		if not hit or CollectionService:HasTag(hit.Instance, Config.Tags.Water) or math.abs(hit.Position.Y - baseY) > cfg.ShortcutMaxRise then
+			return false
+		end
+		-- sand slows a car down: across it is no shortcut (the road around is quicker)
+		if CollectionService:HasTag(hit.Instance, Config.Tags.Sand) then
+			return false
+		end
+	end
+	return true
+end
+
+-- Cut straight to the farthest point of the route in reach (the stop at the end first), dropping the corners before it.
+local function takeShortcut(bot: Bot, fromY: number)
+	local route = bot.route
+	for k = #route, 2, -1 do
+		if clearLine(bot.rabbit, route[k], fromY) then
+			for _ = 1, k - 1 do
+				table.remove(route, 1)
+			end
+			return
+		end
+	end
+end
+
+-- Sand slows and the boardwalk speeds a bot like any car (the current map's Gimmicks).
+local function surfaceMult(hit: RaycastResult?): number
+	if not hit then
+		return 1
+	end
+	local mapCfg = (Config.Map :: any)[MapService.GetCurrentMap()]
+	local gimmicks: { [string]: number } = if typeof(mapCfg) == "table" and mapCfg.Gimmicks then mapCfg.Gimmicks else {}
+	if CollectionService:HasTag(hit.Instance, Config.Tags.Sand) then
+		return gimmicks.SandSlowMult or 1
+	elseif CollectionService:HasTag(hit.Instance, Config.Tags.Boardwalk) then
+		return gimmicks.BoardwalkSpeedMult or 1
+	end
+	return 1
 end
 
 -- The next junction ahead on the current road, and how far away it is.
@@ -409,15 +491,17 @@ local function junctionAhead(bot: Bot): (Vector3?, number)
 	return best, bestDist
 end
 
--- How fast the bot may go right now: cruise, corners, the stop at the end, things in the road, crossing traffic.
-local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: number, traffic: { { position: Vector3, dir: Vector3, speed: number, halfLength: number } }, crossers: { Vector3 }): number
+-- How fast the bot may go right now: cruise, corners, the stop at the end, things in the road, crossing traffic. Also
+-- whether a car in its way is what's holding it to a standstill (drive goes around after a while).
+local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: number, traffic: { { position: Vector3, dir: Vector3, speed: number, halfLength: number } }, crossers: { Vector3 }): (number, boolean)
 	local cfg = Config.Bots
 	local brake = cfg.Brake
 	local boost = if now < entry.boostUntil then Config.Items.LemonNitro.SpeedMult else 1
-	local limit = cfg.CruiseSpeed * bot.skill * boost * speedMult
+	local limit = cfg.CruiseSpeed * bot.skill * boost * speedMult * bot.surfaceMult
 	if #bot.route == 0 then
-		return 0
+		return 0, false
 	end
+	local carInWay = false
 	-- the stop at the end of the route
 	limit = math.min(limit, math.sqrt(2 * brake * remaining(bot)))
 	-- a corner at the next waypoint
@@ -433,21 +517,27 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 	-- cars (players, other bots) and people in the road ahead, measured from the line the bot is actually on (so two
 	-- bots keeping right to pass don't see each other as in the way)
 	local lane = bot.rabbit + rightOf(bot.dir) * bot.lateral
-	local function obstacle(position: Vector3, alongSpeed: number, clearance: number)
+	local function obstacle(position: Vector3, alongSpeed: number, clearance: number): boolean
 		local rel = flat(position) - lane
 		local ahead = rel:Dot(bot.dir)
 		if ahead <= 0 or ahead > cfg.FollowDistance then
-			return
+			return false
 		end
 		local side = (rel - bot.dir * ahead).Magnitude
-		if side < clearance then
-			limit = math.min(limit, math.max(0, alongSpeed) + math.sqrt(2 * brake * math.max(ahead - cfg.FollowGap, 0)))
+		if side >= clearance then
+			return false
 		end
+		local cap = math.max(0, alongSpeed) + math.sqrt(2 * brake * math.max(ahead - cfg.FollowGap, 0))
+		limit = math.min(limit, cap)
+		return cap < 1
 	end
 	for other, otherEntry in VehicleService.GetAll() do
 		if other ~= bot.driver then
 			local v = otherEntry.chassis.AssemblyLinearVelocity
-			obstacle(otherEntry.chassis.Position, flat(v):Dot(bot.dir), cfg.CarClearance)
+			local clearance = if Racers.IsBot(other) then cfg.CarClearance else cfg.PlayerCarClearance
+			if obstacle(otherEntry.chassis.Position, flat(v):Dot(bot.dir), clearance) then
+				carInWay = true
+			end
 		end
 	end
 	for _, person in crossers do
@@ -456,9 +546,11 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 	for _, blocker in blockers do
 		obstacle(blocker.position, flat(blocker.velocity):Dot(bot.dir), blocker.clearance)
 	end
-	-- crossing traffic inside the next junction: wait for it
+	-- crossing traffic inside the next junction: wait for it (only on a road and heading along it, not cutting across)
+	local _, _, offCenter = nearestRoad(bot.rabbit)
+	local alongRoad = offCenter <= cfg.OnRoadReach and math.max(math.abs(bot.dir.X), math.abs(bot.dir.Z)) > 0.9
 	local junction, toJunction = junctionAhead(bot)
-	if junction and toJunction > 0 and toJunction < cfg.JunctionLook then
+	if alongRoad and junction and toJunction > 0 and toJunction < cfg.JunctionLook then
 		for _, car in traffic do
 			local rel = flat(car.position) - junction
 			local box = cfg.JunctionBox + car.halfLength
@@ -468,7 +560,7 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 			end
 		end
 	end
-	return limit
+	return limit, carInWay and limit < 1
 end
 
 -- Another bot coming the other way on the same road: both keep right.
@@ -585,7 +677,19 @@ local function drive(bot: Bot, entry: VehicleService.VehicleEntry, dt: number, n
 		end
 	end
 
-	local target = allowedSpeed(bot, entry, now, traffic, crossers)
+	bot.surfaceMult = surfaceMult(groundHit(bot.rabbit, chassis.Position.Y))
+	local target, carInWay = allowedSpeed(bot, entry, now, traffic, crossers)
+	-- a car parked in its way (or nose to nose with another bot): after a moment, swing out and go around it
+	if carInWay and bot.speed < 1 then
+		bot.blockedFor += dt
+		if bot.blockedFor > cfg.BlockedSeconds then
+			bot.blockedFor = 0
+			bot.dodgeSide = -bot.dodgeSide
+			bot.dodgeUntil = os.clock() + cfg.DodgeSeconds
+		end
+	else
+		bot.blockedFor = 0
+	end
 	if target > bot.speed then
 		bot.speed = math.min(target, bot.speed + cfg.Accel * dt)
 	else
@@ -593,7 +697,7 @@ local function drive(bot: Bot, entry: VehicleService.VehicleEntry, dt: number, n
 	end
 
 	-- Held up (a car parked in its way, a wall it got shoved into): the target waits; too long and it's put back.
-	local lateralGoal = if remaining(bot) > 25 then wantedLateral(bot) else 0
+	local lateralGoal = if os.clock() < bot.dodgeUntil then bot.dodgeSide * cfg.DodgeShift elseif remaining(bot) > 25 then wantedLateral(bot) else 0
 	bot.lateral += (lateralGoal - bot.lateral) * math.clamp(dt * 4, 0, 1)
 	local wanted = bot.rabbit + rightOf(bot.dir) * bot.lateral
 	local lag = (wanted - flat(chassis.Position)).Magnitude
@@ -645,6 +749,10 @@ local function step(dt: number)
 			bot.thinkAt = clock + Config.Bots.ThinkSeconds / bot.skill
 			think(bot, now)
 		end
+		if not entry.chassis.Anchored and clock >= bot.shortcutAt and #bot.route >= 2 then
+			bot.shortcutAt = clock + Config.Bots.ShortcutSeconds / (bot.skill * bot.skill)
+			takeShortcut(bot, entry.chassis.Position.Y)
+		end
 		drive(bot, entry, dt, now, traffic, crossers)
 	end
 end
@@ -690,6 +798,11 @@ local function addBot()
 		airY = 0,
 		airVel = 0,
 		hopReadyAt = 0,
+		shortcutAt = 0,
+		surfaceMult = 1,
+		blockedFor = 0,
+		dodgeUntil = 0,
+		dodgeSide = -1, -- the first dodge flips it to the right (keep right)
 	}
 	bots[driver] = bot
 	table.insert(order, driver)
@@ -796,6 +909,7 @@ function BotService.Init()
 	PhysicsService:CollisionGroupSetCollidable(groups.Bots, groups.Default, false)
 	MapService.OnMapLoaded:Connect(function()
 		groundParams = nil
+		solidParams = nil
 	end)
 end
 

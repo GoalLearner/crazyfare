@@ -689,7 +689,9 @@ Config.Bots = {
 	Skills = { 0.8, 0.9, 1 }, -- one per bot in turn: scales cruise speed and how quickly it thinks
 	VehicleId = "YellowCab",
 	-- Driving (studs, studs/s, studs/s^2). The Yellow Cab tops out at 90, so a good driver outruns them.
-	CruiseSpeed = 36, -- tuned 2026-10-27: at 52 the best bot made the $75 quota in 1:50, faster than the owner
+	-- tuned 2026-10-27: at 52 the best bot made the $75 quota in 1:50, faster than the owner. 2026-10-28: shortcuts made
+	-- bots ~30% quicker to the quota at 36 (6-bot soak: 136 s -> 94 s a round), so 30 brings the pace back
+	CruiseSpeed = 30,
 	CornerSpeed = 16,
 	Accel = 30,
 	Brake = 55, -- gentler than the crash watch's line, so a bot braking never reads as a crash
@@ -702,6 +704,7 @@ Config.Bots = {
 	MaxCurbOffset = 7.5, -- but never farther off the center line than this (the car's side stays on the road, off the sidewalk)
 	FollowDistance = 32, -- cars and people in the road this far ahead slow it down
 	CarClearance = 5.6, -- a car whose center is closer than this to the bot's line counts as in the way
+	PlayerCarClearance = 7.5, -- wider for a person's car (two half-widths and a corner): a bot pushes hard, so it never brushes one
 	PersonClearance = 7, -- the same for people crossing
 	FollowGap = 13, -- stops this far behind what's in the way
 	JunctionLook = 34, -- watches the next junction from this far out
@@ -709,6 +712,23 @@ Config.Bots = {
 	StuckLag = 10, -- the car this far behind its target (something in the way): the target waits
 	StuckSeconds = 5, -- held up this long: the car is put back on its route
 	SpinRate = 7, -- radians/s while a Banana spins it
+	-- Shortcuts (owner 2026-10-28: "when I play I drive off the streets to reach destinations faster"): every so often a
+	-- bot looks for the farthest point of its route (the stop at the end first) it can reach in a straight line, with
+	-- nothing solid in the way at car height and ground all along (no big step, no water, no slow sand), and cuts straight there:
+	-- corners, open lots, parks and the plaza. Better drivers look more often (ShortcutSeconds / skill^2).
+	ShortcutSeconds = 0.7,
+	ShortcutMax = 260, -- studs: the longest straight cut it considers
+	ShortcutLift = 2.5, -- studs above the ground where the clearance box flies (over curbs, sidewalks and humps)
+	ShortcutHalfHeight = 1,
+	ShortcutHalfWidth = 3.2, -- half the car's width, plus a little
+	ShortcutStep = 10, -- studs between ground checks along a cut
+	ShortcutMaxRise = 3, -- studs the ground may rise or fall along a cut (ramps and roofs are not shortcuts)
+	OnRoadReach = 12, -- within this of a road's center line it's on the road (crossing traffic at junctions matters)
+	-- A car stopped in its way (another bot nose to nose after a shortcut, a parked player) for BlockedSeconds: it swings
+	-- DodgeShift studs to one side for DodgeSeconds and goes around (the other side next time, if that didn't work).
+	BlockedSeconds = 2,
+	DodgeSeconds = 3,
+	DodgeShift = 8.5, -- clear of PlayerCarClearance
 	-- Brain
 	ThinkSeconds = 0.8, -- base time between decisions (divided by skill)
 	RouteFactor = 1.35, -- straight-line distance x this ~ the drive on the grid
@@ -717,8 +737,8 @@ Config.Bots = {
 	GoldenBias = 1.5, -- a Golden Fare looks this much better again, on top of its pay
 	Jitter = 0.15, -- +/- randomness on how good each passenger looks, so bots don't all pick the same
 	ClaimWait = 3, -- seconds stopped at a curb without boarding: try another passenger
-	RestMin = 3, -- seconds a bot sits after a delivery or a bail before picking its next passenger
-	RestMax = 6,
+	RestMin = 1, -- seconds a bot sits after a delivery or a bail before picking its next passenger (players don't wait long)
+	RestMax = 2.5,
 	Choices = 3, -- picks one of its best few passengers (better ones likelier), not always the very best
 	TipMult = 0.5, -- passengers tip bots half (they see the whole map and never crash; humans earn stunt cash instead)
 	ItemUseChance = 0.5, -- chance per decision to use an item when there's a reason to
@@ -1330,6 +1350,7 @@ Config.Streak = {
 		{ Id = "Day7", Kind = "Trail", Rarity = "Epic", Ref = "OnFire" },
 	} :: { Prize },
 	ClaimDelay = 3, -- seconds after a join (lets the client boot)
+	RolloverCheckSeconds = 30, -- how often the server looks for 00:00 UTC passing (players still in claim the new day)
 	Title = "DAILY STREAK",
 	StreakLine = "DAY %d",
 	DayLabel = "DAY %d",
@@ -1341,6 +1362,23 @@ Config.Streak = {
 	TileWidth = 84,
 	TileHeight = 96,
 	AutoCloseSeconds = 15,
+}
+
+-- Studio-only soak test (src/server/Studio/SoakMonitor): with the workspace attribute set before Play, bots fill every
+-- seat with nobody driving, and the Output (and the Studio log file) gets "[Soak]" lines for phases, rounds, matches,
+-- odd cars and server health, for long unattended runs.
+Config.Soak = {
+	Attribute = "Soak",
+	PollSeconds = 0.25, -- how often the round phase is read
+	SampleSeconds = 1, -- how often cars are checked while racing
+	StuckSeconds = 15, -- a car that moved less than StuckStuds in this long while racing
+	StuckStuds = 6,
+	FlipUpY = 0.2, -- chassis up vector's Y below this...
+	FlipSeconds = 5, -- ...for this long
+	FallBelow = -40, -- studs: under the map
+	HitchSeconds = 0.05, -- a server frame longer than this counts as a hitch
+	BigHitchSeconds = 0.25, -- and one longer than this is printed with the phase it happened in
+	PhaseSlack = 10, -- seconds past a phase's planned end before it's reported as overrunning
 }
 
 -- The daily rotating shop (checklist 2026-10-28): each UTC day Count cosmetics are for sale for Gems in the SHOP's

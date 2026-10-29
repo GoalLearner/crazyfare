@@ -533,7 +533,23 @@ function PassengerService.SpawnWeirdo(owner: Player, cardId: string): Npc?
 		end
 	end
 	if #free == 0 then
-		return nil
+		-- a full grid keeps every curb busy: the weirdo takes a plain waiting passenger's place instead
+		local plain: { Npc } = {}
+		for _, other in npcs do
+			if other.state == 0 and not other.golden and not other.rider and not other.card and not other.ticking and other.riders == 1 then
+				table.insert(plain, other)
+			end
+		end
+		if #plain == 0 then
+			return nil
+		end
+		local replaced = plain[rng:NextInteger(1, #plain)]
+		local point = MapService.GetPickup(replaced.pickupIndex)
+		destroyNpc(replaced)
+		if not point then
+			return nil
+		end
+		table.insert(free, point)
 	end
 	local point = free[rng:NextInteger(1, #free)]
 	local id = nextId

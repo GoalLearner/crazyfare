@@ -26,6 +26,14 @@ local Invite = require(script.Parent.Parent.Invite)
 
 local HudController = {}
 
+-- the podium's layout (px): rows start under the title, then STAY IN DEPOT / INVITE (match end), then the footer
+local PODIUM_WIDTH = 420
+local PODIUM_TOP = 66
+local PODIUM_ROW = 34
+local PODIUM_GAP = 4
+local PODIUM_BUTTONS = 46
+local PODIUM_FOOTER = 34
+
 local screen: ScreenGui
 local cashBox: Frame -- TOTAL, quota, gems: drivers only
 local centerBox: Frame -- combo, boost, speed: drivers only
@@ -498,13 +506,13 @@ local function build()
 	subMessage = UI.Label({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.36), Size = UDim2.fromScale(0.5, 0.04), Text = "", TextColor3 = UI.Muted, Font = UI.FontMedium, Visible = false }, screen)
 
 	-- Podium
-	podium = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(420, 320), BackgroundTransparency = 0.1, Visible = false }, screen)
+	podium = UI.Frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(PODIUM_WIDTH, 320), BackgroundTransparency = 0.1, Visible = false }, screen)
 	UI.Corner(16, podium)
 	podiumTitle = UI.Label({ Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 40), Text = "ROUND OVER" }, podium)
 	-- Match end: what your Gems got on top (a streak of matches, a friend in the server, a live event)
 	podiumBonus = UI.Label({ Position = UDim2.fromOffset(0, 50), Size = UDim2.new(1, 0, 0, 14), Text = "", TextColor3 = UI.Accent, Font = UI.FontMedium, Visible = false }, podium)
-	podiumRows = UI.Frame({ Position = UDim2.fromOffset(20, 66), Size = UDim2.new(1, -40, 1, -110), BackgroundTransparency = 1 }, podium)
-	UI.New("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, podiumRows)
+	podiumRows = UI.Frame({ Position = UDim2.fromOffset(20, PODIUM_TOP), Size = UDim2.new(1, -40, 1, -110), BackgroundTransparency = 1 }, podium)
+	UI.New("UIListLayout", { Padding = UDim.new(0, PODIUM_GAP), SortOrder = Enum.SortOrder.LayoutOrder }, podiumRows)
 	podiumFooter = UI.Label({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.new(1, -40, 0, 22), TextColor3 = UI.Muted, Font = UI.FontMedium, Text = "" }, podium)
 	stayButton = UI.New("TextButton", {
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -609,23 +617,27 @@ local function bonusText(results: { Types.PodiumEntry }): string
 	return table.concat(parts, "  \u{00B7}  ")
 end
 
-local function fillPodium(results: { Types.PodiumEntry })
+-- The podium grows with its rows (a full grid is 6), so STAY IN DEPOT, INVITE and the footer sit below the last one.
+local function fillPodium(results: { Types.PodiumEntry }, withButtons: boolean)
 	for _, child in podiumRows:GetChildren() do
 		if child:IsA("Frame") then
 			child:Destroy()
 		end
 	end
 	for i, entry in results do
-		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, 36), LayoutOrder = i, BackgroundTransparency = if i == 1 then 0.2 else 0.6, BackgroundColor3 = if i == 1 then Color3.fromRGB(60, 50, 20) else UI.Panel }, podiumRows)
+		local row = UI.Frame({ Size = UDim2.new(1, 0, 0, PODIUM_ROW), LayoutOrder = i, BackgroundTransparency = if i == 1 then 0.2 else 0.6, BackgroundColor3 = if i == 1 then Color3.fromRGB(60, 50, 20) else UI.Panel }, podiumRows)
 		UI.Corner(8, row)
-		UI.Label({ Position = UDim2.fromOffset(10, 4), Size = UDim2.fromOffset(30, 28), Text = tostring(i), TextColor3 = if i == 1 then UI.Warn else UI.Muted }, row)
-		UI.Label({ Position = UDim2.fromOffset(48, 4), Size = UDim2.fromOffset(110, 28), Text = if entry.bot then "BOT " .. entry.name else entry.name, TextColor3 = if entry.bot then UI.Muted else UI.White, TextXAlignment = Enum.TextXAlignment.Left }, row)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 4), Size = UDim2.fromOffset(70, 28), Text = UI.Money(entry.cash), TextColor3 = UI.Cash, TextXAlignment = Enum.TextXAlignment.Right }, row)
-		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -86, 0, 8), Size = UDim2.fromOffset(60, 20), Text = string.format("%d fares", entry.fares), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		UI.Label({ Position = UDim2.fromOffset(10, 3), Size = UDim2.fromOffset(30, 28), Text = tostring(i), TextColor3 = if i == 1 then UI.Warn else UI.Muted }, row)
+		UI.Label({ Position = UDim2.fromOffset(48, 3), Size = UDim2.fromOffset(110, 28), Text = if entry.bot then "BOT " .. entry.name else entry.name, TextColor3 = if entry.bot then UI.Muted else UI.White, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 3), Size = UDim2.fromOffset(70, 28), Text = UI.Money(entry.cash), TextColor3 = UI.Cash, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -86, 0, 7), Size = UDim2.fromOffset(60, 20), Text = string.format("%d fares", entry.fares), TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		if entry.gems then
-			UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -152, 0, 8), Size = UDim2.fromOffset(70, 20), Text = string.format("+%d gems", entry.gems), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
+			UI.Label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -152, 0, 7), Size = UDim2.fromOffset(70, 20), Text = string.format("+%d gems", entry.gems), TextColor3 = UI.Accent, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		end
 	end
+	local rowsHeight = #results * PODIUM_ROW + math.max(0, #results - 1) * PODIUM_GAP
+	podiumRows.Size = UDim2.new(1, -40, 0, rowsHeight)
+	podium.Size = UDim2.fromOffset(PODIUM_WIDTH, PODIUM_TOP + rowsHeight + PODIUM_GAP * 2 + (if withButtons then PODIUM_BUTTONS else 0) + PODIUM_FOOTER)
 end
 
 local function onRound(payload: Types.RoundStatePayload)
@@ -641,7 +653,7 @@ local function onRound(payload: Types.RoundStatePayload)
 	local phaseChanged = payload.phase ~= lastPhase
 	lastPhase = payload.phase
 	if (payload.phase == "RoundEnd" or isMatchEnd) and payload.results then
-		fillPodium(payload.results)
+		fillPodium(payload.results, isMatchEnd and not arcade)
 		podiumTitle.Text = if arcade and isMatchEnd then Config.Arcade.Title elseif isMatchEnd then "MATCH OVER" else string.format("ROUND %d OVER", payload.round)
 		stayButton.Visible = isMatchEnd and not arcade
 		local bonusLine = if isMatchEnd and not arcade then bonusText(payload.results) else ""

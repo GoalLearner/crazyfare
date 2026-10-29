@@ -333,6 +333,7 @@ local function beginWaiting()
 	PassengerService.ClearAll()
 	BotService.RemoveAll()
 	MatchController.AllToDepot()
+	MapVoteService.Close() -- a podium's vote doesn't pick the map for a match that starts who knows when
 	WeatherService.Set("Clear")
 	setPhase("Waiting", 0)
 end
