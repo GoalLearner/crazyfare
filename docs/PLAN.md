@@ -406,6 +406,12 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [ ] Not seen live: passenger perks (Phantom HP/damage/immunity/shield, triple hunter: code-reviewed), horn audio, the camera fade on a palm
 - [x] **PUBLISHED as v20 2026-10-28 11:27 PM PT** (commit e392711, owner's go "Publish v20"; Creator Hub shows 20 as the published version)
 
+## After v20 (owner 2026-10-29: "do what you can now")
+- [x] Daily shop items for Robux too (commit dc6b939): one developer product per rarity in `Config.Monetization.DailyProducts` (Common 25, Rare 59, Epic 129 R$; created in Creator Hub, managed pricing off). `DailyBuy(id, true)` remembers the pick before Roblox's prompt; the receipt hands it over (source `DailyRobux`), or that rarity's Gem price if there's no pick or it's already yours (`FallbackLine`). Studio test purchase: "Daily Shop: Common Item" 25 bought Euro Beep for Robux
+- [x] Music mute button (commit dc6b939): a speaker left of the minimap on every screen (title included); silences the music and brings back the last level (`Config.Options.Mute`). Owner report fixed too: the horn hint ("Tap ♪ to hear it") was cut off by the new R$ button
+- [x] Fresh thumbnails from the current art (`docs/launch/thumb-5..8`, 1920 x 1080): the Phantom in the city ("CHASE THE PHANTOM"), a cab at a golden fare's beam ("GOLDEN FARES PAY BIG"), a cab with a passenger on the Beach ("THE BEACH IS OPEN"), a busy Beach crossing ("6 DRIVERS. 1 QUOTA."). Taken in a Studio test with the HUD and name tags hidden and a scripted camera, then the logo added. Not uploaded: the owner picks which replace thumb-1..4 on the game page
+- [ ] Not published: ships as v21 on the owner's go
+
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
 - [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)
