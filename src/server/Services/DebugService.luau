@@ -18,6 +18,7 @@ local WeatherService = require(script.Parent.WeatherService)
 local SessionService = require(script.Parent.SessionService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local DropService = require(script.Parent.DropService)
+local ProgressionService = require(script.Parent.ProgressionService)
 
 local DebugService = {}
 
@@ -84,6 +85,12 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 	AddGems = function(player, arg)
 		if typeof(arg) == "number" then
 			DataService.AddGems(player, math.round(arg), "Gameplay", "Debug")
+		end
+	end,
+	-- XP as if from matches: level-ups, their notices and level rewards (Config.Levels)
+	AddXp = function(player, arg)
+		if typeof(arg) == "number" then
+			ProgressionService.AddXp(player, math.round(arg))
 		end
 	end,
 	Bail = function(player)

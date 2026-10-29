@@ -45,6 +45,7 @@ export type ProfileData = {
 	WeirdoQueue: string,
 	OnboardingStep: number,
 	BadgesGiven: { [string]: boolean },
+	LevelRewardsTo: number,
 }
 
 local DataService = {}

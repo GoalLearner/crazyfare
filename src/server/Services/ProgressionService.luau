@@ -14,6 +14,8 @@ local ProgressionService = {}
 
 local onNotice: Signal.Signal<Player, string> = Signal.new()
 ProgressionService.OnNotice = onNotice -- (player, text) one-shot messages for the HUD
+local onLevelUp: Signal.Signal<Player, number> = Signal.new()
+ProgressionService.OnLevelUp = onLevelUp -- (player, new level), after the LEVEL notice (LevelRewardService)
 
 -- XP needed to go from `level` to `level + 1`.
 function ProgressionService.XpForLevel(level: number): number
@@ -37,6 +39,7 @@ function ProgressionService.AddXp(player: Player, amount: number): boolean
 		player:SetAttribute("Level", d.Level)
 		onNotice:Fire(player, string.format("LEVEL %d", d.Level))
 		Metrics.Level(player, d.Level)
+		onLevelUp:Fire(player, d.Level)
 	end
 	DataService.Sync(player)
 	return leveled

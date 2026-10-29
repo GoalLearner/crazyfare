@@ -195,7 +195,7 @@ Projectiles can also knock tagged Traffic/Prop parts into the road (Phase 2).
 
 ## 9. Retention layer
 
-- Player level (XP per match), badge by name.
+- Player level (XP per match), badge by name. Levels unlock things (Config.Levels): Gems, horns, the Horse at 15, and level-only paints (Bronze 5, Silver 20, Platinum 40, Diamond 75) and trails (Checkered 10, Afterburner 30, Hall of Fame 50, Maxed Out 99). QUESTS shows the next three; the Garage teases the next level paint.
 - Garage shows locked vehicles greyed with prices: goals always visible.
 - Daily quests (3) + weekly quest (1) + login streak, all paying Gems.
 - Leaderboards: weekly (resets Monday), friends, Biggest Tip Ever, Most Passengers Knocked Out, Best Arcade Run. Weekly top 10 gets an exclusive trail.

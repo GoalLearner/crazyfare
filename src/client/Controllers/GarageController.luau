@@ -172,10 +172,34 @@ local function renderPaint(profile: Types.ProfilePayload)
 	end
 	local affordable = profile.gems >= Config.Paint.Price
 	local ownedPaints = if profile.inventory then profile.inventory.Paints or {} else {}
+	-- the next level paint you don't have yet shows locked with its level (Config.Levels)
+	local teaserPaint, teaserLevel = "", 0
+	for _, reward in Config.Levels.Rewards do
+		if reward.Kind == "Paint" and (ownedPaints[reward.Ref or ""] or 0) <= 0 then
+			teaserPaint, teaserLevel = reward.Ref or "", reward.Level
+			break
+		end
+	end
 	for i, entry in Config.Paint.Colors do
 		-- paints won in drops apply free (a check mark); drop-only colors show only once you own them
 		local owned = (ownedPaints[entry.Name] or 0) > 0
 		if entry.DropOnly and not owned then
+			if entry.Name == teaserPaint then
+				local locked = UI.New("TextButton", {
+					Size = UDim2.fromOffset(28, 28),
+					LayoutOrder = i,
+					BackgroundColor3 = entry.Color,
+					BackgroundTransparency = 0.6,
+					BorderSizePixel = 0,
+					Font = UI.Font,
+					TextSize = 9,
+					TextColor3 = UI.White,
+					TextStrokeTransparency = 0.3,
+					Text = string.format(Config.Levels.LockedMark, teaserLevel),
+					AutoButtonColor = false,
+				}, paintRow) :: TextButton
+				UI.Corner(14, locked)
+			end
 			continue
 		end
 		local current = profile.paint == entry.Name
@@ -273,7 +297,11 @@ local function renderTrailsAndHorns(profile: Types.ProfilePayload)
 		hornNames[id] = def.Name
 		hornColors[id] = Config.Drops.Colors[def.Rarity]:Lerp(Color3.new(0, 0, 0), 0.45)
 	end
-	renderCosmetics(trailRow, "Trail", c.TrailOrder, trailNames, trailColors, profile)
+	local trailOrder = table.clone(c.TrailOrder)
+	for _, id in c.LevelTrailOrder do
+		table.insert(trailOrder, id) -- won by leveling (Config.Levels)
+	end
+	renderCosmetics(trailRow, "Trail", trailOrder, trailNames, trailColors, profile)
 	renderCosmetics(hornRow, "Horn", c.HornOrder, hornNames, hornColors, profile)
 end
 

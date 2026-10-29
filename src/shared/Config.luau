@@ -146,6 +146,10 @@ export type EventKindDef = { Name: string, Color: Color3, GoldenChanceMult: numb
 -- One prize in the post-match drop pool (Config.Drops.Pool). Kind: "Gems" (Amount), "Paint" | "Vehicle" (Ref: a
 -- Config.Paint / Config.Vehicles id), "Boost" (Ref: a Config.Items.Pool id: you start next match holding it).
 export type DropEntry = { Id: string, Kind: string, Rarity: string, Weight: number, Amount: number?, Ref: string? }
+-- Anything handed over like a drop prize (a DropEntry or a LevelReward): same kinds, same Ref/Amount rules.
+export type Prize = { Id: string, Kind: string, Rarity: string, Amount: number?, Ref: string? }
+-- Reaching Level hands over this prize once per account (Config.Levels.Rewards). Rarity colors its chip.
+export type LevelReward = { Level: number, Id: string, Kind: string, Rarity: string, Amount: number?, Ref: string? }
 export type TrailDef = { Name: string, Rarity: string, Weight: number, Colors: { Color3 } }
 export type HornDef = { Name: string, Rarity: string, Weight: number, Sound: number, Pitch: number? }
 export type CardDef = { Name: string, Rarity: string, Weight: number, Shirt: Color3, Hat: Color3, Icon: string }
@@ -1151,7 +1155,12 @@ Config.Paint = {
 		{ Name = "Chrome", Color = Color3.fromRGB(205, 210, 220), DropOnly = true, Material = Enum.Material.Metal },
 		{ Name = "Laser", Color = Color3.fromRGB(255, 60, 200), DropOnly = true, Material = Enum.Material.Neon },
 		{ Name = "Gold", Color = Color3.fromRGB(255, 200, 60), DropOnly = true, Material = Enum.Material.Foil },
-	} :: { { Name: string, Color: Color3, DropOnly: boolean?, Material: Enum.Material? } },
+		-- level rewards (Config.Levels): never for sale and never in drops; the Garage teases the next one
+		{ Name = "Bronze", Color = Color3.fromRGB(205, 127, 50), DropOnly = true, Material = Enum.Material.Metal },
+		{ Name = "Silver", Color = Color3.fromRGB(190, 196, 206), DropOnly = true, Material = Enum.Material.Foil },
+		{ Name = "Platinum", Color = Color3.fromRGB(229, 228, 226), DropOnly = true, Material = Enum.Material.DiamondPlate },
+		{ Name = "Diamond", Color = Color3.fromRGB(150, 230, 255), DropOnly = true, Material = Enum.Material.Glass },
+	} ::{ { Name: string, Color: Color3, DropOnly: boolean?, Material: Enum.Material? } },
 	MaterialMark = "\u{2726}", -- on a material paint's swatch in the Garage
 }
 
@@ -1181,7 +1190,13 @@ Config.Cosmetics = {
 				Color3.fromRGB(170, 80, 255),
 			},
 		},
+		-- level rewards (Config.Levels), never in drops (they're not in TrailOrder)
+		Checkered = { Name = "CHECKERED", Rarity = "Epic", Weight = 0, Colors = { Color3.fromRGB(245, 245, 245), Color3.fromRGB(20, 20, 24), Color3.fromRGB(245, 245, 245), Color3.fromRGB(20, 20, 24) } },
+		Afterburner = { Name = "AFTERBURNER", Rarity = "Legendary", Weight = 0, Colors = { Color3.fromRGB(230, 245, 255), Color3.fromRGB(60, 140, 255), Color3.fromRGB(30, 40, 160) } },
+		HallOfFame = { Name = "HALL OF FAME", Rarity = "Legendary", Weight = 0, Colors = { Color3.fromRGB(255, 215, 80), Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 80, 255) } },
+		MaxedOut = { Name = "MAXED OUT", Rarity = "Mythic", Weight = 0, Colors = { Color3.fromRGB(255, 60, 200), Color3.fromRGB(255, 215, 80), Color3.fromRGB(60, 220, 255) } },
 	} :: { [string]: TrailDef },
+	LevelTrailOrder = { "Checkered", "Afterburner", "HallOfFame", "MaxedOut" }, -- after TrailOrder in the Garage
 	-- Roblox-licensed Pro Sound Effects clips from the Creator Store (picked 2026-10-28); only you hear your horn
 	HornOrder = { "Squeaky", "EuroBeep", "Bus", "BigRig", "Kazoo", "ChooChoo", "Ferry" },
 	Horns = {
@@ -1248,6 +1263,36 @@ Config.Progression = {
 	LevelBaseXp = 100, -- XP to go from level 1 to 2
 	LevelStepXp = 60, -- each level needs this much more than the last
 	MaxLevel = 99,
+}
+
+-- Levels that unlock something (checklist 2026-10-28): reaching a level hands over its prize once per account, the way
+-- a drop does (an owned car or horn pays DuplicateGems instead). Accounts already past a level get it on their next
+-- join. Dense early (a reward in each of the first few matches), then a long road. QUESTS shows the next few.
+Config.Levels = {
+	Rewards = {
+		{ Level = 2, Id = "Lv2", Kind = "Gems", Rarity = "Common", Amount = 50 },
+		{ Level = 3, Id = "Lv3", Kind = "Horn", Rarity = "Common", Ref = "Squeaky" },
+		{ Level = 5, Id = "Lv5", Kind = "Paint", Rarity = "Rare", Ref = "Bronze" },
+		{ Level = 7, Id = "Lv7", Kind = "Gems", Rarity = "Rare", Amount = 100 },
+		{ Level = 10, Id = "Lv10", Kind = "Trail", Rarity = "Epic", Ref = "Checkered" },
+		{ Level = 12, Id = "Lv12", Kind = "Horn", Rarity = "Rare", Ref = "Kazoo" },
+		{ Level = 15, Id = "Lv15", Kind = "Vehicle", Rarity = "Epic", Ref = "Horse" },
+		{ Level = 20, Id = "Lv20", Kind = "Paint", Rarity = "Epic", Ref = "Silver" },
+		{ Level = 25, Id = "Lv25", Kind = "Gems", Rarity = "Epic", Amount = 300 },
+		{ Level = 30, Id = "Lv30", Kind = "Trail", Rarity = "Legendary", Ref = "Afterburner" },
+		{ Level = 40, Id = "Lv40", Kind = "Paint", Rarity = "Legendary", Ref = "Platinum" },
+		{ Level = 50, Id = "Lv50", Kind = "Trail", Rarity = "Legendary", Ref = "HallOfFame" },
+		{ Level = 75, Id = "Lv75", Kind = "Paint", Rarity = "Mythic", Ref = "Diamond" },
+		{ Level = 99, Id = "Lv99", Kind = "Trail", Rarity = "Mythic", Ref = "MaxedOut" },
+	} :: { LevelReward }, -- in level order
+	CatchUpDelay = 4, -- seconds after a join before old levels pay out (after the streak toast)
+	Notice = "LEVEL %d  %s UNLOCKED!",
+	DuplicateNotice = "LEVEL %d  +%d GEMS (%s WAS ALREADY YOURS)",
+	CatchUpNotice = "%d LEVEL REWARDS UNLOCKED!",
+	NextCount = 3, -- upcoming rewards shown in QUESTS
+	NextLine = "LV %d",
+	ChipWidth = 140,
+	LockedMark = "LV%d", -- on the Garage's next level paint
 }
 
 -- Quests: three daily (reset at 00:00 UTC) and one weekly (reset Monday 00:00 UTC), paying Gems on completion.
@@ -1868,6 +1913,7 @@ Config.Data = {
 		WeirdoQueue = "", -- a new card's weirdo, spawned once in your next round as a bonus fare ("" = none)
 		OnboardingStep = 0, -- the furthest new-player funnel step logged for this account (Config.Metrics.Onboarding)
 		BadgesGiven = {} :: { [string]: boolean }, -- Config.Badges keys already sent to Roblox for this account
+		LevelRewardsTo = 1, -- Config.Levels rewards up to this level are handed over
 		PhantomSerial = 0, -- your Phantom's number among all owners (0 = none yet)
 		ReferredBy = 0, -- UserId of the friend whose invite brought this player (0 = none)
 		ReferralsPaid = 0, -- invites of theirs that have paid out (Config.Session.Referral.MaxPerInviter)

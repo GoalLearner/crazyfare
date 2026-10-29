@@ -1,11 +1,12 @@
 --!strict
--- The Progress panel: level and XP, login streak, daily and weekly quests, and the four leaderboards.
+-- The Progress panel: level and XP, the next level rewards, login streak, daily and weekly quests, and the leaderboards.
 -- Opens from a button under the garage button whenever a round is not running.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Prizes = require(Shared:WaitForChild("Prizes"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
@@ -19,6 +20,7 @@ local levelLabel: TextLabel
 local xpBar: UI.Bar
 local xpLabel: TextLabel
 local streakLabel: TextLabel
+local nextFrame: Frame
 local questList: Frame
 local questFooter: TextLabel
 local boardsFrame: Frame
@@ -114,12 +116,35 @@ local function renderBoards(boards: Types.LeaderboardPayload)
 	end
 end
 
+-- The next few level rewards (Config.Levels), one chip each in its rarity color.
+local function renderNext(level: number)
+	for _, child in nextFrame:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local cfg = Config.Levels
+	local shown = 0
+	for _, reward in cfg.Rewards do
+		if reward.Level <= level or shown >= cfg.NextCount then
+			continue
+		end
+		shown += 1
+		local color = Config.Drops.Colors[reward.Rarity] or UI.Accent
+		local chip = UI.Frame({ Size = UDim2.fromOffset(cfg.ChipWidth, 36), LayoutOrder = shown, BackgroundColor3 = color:Lerp(Color3.new(0, 0, 0), 0.55), BackgroundTransparency = 0.1 }, nextFrame)
+		UI.Corner(8, chip)
+		UI.Label({ Position = UDim2.fromOffset(8, 3), Size = UDim2.new(1, -16, 0, 13), Text = string.format(cfg.NextLine, reward.Level), TextColor3 = color:Lerp(Color3.new(1, 1, 1), 0.35), Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 11 }, chip)
+		UI.Label({ Position = UDim2.fromOffset(8, 16), Size = UDim2.new(1, -16, 0, 17), Text = Prizes.Name(reward), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, chip)
+	end
+end
+
 local function render()
 	local profile = State.profile
 	if profile then
 		levelLabel.Text = string.format("LEVEL %d", profile.level)
 		UI.SetBar(xpBar, if profile.xpToNext > 0 then profile.xpIntoLevel / profile.xpToNext else 0)
 		xpLabel.Text = string.format("%d / %d XP", profile.xpIntoLevel, profile.xpToNext)
+		renderNext(profile.level)
 	end
 	if State.quests then
 		renderQuests(State.quests :: Types.QuestPayload)
@@ -164,6 +189,9 @@ local function build()
 	xpBar = UI.Bar({ Position = UDim2.fromOffset(24, 54), Size = UDim2.fromOffset(300, 10) }, UI.Accent, panel)
 	xpLabel = UI.Label({ Position = UDim2.fromOffset(24, 66), Size = UDim2.fromOffset(300, 16), Text = "", TextColor3 = UI.Muted, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 12 }, panel)
 	streakLabel = UI.Label({ Position = UDim2.fromOffset(340, 22), Size = UDim2.fromOffset(200, 24), Text = "", TextColor3 = UI.Warn, TextXAlignment = Enum.TextXAlignment.Left }, panel)
+	-- under the streak, clear of the close button
+	nextFrame = UI.Frame({ Position = UDim2.fromOffset(340, 50), Size = UDim2.fromOffset(Config.Levels.NextCount * (Config.Levels.ChipWidth + 8), 36), BackgroundTransparency = 1 }, panel)
+	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, nextFrame)
 	local close = UI.New("TextButton", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -16, 0, 16),

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Level Rewards</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#2a7de1; --ok:#2f8f4e; --warn:#b5651d;
+  --common:#8a8f98; --rare:#2a7de1; --epic:#8a3ff0; --legendary:#d98a00; --mythic:#e0306f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#5ea3ff; --ok:#5cc47e; --warn:#f0a35e;
+  --common:#b3b7bf; --rare:#5ea3ff; --epic:#b47dff; --legendary:#ffbf3d; --mythic:#ff6b9a; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#5ea3ff; --ok:#5cc47e; --warn:#f0a35e;
+  --common:#b3b7bf; --rare:#5ea3ff; --epic:#b47dff; --legendary:#ffbf3d; --mythic:#ff6b9a; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 10px; }
+ul { margin:6px 0 0; padding-left:22px; }
+li { margin:4px 0; }
+.table { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:15px; }
+th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+td.num { font-variant-numeric:tabular-nums; }
+.r { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+.Common { background:var(--common); } .Rare { background:var(--rare); } .Epic { background:var(--epic); }
+.Legendary { background:var(--legendary); } .Mythic { background:var(--mythic); }
+.new { font-size:12px; font-weight:600; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 8px; margin-left:6px; }
+.note { color:var(--muted); font-size:14px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Levels now unlock things</h1>
+<p class="sub">October 28, 2026, 6:05 PM PST. Built and tested in Studio, not published yet (it would go out as v19).</p>
+
+<section>
+<h2>What changed</h2>
+<ul>
+<li>Reaching certain levels unlocks a reward right away. The message reads, for example, "LEVEL 10 CHECKERED TRAIL UNLOCKED!"</li>
+<li>QUESTS shows the next three rewards under your level, colored by rarity, so there's always a reason to play one more match.</li>
+<li>The Garage shows the next level paint as a faded swatch marked with its level (for example "LV20").</li>
+<li>Players who are already past a level get its reward the next time they join.</li>
+<li>If you already own the car or horn, you get Gems instead, the same as a duplicate from a crate.</li>
+</ul>
+</section>
+
+<section>
+<h2>The reward road</h2>
+<div class="table">
+<table>
+<thead><tr><th>Level</th><th>Reward</th><th>About how many matches</th></tr></thead>
+<tbody>
+<tr><td class="num">2</td><td><span class="r Common"></span>50 Gems</td><td class="num">1</td></tr>
+<tr><td class="num">3</td><td><span class="r Common"></span>Squeaky horn</td><td class="num">2</td></tr>
+<tr><td class="num">5</td><td><span class="r Rare"></span>Bronze paint (metal)<span class="new">level only</span></td><td class="num">5</td></tr>
+<tr><td class="num">7</td><td><span class="r Rare"></span>100 Gems</td><td class="num">9</td></tr>
+<tr><td class="num">10</td><td><span class="r Epic"></span>Checkered trail<span class="new">level only</span></td><td class="num">18</td></tr>
+<tr><td class="num">12</td><td><span class="r Rare"></span>Kazoo horn</td><td class="num">26</td></tr>
+<tr><td class="num">15</td><td><span class="r Epic"></span>The Horse</td><td class="num">40</td></tr>
+<tr><td class="num">20</td><td><span class="r Epic"></span>Silver paint (foil)<span class="new">level only</span></td><td class="num">72</td></tr>
+<tr><td class="num">25</td><td><span class="r Epic"></span>300 Gems</td><td class="num">110</td></tr>
+<tr><td class="num">30</td><td><span class="r Legendary"></span>Afterburner trail<span class="new">level only</span></td><td class="num">160</td></tr>
+<tr><td class="num">40</td><td><span class="r Legendary"></span>Platinum paint (diamond plate)<span class="new">level only</span></td><td class="num">285</td></tr>
+<tr><td class="num">50</td><td><span class="r Legendary"></span>Hall of Fame trail<span class="new">level only</span></td><td class="num">440</td></tr>
+<tr><td class="num">75</td><td><span class="r Mythic"></span>Diamond paint (glass)<span class="new">level only</span></td><td class="num">1,020</td></tr>
+<tr><td class="num">99</td><td><span class="r Mythic"></span>Maxed Out trail<span class="new">level only</span></td><td class="num">1,730</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Match counts assume about 170 XP per match (a middle finish with 8 fares). The Double XP pass halves them. Level-only paints and trails can't be bought and never come from crates, so owning one shows how far you've played. Every reward and level is a Config line, so they're easy to move.</p>
+</section>
+
+<section>
+<h2>Checked in Studio</h2>
+<ul>
+<li>+1000 XP from level 1 reached level 5 and paid 3 rewards at once ("3 LEVEL REWARDS UNLOCKED!"). Gems went from 5 to 55.</li>
+<li>Another +1000 XP reached level 8: "LEVEL 7 100 GEMS UNLOCKED!" (Gems 155).</li>
+<li>+2000 XP reached level 11: "LEVEL 10 CHECKERED TRAIL UNLOCKED!"</li>
+<li>QUESTS showed LV 12 Kazoo horn, LV 15 Horse, LV 20 Silver paint. The Garage showed Bronze owned, a faded LV20 swatch, Checkered under TRAIL and Squeaky under HORN.</li>
+<li>Bronze paint and the Checkered trail showed on the moving cab.</li>
+<li>Analytics tagged the Gems "Level:Lv2" and "Level:Lv7". The log showed no errors.</li>
+</ul>
+<p class="note">Not checked yet: an older account getting its rewards on join (it runs the same code that paid 3 rewards above), the Gems for a horn or car you already own, and the QUESTS chips on a phone screen.</p>
+</section>
+</main>
+</body>
+</html>

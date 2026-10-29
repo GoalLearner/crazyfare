@@ -38,6 +38,7 @@ local ordered: { Service } = {
 	require(Services.ProgressionService),
 	require(Services.LeaderboardService),
 	require(Services.DropService),
+	require(Services.LevelRewardService),
 	require(Services.QuestService),
 	require(Services.ReplicationService),
 	require(Services.DepotService),

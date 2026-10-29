@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Prizes = require(ReplicatedStorage.Shared.Prizes)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Metrics = require(script.Parent.Parent.Metrics)
@@ -91,39 +92,14 @@ local function findPrize(id: string): Config.DropEntry?
 	return nil
 end
 
--- What the reveal calls it.
-local function prizeName(entry: Config.DropEntry): string
-	local names = cfg.Names
-	if entry.Kind == "Gems" then
-		return string.format(names.Gems, tostring(entry.Amount or 0))
-	elseif entry.Kind == "Paint" then
-		return string.format(names.Paint, string.upper(entry.Ref or ""))
-	elseif entry.Kind == "Vehicle" then
-		local stats = Config.Vehicles.Stats[entry.Ref or ""]
-		return string.format(names.Vehicle, string.upper(if stats then stats.DisplayName else entry.Ref or ""))
-	elseif entry.Kind == "Boost" then
-		local item = Config.Items.Pool[entry.Ref or ""]
-		return string.format(names.Boost, string.upper(if item then item.DisplayName else entry.Ref or ""))
-	elseif entry.Kind == "Trail" then
-		local def = Config.Cosmetics.Trails[entry.Ref or ""]
-		return string.format(names.Trail, if def then def.Name else entry.Ref or "")
-	elseif entry.Kind == "Horn" then
-		local def = Config.Cosmetics.Horns[entry.Ref or ""]
-		return string.format(names.Horn, if def then def.Name else entry.Ref or "")
-	elseif entry.Kind == "Card" then
-		local def = Config.Cosmetics.Cards[entry.Ref or ""]
-		return string.format(names.Card, if def then def.Name else entry.Ref or "")
-	end
-	return entry.Id
-end
-
--- Hands the prize over. Returns the Gems paid instead when it was already yours (0 when new).
-local function grant(player: Player, d: DataService.ProfileData, entry: Config.DropEntry): number
+-- Hands the prize over. Returns the Gems paid instead when it was already yours (0 when new). `source` tags the Gems
+-- in analytics ("Drop", "Level").
+local function grant(player: Player, d: DataService.ProfileData, entry: Config.Prize, source: string): number
 	local ref = entry.Ref or ""
 	local duplicate = false
 	if entry.Kind == "Gems" then
 		local amount = entry.Amount or 0
-		DataService.AddGems(player, amount, "Gameplay", "Drop:" .. entry.Id)
+		DataService.AddGems(player, amount, "Gameplay", source .. ":" .. entry.Id)
 		d.TotalGemsEarned += amount
 	elseif entry.Kind == "Paint" then
 		if (d.Inventory.Paints[ref] or 0) > 0 then
@@ -179,7 +155,7 @@ local function open(player: Player, place: number, forceRarity: string?, forcePr
 		local minIndex = if d.PityCounter + 1 >= cfg.PityEpic then EPIC else 1
 		entry = if forceRarity then rollPrize(forceRarity) else DropService.Roll(tier, minIndex)
 	end
-	local duplicateGems = grant(player, d, entry)
+	local duplicateGems = grant(player, d, entry, "Drop")
 	d.DropCount += 1
 	if rarityIndex(entry.Rarity) >= EPIC then
 		d.PityCounter = 0
@@ -192,7 +168,7 @@ local function open(player: Player, place: number, forceRarity: string?, forcePr
 		tier = tier,
 		rarity = entry.Rarity,
 		prize = entry.Id,
-		name = prizeName(entry),
+		name = Prizes.Name(entry),
 		duplicateGems = if duplicateGems > 0 then duplicateGems else nil,
 		pity = d.PityCounter,
 	}
@@ -215,6 +191,16 @@ local function open(player: Player, place: number, forceRarity: string?, forcePr
 		})
 	end
 	return payload
+end
+
+-- LevelRewardService: a prize outside a crate (no reveal, no pity). Returns the Gems paid instead when it was already
+-- yours (0 when new); the caller syncs the profile.
+function DropService.GrantPrize(player: Player, prize: Config.Prize, source: string): number
+	local d = DataService.Get(player)
+	if not d then
+		return 0
+	end
+	return grant(player, d, prize, source)
 end
 
 -- MatchController.MatchEnd: everyone on the podium who is a person opens a crate by their place.

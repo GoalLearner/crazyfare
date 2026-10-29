@@ -18,6 +18,7 @@ src/
     Signal.luau        tiny typed signal (service-to-service events)
     RateLimiter.luau   per-player token buckets for remotes
     VehicleBuilder.luau parts-built vehicle models (Yellow Cab)
+    Prizes.luau        what a prize is called (drop reveal, level rewards)
   server/              → ServerScriptService.Server
     Main.server.luau   boots services in a fixed order: Init() all, then Start() all
     Services/*.luau    one module per concern (Map, Session, Vehicle, Passenger, Fare, Combo, Item, Store, Drop, Walker, Depot, Match, Round, Replication, Debug...)
