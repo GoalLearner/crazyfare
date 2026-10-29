@@ -1,6 +1,7 @@
 --!strict
--- The shop (pay-to-win, owner decision 2026-10-27): tabs for game passes, Robux cars, Robux upgrades and Gem packs,
--- and the one-time Starter Pack card in a player's first sessions. Everything sold is permanent (the in-match boosts
+-- The shop (pay-to-win, owner decision 2026-10-27): tabs for the daily rotating cosmetics (for Gems, Config.DailyShop),
+-- game passes, Robux cars, Robux upgrades and Gem packs, and the one-time Starter Pack card in a player's first
+-- sessions. Everything sold is permanent (the in-match boosts
 -- were cut 2026-10-28). Purchases prompt Roblox's own dialog; the server grants through ProcessReceipt and syncs the
 -- profile back. An id of 0 shows COMING SOON, or TEST in Studio, which grants it through the Debug remote.
 
@@ -11,11 +12,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local DailyShop = require(Shared:WaitForChild("DailyShop"))
+local Prizes = require(Shared:WaitForChild("Prizes"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 local PhantomOffer = require(script.Parent.Parent.PhantomOffer)
+local SoundController = require(script.Parent.SoundController)
 
 local ShopController = {}
 
@@ -36,6 +40,9 @@ local starterCard: Frame
 local isOpen = false
 local tab = M.Tabs[1]
 local shopAction: RemoteEvent
+local dailyBuy: RemoteEvent
+local resetLabel: TextLabel? = nil -- the DAILY tab's countdown, ticked while it shows
+local shownDay = 0
 
 local function button(parent: Instance, text: string, enabled: boolean, size: UDim2, color: Color3?): TextButton
 	local b = UI.New("TextButton", {
@@ -85,12 +92,13 @@ local function clearList()
 	end
 end
 
--- One row: a title in a color, a line of detail, and a button on the right.
-local function row(order: number, title: string, titleColor: Color3, detail: string): Frame
+-- One row: a title in a color, a line of detail, and a button on the right. `inset` leaves room on the left (a swatch).
+local function row(order: number, title: string, titleColor: Color3, detail: string, inset: number?): Frame
+	local x = 12 + (inset or 0)
 	local frame = UI.Frame({ Size = UDim2.new(1, -10, 0, 58), LayoutOrder = order, BackgroundTransparency = 0.45 }, list)
 	UI.Corner(8, frame)
-	UI.Label({ Position = UDim2.fromOffset(12, 7), Size = UDim2.new(1, -150, 0, 22), Text = string.upper(title), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = titleColor }, frame)
-	UI.Label({ Position = UDim2.fromOffset(12, 32), Size = UDim2.new(1, -150, 0, 18), Text = detail, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13 }, frame)
+	UI.Label({ Position = UDim2.fromOffset(x, 7), Size = UDim2.new(1, -150 - x + 12, 0, 22), Text = string.upper(title), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = titleColor }, frame)
+	UI.Label({ Position = UDim2.fromOffset(x, 32), Size = UDim2.new(1, -150 - x + 12, 0, 18), Text = detail, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13 }, frame)
 	return frame
 end
 
@@ -100,6 +108,76 @@ local function rightButton(frame: Frame, text: string, enabled: boolean, onBuy: 
 	b.Position = UDim2.new(1, -12, 0.5, 0)
 	if enabled and onBuy then
 		b.Activated:Connect(onBuy)
+	end
+end
+
+-- What a daily item looks like: the paint's color, the trail's colors, or a note to tap for the horn.
+local function swatch(frame: Frame, item: Config.Prize)
+	local size = Config.DailyShop.SwatchSize
+	local ref = item.Ref or ""
+	local b = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 10, 0.5, 0),
+		Size = UDim2.fromOffset(size, size),
+		BackgroundColor3 = Config.Drops.Colors[item.Rarity] or UI.Accent,
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = 20,
+		TextColor3 = UI.White,
+		TextStrokeTransparency = 0.3,
+		Text = "",
+		AutoButtonColor = item.Kind == "Horn",
+	}, frame) :: TextButton
+	UI.Corner(size // 2, b)
+	if item.Kind == "Paint" then
+		for _, paint in Config.Paint.Colors do
+			if paint.Name == ref then
+				b.BackgroundColor3 = paint.Color
+				b.Text = if paint.Material then Config.Paint.MaterialMark else ""
+			end
+		end
+	elseif item.Kind == "Trail" then
+		local def = Config.Cosmetics.Trails[ref]
+		if def then
+			b.BackgroundColor3 = UI.White
+			local points: { ColorSequenceKeypoint } = {}
+			for i, color in def.Colors do
+				table.insert(points, ColorSequenceKeypoint.new(if #def.Colors > 1 then (i - 1) / (#def.Colors - 1) else 0, color))
+			end
+			if #points == 1 then
+				table.insert(points, ColorSequenceKeypoint.new(1, def.Colors[1]))
+			end
+			UI.New("UIGradient", { Color = ColorSequence.new(points) }, b)
+		end
+	elseif item.Kind == "Horn" then
+		b.Text = "\u{266A}"
+		b.Activated:Connect(function()
+			SoundController.PlayHorn(ref)
+		end)
+	end
+end
+
+local function renderDaily(profile: Types.ProfilePayload?)
+	local cfg = Config.DailyShop
+	local now = workspace:GetServerTimeNow()
+	shownDay = DailyShop.Day(now)
+	resetLabel = UI.Label({ Size = UDim2.new(1, -10, 0, 20), LayoutOrder = 0, Text = string.format(cfg.ResetLine, UI.FormatTime(DailyShop.SecondsLeft(now))), TextColor3 = UI.Warn, Font = UI.FontMedium, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 14 }, list)
+	local inventory = if profile then profile.inventory else nil
+	local gems = if profile then profile.gems else 0
+	for i, item in DailyShop.Items(shownDay) do
+		local ownedKind = if inventory then inventory[item.Kind .. "s"] else nil
+		local owned = ownedKind ~= nil and (ownedKind[item.Ref or ""] or 0) > 0
+		local price = DailyShop.Price(item)
+		local detail = string.format("%s  ·  %s", cfg.Kinds[item.Kind] or item.Kind, string.upper(item.Rarity))
+		if item.Kind == "Horn" then
+			detail ..= "  ·  " .. cfg.HornHint
+		end
+		local color = Config.Drops.Colors[item.Rarity] or UI.Accent
+		local frame = row(i, Prizes.Name(item), color:Lerp(UI.White, 0.3), detail, cfg.SwatchSize + 10)
+		swatch(frame, item)
+		rightButton(frame, if owned then cfg.OwnedLabel else string.format(cfg.PriceLabel, price), not owned and gems >= price, function()
+			dailyBuy:FireServer(item.Id)
+		end)
 	end
 end
 
@@ -164,7 +242,7 @@ local function renderGems()
 		if not def then
 			continue
 		end
-		local frame = row(i, def.Label, UI.Accent, "Gems buy cars, upgrades and paint.")
+		local frame = row(i, def.Label, UI.Accent, "Gems buy cars, upgrades, paint and the daily items.")
 		rightButton(frame, priceText(def.Id, def.Robux), buyable(def.Id), function()
 			buy(key, def.Id, false)
 		end)
@@ -178,7 +256,10 @@ local function render()
 		b.BackgroundColor3 = if name == tab then TAB_ON else TAB_OFF
 	end
 	clearList()
-	if tab == "PASSES" then
+	resetLabel = nil
+	if tab == "DAILY" then
+		renderDaily(profile)
+	elseif tab == "PASSES" then
 		renderPasses(profile)
 	elseif tab == "CARS" then
 		renderCars(profile)
@@ -243,8 +324,9 @@ local function build()
 
 	local tabRow = UI.Frame({ Position = UDim2.fromOffset(24, 60), Size = UDim2.new(1, -48, 0, 34), BackgroundTransparency = 1 }, panel)
 	UI.New("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, tabRow)
+	local tabWidth = (panel.Size.X.Offset - 48 - 8 * (#M.Tabs - 1)) // #M.Tabs
 	for i, name in M.Tabs do
-		local b = button(tabRow, name, true, UDim2.fromOffset(134, 34), TAB_OFF)
+		local b = button(tabRow, name, true, UDim2.fromOffset(tabWidth, 34), TAB_OFF)
 		b.LayoutOrder = i
 		b.Activated:Connect(function()
 			tab = name
@@ -297,6 +379,7 @@ end
 
 function ShopController.Init()
 	shopAction = Remotes.Get("ShopAction")
+	dailyBuy = Remotes.Get("DailyBuy")
 	build()
 	State.ProfileChanged:Connect(function()
 		if isOpen then
@@ -323,6 +406,22 @@ function ShopController.Init()
 	end)
 end
 
-function ShopController.Start() end
+function ShopController.Start()
+	-- the DAILY tab's countdown ticks, and a new day brings new items while it's open
+	local nextTick = 0
+	RunService.Heartbeat:Connect(function()
+		local label = resetLabel
+		if not isOpen or not label or os.clock() < nextTick then
+			return
+		end
+		nextTick = os.clock() + 1
+		local now = workspace:GetServerTimeNow()
+		if DailyShop.Day(now) ~= shownDay then
+			render()
+			return
+		end
+		label.Text = string.format(Config.DailyShop.ResetLine, UI.FormatTime(DailyShop.SecondsLeft(now)))
+	end)
+end
 
 return ShopController

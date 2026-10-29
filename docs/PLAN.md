@@ -389,6 +389,14 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [ ] Not seen yet: the card on a phone screen; the ON FIRE trail on the car
 - [ ] Ships with the next publish (v19)
 
+## Daily rotating shop (checklist: "A daily rotating shop", 2026-10-28)
+- [x] `Config.DailyShop`: 4 cosmetics a UTC day for Gems (Common 60 / Rare 150 / Epic 400), at least one paint, trail and horn. Candidates come from the drop pool's trails, horns and drop-only paints at a priced rarity (Legendary/Mythic stay crate-only; level and streak rewards stay earned; the Garage's own 50-Gem paints are not in it). `src/shared/DailyShop.luau` seeds a shuffle with the UTC day, so every server and client shows the same list with nothing sent
+- [x] `DailyShopService`: new `DailyBuy` remote (rate limit 2/s) refuses an item not for sale today, one already owned, or one you can't afford; otherwise `SpendGems(..., "Daily:<id>")` and `DropService.GrantPrize(..., "Daily")`, then "X IS YOURS! EQUIP IT IN THE GARAGE"
+- [x] SHOP gets a DAILY tab, first (the shop opens on it): "New items in h:mm:ss" ticking, a swatch per item (paint color, trail gradient, tap-to-hear horn), rarity-colored name, price or OWNED. Gems only for now; selling these for Robux would need developer products made in Creator Hub
+- [x] Studio-tested 2026-10-28 (1 client): today's items Teal paint 150, Galaxy trail 400, Mint Breeze trail 150, Euro Beep horn 60; bought Galaxy (1010 -> 610 Gems, OWNED, notice, metrics `Shop Daily:TrailGalaxy`); the server refused TrailRainbow (not for sale today) and a second Galaxy (already owned); the next days' lists vary, each with all three kinds; no errors
+- [ ] Not seen yet: the DAILY tab on a phone; the countdown rolling over at 00:00 UTC (4/5 PM PT) with the panel open
+- [ ] Ships with the next publish (v19)
+
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
 - [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)

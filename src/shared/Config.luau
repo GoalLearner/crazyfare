@@ -1145,7 +1145,7 @@ Config.Paint = {
 		{ Name = "Grape", Color = Color3.fromRGB(150, 80, 220) },
 		{ Name = "Snow", Color = Color3.fromRGB(245, 245, 245) },
 		{ Name = "Midnight", Color = Color3.fromRGB(25, 25, 35) },
-		-- drop-only (Config.Drops): never for sale, applied free once owned
+		-- drop-only (Config.Drops): not in the Garage's paint shop (the daily shop may rotate them in), free once owned
 		{ Name = "Sunset", Color = Color3.fromRGB(255, 120, 60), DropOnly = true },
 		{ Name = "Lime", Color = Color3.fromRGB(170, 240, 60), DropOnly = true },
 		{ Name = "Bubblegum", Color = Color3.fromRGB(255, 130, 210), DropOnly = true },
@@ -1341,6 +1341,23 @@ Config.Streak = {
 	TileWidth = 84,
 	TileHeight = 96,
 	AutoCloseSeconds = 15,
+}
+
+-- The daily rotating shop (checklist 2026-10-28): each UTC day Count cosmetics are for sale for Gems in the SHOP's
+-- DAILY tab, at least one of each kind. They rotate in from the drop pool's trails, horns and drop-only paints whose
+-- rarity has a price here, so Legendary and Mythic stay crate-only, and level and streak rewards stay earned. Every
+-- server and client works the day's list out from the UTC day (Shared/DailyShop). Bought means owned for good.
+Config.DailyShop = {
+	Count = 4,
+	KindOrder = { "Paint", "Trail", "Horn" },
+	Prices = { Common = 60, Rare = 150, Epic = 400 } :: { [string]: number }, -- Gems, by rarity
+	Kinds = { Paint = "PAINT", Trail = "TRAIL", Horn = "HORN" } :: { [string]: string },
+	ResetLine = "New items in %s",
+	HornHint = "Tap the swatch to hear it.",
+	BoughtLine = "%s IS YOURS! EQUIP IT IN THE GARAGE",
+	OwnedLabel = "OWNED",
+	PriceLabel = "%d GEMS",
+	SwatchSize = 40,
 }
 
 -- Sessions: Roblox ranks experiences by play time, return days and playing with friends, so the next match, a friend
@@ -1674,7 +1691,7 @@ Config.Monetization = {
 	BoostOrder = { "MaxUpgrades" },
 	BoughtLine = "%s!", -- the HUD line when one lands
 	FallbackLine = "%s COULDN'T APPLY  +%d GEMS", -- already maxed
-	Tabs = { "PASSES", "CARS", "UPGRADES", "GEMS" },
+	Tabs = { "DAILY", "PASSES", "CARS", "UPGRADES", "GEMS" }, -- the first one opens (DAILY: Config.DailyShop)
 	-- Fare Radar pass: a beacon over every waiting Golden and long (Red) fare, seen through buildings from anywhere,
 	-- while you drive with nobody aboard
 	Radar = {
@@ -2094,6 +2111,7 @@ Config.Net = {
 		Play = 1,
 		SaveSettings = 2,
 		MapVote = 4,
+		DailyBuy = 2,
 		Debug = 10,
 	} :: { [string]: number },
 	-- Server-side position sanity: strikes when a car moves farther per frame than its fastest legal speed allows.
