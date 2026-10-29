@@ -9,3 +9,8 @@ sourcemap.json
 roblox.yml
 assets/
 !assets/README.md
+
+# Env files (none exist today; preventive)
+.env
+.env.*
+!.env.example
