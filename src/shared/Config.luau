@@ -1371,7 +1371,7 @@ Config.Streak = {
 -- odd cars and server health, for long unattended runs.
 Config.Soak = {
 	Attribute = "Soak",
-	Seats = 4, -- bots on the grid (a live match is a person + 3 bots; MaxDrivers fills every seat)
+	Seats = 6, -- bots on the grid (6 = every seat, the most crowding; 4 = a live grid of a person + 3 bots, for pace)
 	PollSeconds = 0.25, -- how often the round phase is read
 	SampleSeconds = 1, -- how often cars are checked while racing
 	StuckSeconds = 15, -- a car that moved less than StuckStuds in this long while racing

@@ -53,15 +53,15 @@ td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
 <ul>
 <li>They cut straight across corners, open lots, parks and the plaza whenever the way is clear. They never go through buildings, walls, solid props or water, and they don't take sand "shortcuts" (sand slows them like everyone).</li>
 <li>Shorter breathers between fares: 1 to 2.5 s instead of 3 to 6 s.</li>
-<li>Smarter routing made bots too fast for players, so their cruise speed is now 30 (was 36).</li>
+<li>They hurry with a passenger aboard (speed 32.5, against 26 when empty), the way you race the meter. That keeps timeouts low without making them quicker overall.</li><li>Smarter routing had made bots too fast: at the old speed of 36, a bot reached the first $75 in about 1:50, the same pace that beat you on 10/27. Now the best bot takes about 2:07.</li>
 </ul>
 <div class="table">
 <table>
-<thead><tr><th>6 bots, Studio</th><th>Old bots</th><th>Shortcut bots (speed 36)</th><th>Final (speed 30)</th></tr></thead>
+<thead><tr><th>Studio</th><th>Old bots (6)</th><th>Shortcut bots, speed 36 (6)</th><th>Final: 26, 32.5 carrying (4, like a live grid)</th></tr></thead>
 <tbody>
-<tr><td>Average round</td><td class="num">136 s</td><td class="num">90 s</td><td class="num" id="final-round">FINAL_ROUND</td></tr>
-<tr><td>Passengers timing out on bots</td><td class="num">27%</td><td class="num">8%</td><td class="num">FINAL_TIMEOUT</td></tr>
-<tr><td>Bots stuck</td><td class="num">0</td><td class="num">3 (before the go-around fix), then 0</td><td class="num">FINAL_STUCK</td></tr>
+<tr><td>Average round</td><td class="num">136 s</td><td class="num">90 s</td><td class="num">125 s (first $75: about 2:07)</td></tr>
+<tr><td>Passengers timing out on bots</td><td class="num">27%</td><td class="num">8%</td><td class="num">9%</td></tr>
+<tr><td>Bots stuck</td><td class="num">0</td><td class="num">3 (before the go-around fix), then 0</td><td class="num">0</td></tr>
 </tbody>
 </table>
 </div>
@@ -75,7 +75,7 @@ td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
 <li><b>The Phantom:</b> ghost-horse model, shield bubble, "A PHANTOM HAS ENTERED THE MATCH", owners board serial #1, its badge (prints in Studio), Garage line "ONLY 1 OWNS THE PHANTOM · YOURS IS #1".</li>
 <li><b>Drops and cosmetics:</b> end-of-match crates (Bronze for last place), card, trail and horn drops; equipping trails and horns; Chrome paint on the Go-Kart; Checkered, Hot Sauce and Rainbow trails on the car.</li>
 <li><b>Level rewards, the streak calendar (days 1, 4, 7, duplicate day 7), the daily shop, lifetime fares on name tags, the map vote card, City → Beach rotation.</b></li>
-<li><b>Passenger perks</b> (Phantom +60 HP, 60% less damage, banana and oil immunity, triple hunter bonus, shield vs tomato): verified by reading the code end to end, not live. Picking up passengers by hand in Studio took too long.</li>
+<li><b>On an iPhone 7 screen</b> (Studio's simulator): the calendar card, the SHOP DAILY tab and the QUESTS reward chips all fit.</li><li><b>Passenger perks</b> (Phantom +60 HP, 60% less damage, banana and oil immunity, triple hunter bonus, shield vs tomato): verified by reading the code end to end, not live. Picking up passengers by hand in Studio took too long.</li>
 </ul>
 </section>
 
@@ -89,8 +89,8 @@ td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
 <section>
 <h2>Still worth a look</h2>
 <ul>
-<li><b>Camera inside palm trees</b> on the Beach map: driving under a palm put the camera in its leaves for a moment. Small, visual.</li>
-<li><b>Phone layouts</b> of the new screens (QUESTS reward chips, the calendar card, the DAILY tab) haven't been checked in the phone simulator yet.</li>
+<li><b>Camera inside palm trees</b> on the Beach map: driving under a palm put the camera in its leaves. Fixed: anything the camera ends up inside now fades on your screen and comes back after. Not yet seen live on a palm. <span class="pill warn">fixed, not seen</span></li>
+
 <li><b>Phantom sale end date:</b> the server doesn't enforce the offer window. That's fine while it's open-ended. If you ever set an end date, also take the product off sale in Creator Hub.</li>
 <li><b>Horn sounds</b> can't be heard from here; they play without errors.</li>
 </ul>
