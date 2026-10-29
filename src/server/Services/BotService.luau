@@ -497,7 +497,8 @@ local function allowedSpeed(bot: Bot, entry: VehicleService.VehicleEntry, now: n
 	local cfg = Config.Bots
 	local brake = cfg.Brake
 	local boost = if now < entry.boostUntil then Config.Items.LemonNitro.SpeedMult else 1
-	local limit = cfg.CruiseSpeed * bot.skill * boost * speedMult * bot.surfaceMult
+	local hurry = if FareService.GetFare(bot.driver) then cfg.LoadedSpeedMult else 1
+	local limit = cfg.CruiseSpeed * bot.skill * boost * hurry * speedMult * bot.surfaceMult
 	if #bot.route == 0 then
 		return 0, false
 	end

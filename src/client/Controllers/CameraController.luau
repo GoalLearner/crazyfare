@@ -26,8 +26,42 @@ local swoopPending = false -- left the title screen; the swoop starts once there
 local swoopWaitUntil = 0
 local swoopFrom: CFrame? = nil
 local swoopStart = 0
+local faded: { [BasePart]: boolean } = {} -- map parts the chase camera is inside, faded on this screen only
+local fadeCheckAt = 0
+local fadeParams = OverlapParams.new()
+fadeParams.FilterType = Enum.RaycastFilterType.Include
+
+-- Anything of the map the chase camera ends up inside (a palm's leaves, a building's corner) fades out on your screen
+-- and comes back once the camera leaves it. `at` nil: put everything back.
+local function fadeAround(at: Vector3?)
+	local inside: { [BasePart]: boolean } = {}
+	local map = workspace:FindFirstChild("Map")
+	if at and map then
+		local now = os.clock()
+		if now < fadeCheckAt then
+			return
+		end
+		fadeCheckAt = now + Config.Camera.FadeCheckSeconds
+		fadeParams.FilterDescendantsInstances = { map }
+		for _, part in workspace:GetPartBoundsInRadius(at, Config.Camera.FadeRadius, fadeParams) do
+			if part.Transparency < 1 then
+				inside[part] = true
+				part.LocalTransparencyModifier = Config.Camera.FadeTransparency
+			end
+		end
+	end
+	for part in faded do
+		if not inside[part] then
+			part.LocalTransparencyModifier = 0
+		end
+	end
+	faded = inside
+end
 
 local function overview(dt: number)
+	if next(faded) then
+		fadeAround(nil)
+	end
 	local half = Config.Map.City.Blockout.Half
 	local target = Vector3.new(0, 0, 0)
 	local desired = Vector3.new(0, half * 1.1, half * 0.9)
@@ -39,6 +73,9 @@ end
 
 -- Title screen: a slow circle over the map's center (both maps sit on the origin), bobbing a little.
 local function drone(dt: number)
+	if next(faded) then
+		fadeAround(nil)
+	end
 	local d = Config.Title.Drone
 	local t = os.clock()
 	local angle = t / d.PeriodSeconds * math.pi * 2
@@ -72,6 +109,7 @@ local function follow(dt: number)
 		shakeAmount *= math.max(0, 1 - Config.Shake.Decay * dt)
 	end
 	camera.CFrame = CFrame.lookAt(camPos :: Vector3, aim) * CFrame.new(shakeOffset)
+	fadeAround(camera.CFrame.Position)
 
 	local speed = if State.rideChassis then ch.AssemblyLinearVelocity.Magnitude else State.speed
 	local speedFrac = math.clamp(speed / State.stats.TopSpeed, 0, 1)
@@ -167,6 +205,9 @@ function CameraController.Start()
 				camera.FieldOfView = Config.Camera.FovBase
 			end
 			camPos = nil
+			if next(faded) then
+				fadeAround(nil) -- on foot, Roblox's camera takes over
+			end
 			return
 		end
 		camera.CameraType = Enum.CameraType.Scriptable

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrazyFare Bug Hunt</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b22; --muted:#6b6874; --line:#e4e0d8; --accent:#2a7de1; --ok:#2f8f4e; --warn:#b5651d; --bad:#c23b3b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#5ea3ff; --ok:#5cc47e; --warn:#f0a35e; --bad:#ff6b6b; } }
+:root[data-theme="dark"] { --bg:#16151a; --card:#211f27; --ink:#f1eff5; --muted:#a29fac; --line:#34313c; --accent:#5ea3ff; --ok:#5cc47e; --warn:#f0a35e; --bad:#ff6b6b; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width:900px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:30px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+h2 { font-size:19px; margin:0 0 10px; }
+ul { margin:6px 0 0; padding-left:22px; }
+li { margin:6px 0; }
+.pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:1px 9px; border:1px solid var(--line); color:var(--muted); margin-left:6px; vertical-align:1px; }
+.pill.ok { color:var(--ok); border-color:var(--ok); }
+.pill.warn { color:var(--warn); border-color:var(--warn); }
+.table { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:15px; }
+th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-weight:600; font-size:13px; }
+td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.note { color:var(--muted); font-size:14px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Bug hunt: 6 bots, today's features, smarter bots</h1>
+<p class="sub">October 28, 2026, evening PT. Studio tests with 6 bots racing on their own, me driving every new feature, and a separate code review of today's work. Everything below is committed but <b>not published</b> (it would be v20).</p>
+
+<section>
+<h2>Bugs found and fixed</h2>
+<ul>
+<li><b>STAY IN DEPOT covered the 5th and 6th rows on the podium</b> (you spotted it). The podium now grows with the number of drivers, so the buttons and countdown always sit below the last row. <span class="pill ok">fixed, seen in Studio</span></li>
+<li><b>Weirdo cards never showed up in a full match.</b> With 6 drivers every curb already has a passenger, so the bonus passenger had nowhere to stand. It now takes a regular passenger's place. <span class="pill ok">fixed</span></li>
+<li><b>Bots froze behind a stopped car.</b> Two bots nose to nose, or a bot behind a parked player, waited forever (one round, two bots never moved). They now swing around after 2 seconds. <span class="pill ok">fixed, 0 stuck bots since</span></li>
+<li><b>Bots shoved and flipped parked players.</b> My parked cab was pushed about 85 studs and flipped. Bots now give player cars a wide berth. <span class="pill ok">fixed, seen in Studio</span></li>
+<li><b>Trails didn't show in the Taxi Depot.</b> The depot is where you'd try a new trail. It now shows there too. <span class="pill ok">fixed, seen in Studio</span></li>
+<li><b>Your streak could reset when you were still playing at midnight UTC.</b> The streak only advanced when you joined, so a session that ran past 00:00 UTC (5 PM PT, prime time) didn't count the new day. Your next visit could then reset you to DAY 1. Players still in the game now claim the new day automatically. <span class="pill ok">fixed</span></li>
+<li><b>Phantom serial numbers could repeat.</b> If Roblox's data service hiccuped, a new owner could get a duplicate "#1" saved for good. Two grants at once could also each take a number. Now a failed fetch tries again on the owner's next join. <span class="pill ok">fixed</span></li>
+<li><b>Map vote stayed open</b> after the podium fell back to the depot, so old votes picked a later match's map. <span class="pill ok">fixed</span></li>
+<li><b>Analytics:</b> older accounts would have replayed the new-player funnel once and inflated launch numbers. They now skip it. <span class="pill ok">fixed</span></li>
+</ul>
+</section>
+
+<section>
+<h2>Bots now drive like players</h2>
+<ul>
+<li>They cut straight across corners, open lots, parks and the plaza whenever the way is clear. They never go through buildings, walls, solid props or water, and they don't take sand "shortcuts" (sand slows them like everyone).</li>
+<li>Shorter breathers between fares: 1 to 2.5 s instead of 3 to 6 s.</li>
+<li>Smarter routing made bots too fast for players, so their cruise speed is now 30 (was 36).</li>
+</ul>
+<div class="table">
+<table>
+<thead><tr><th>6 bots, Studio</th><th>Old bots</th><th>Shortcut bots (speed 36)</th><th>Final (speed 30)</th></tr></thead>
+<tbody>
+<tr><td>Average round</td><td class="num">136 s</td><td class="num">90 s</td><td class="num" id="final-round">FINAL_ROUND</td></tr>
+<tr><td>Passengers timing out on bots</td><td class="num">27%</td><td class="num">8%</td><td class="num">FINAL_TIMEOUT</td></tr>
+<tr><td>Bots stuck</td><td class="num">0</td><td class="num">3 (before the go-around fix), then 0</td><td class="num">FINAL_STUCK</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">A round ends when someone reaches the quota. In live servers it's you plus 3 bots, so they share fewer passengers than in this 6-bot test.</p>
+</section>
+
+<section>
+<h2>Today's features, checked</h2>
+<ul>
+<li><b>All 9 cars</b> spawn and drive (in the depot and in races): Yellow Cab, Go-Kart, Shopping Cart, Horse, Night Cab, Ice Cream Truck, Rocket Cab, Armored Limo, the Phantom.</li>
+<li><b>The Phantom:</b> ghost-horse model, shield bubble, "A PHANTOM HAS ENTERED THE MATCH", owners board serial #1, its badge (prints in Studio), Garage line "ONLY 1 OWNS THE PHANTOM · YOURS IS #1".</li>
+<li><b>Drops and cosmetics:</b> end-of-match crates (Bronze for last place), card, trail and horn drops; equipping trails and horns; Chrome paint on the Go-Kart; Checkered, Hot Sauce and Rainbow trails on the car.</li>
+<li><b>Level rewards, the streak calendar (days 1, 4, 7, duplicate day 7), the daily shop, lifetime fares on name tags, the map vote card, City → Beach rotation.</b></li>
+<li><b>Passenger perks</b> (Phantom +60 HP, 60% less damage, banana and oil immunity, triple hunter bonus, shield vs tomato): verified by reading the code end to end, not live. Picking up passengers by hand in Studio took too long.</li>
+</ul>
+</section>
+
+<section>
+<h2>Health</h2>
+<ul id="health">
+<li>HEALTH_LINE</li>
+</ul>
+</section>
+
+<section>
+<h2>Still worth a look</h2>
+<ul>
+<li><b>Camera inside palm trees</b> on the Beach map: driving under a palm put the camera in its leaves for a moment. Small, visual.</li>
+<li><b>Phone layouts</b> of the new screens (QUESTS reward chips, the calendar card, the DAILY tab) haven't been checked in the phone simulator yet.</li>
+<li><b>Phantom sale end date:</b> the server doesn't enforce the offer window. That's fine while it's open-ended. If you ever set an end date, also take the product off sale in Creator Hub.</li>
+<li><b>Horn sounds</b> can't be heard from here; they play without errors.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

@@ -690,8 +690,10 @@ Config.Bots = {
 	VehicleId = "YellowCab",
 	-- Driving (studs, studs/s, studs/s^2). The Yellow Cab tops out at 90, so a good driver outruns them.
 	-- tuned 2026-10-27: at 52 the best bot made the $75 quota in 1:50, faster than the owner. 2026-10-28: shortcuts made
-	-- bots ~30% quicker to the quota at 36 (6-bot soak: 136 s -> 94 s a round), so 30 brings the pace back
-	CruiseSpeed = 30,
+	-- bots ~30% quicker (6-bot soak: 136 s -> 94 s a round); at 30 (36 loaded) a 4-bot grid still made $75 in ~110 s, so
+	-- 26 aims the best bot at ~2:10
+	CruiseSpeed = 26,
+	LoadedSpeedMult = 1.25, -- with a passenger aboard it hurries like a player racing the meter (fewer timeouts)
 	CornerSpeed = 16,
 	Accel = 30,
 	Brake = 55, -- gentler than the crash watch's line, so a bot braking never reads as a crash
@@ -737,8 +739,8 @@ Config.Bots = {
 	GoldenBias = 1.5, -- a Golden Fare looks this much better again, on top of its pay
 	Jitter = 0.15, -- +/- randomness on how good each passenger looks, so bots don't all pick the same
 	ClaimWait = 3, -- seconds stopped at a curb without boarding: try another passenger
-	RestMin = 1, -- seconds a bot sits after a delivery or a bail before picking its next passenger (players don't wait long)
-	RestMax = 2.5,
+	RestMin = 1.5, -- seconds a bot sits after a delivery or a bail before picking its next passenger (players don't wait long)
+	RestMax = 3,
 	Choices = 3, -- picks one of its best few passengers (better ones likelier), not always the very best
 	TipMult = 0.5, -- passengers tip bots half (they see the whole map and never crash; humans earn stunt cash instead)
 	ItemUseChance = 0.5, -- chance per decision to use an item when there's a reason to
@@ -1369,6 +1371,7 @@ Config.Streak = {
 -- odd cars and server health, for long unattended runs.
 Config.Soak = {
 	Attribute = "Soak",
+	Seats = 4, -- bots on the grid (a live match is a person + 3 bots; MaxDrivers fills every seat)
 	PollSeconds = 0.25, -- how often the round phase is read
 	SampleSeconds = 1, -- how often cars are checked while racing
 	StuckSeconds = 15, -- a car that moved less than StuckStuds in this long while racing
@@ -2125,6 +2128,10 @@ Config.Camera = {
 	FovBase = 70,
 	FovSpeedBonus = 12, -- at top speed
 	FovBoostBonus = 6,
+	-- map parts the chase camera ends up inside (a palm's leaves on the Beach) fade out on your screen only
+	FadeRadius = 3, -- studs around the camera
+	FadeTransparency = 0.85,
+	FadeCheckSeconds = 0.1,
 }
 
 Config.Net = {

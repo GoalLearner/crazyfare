@@ -194,8 +194,8 @@ function SoakMonitor.Init()
 	-- nobody needs to drive, and bots take every seat
 	Config.Round.StudioMinPlayers = 0
 	Config.Bots.MinHumans = 0
-	Config.Server.BotFillTo = Config.Server.MaxDrivers
-	say(string.format("on: bots fill %d seats, no person needed", Config.Server.MaxDrivers))
+	Config.Server.BotFillTo = math.min(cfg.Seats, Config.Server.MaxDrivers)
+	say(string.format("on: bots fill %d seats, no person needed", Config.Server.BotFillTo))
 	-- every cash credit, by who paid it (FareService.AddCash is always called through the table, so this sees them all)
 	local addCash = FareService.AddCash
 	FareService.AddCash = function(player: Player, amount: number)
