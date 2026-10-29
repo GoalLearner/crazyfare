@@ -31,4 +31,13 @@ function Prizes.Name(prize: Config.Prize): string
 	return prize.Id
 end
 
+-- The same, short enough for a small tile: a start-with item is just the item's name.
+function Prizes.Short(prize: Config.Prize): string
+	if prize.Kind == "Boost" then
+		local item = Config.Items.Pool[prize.Ref or ""]
+		return string.upper(if item then item.DisplayName else prize.Ref or "")
+	end
+	return Prizes.Name(prize)
+end
+
 return Prizes

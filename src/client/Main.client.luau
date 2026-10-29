@@ -56,6 +56,7 @@ local ordered: { Controller } = {
 	require(Controllers.RadarController),
 	require(Controllers.DropController),
 	require(Controllers.MapVoteController),
+	require(Controllers.CalendarController),
 	require(Controllers.OptionsController),
 	require(Controllers.CreditsController),
 	require(Controllers.TitleController),

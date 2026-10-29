@@ -192,6 +192,9 @@ function QuestService.Init()
 		pendingNotice[player] = text
 		QuestService.Sync(player)
 	end)
+	ProgressionService.OnStreak:Connect(function(player: Player)
+		QuestService.Sync(player) -- the new streak count
+	end)
 	SessionService.OnNotice:Connect(function(player: Player, text: string)
 		pendingNotice[player] = text
 		QuestService.Sync(player)

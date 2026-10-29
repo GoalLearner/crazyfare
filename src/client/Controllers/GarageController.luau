@@ -298,8 +298,8 @@ local function renderTrailsAndHorns(profile: Types.ProfilePayload)
 		hornColors[id] = Config.Drops.Colors[def.Rarity]:Lerp(Color3.new(0, 0, 0), 0.45)
 	end
 	local trailOrder = table.clone(c.TrailOrder)
-	for _, id in c.LevelTrailOrder do
-		table.insert(trailOrder, id) -- won by leveling (Config.Levels)
+	for _, id in c.EarnedTrailOrder do
+		table.insert(trailOrder, id) -- won by playing (the streak calendar, Config.Levels)
 	end
 	renderCosmetics(trailRow, "Trail", trailOrder, trailNames, trailColors, profile)
 	renderCosmetics(hornRow, "Horn", c.HornOrder, hornNames, hornColors, profile)

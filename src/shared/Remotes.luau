@@ -18,6 +18,7 @@ local EVENT_NAMES = {
 	"LeaderboardSync", -- (Types.LeaderboardPayload) on request and on refresh
 	"DropEvent", -- (Types.DropEventPayload) your post-match drop; a Mythic pull goes to everyone
 	"MapVoteState", -- (Types.MapVoteStatePayload) the next-map vote opened, changed or closed
+	"StreakEvent", -- (Types.StreakPayload) today's streak calendar prize was just paid
 	-- client -> server
 	"UseItem", -- ()
 	"ComboEvent", -- (Types.ComboEventPayload)

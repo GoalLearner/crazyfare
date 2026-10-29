@@ -87,6 +87,12 @@ local commands: { [string]: (player: Player, arg: any) -> () } = {
 			DataService.AddGems(player, math.round(arg), "Gameplay", "Debug")
 		end
 	end,
+	-- the streak calendar as if this were day `arg` of a run (yesterday was the day before)
+	StreakDay = function(player, arg)
+		if typeof(arg) == "number" then
+			ProgressionService.DebugStreak(player, math.clamp(math.floor(arg), 1, 99))
+		end
+	end,
 	-- XP as if from matches: level-ups, their notices and level rewards (Config.Levels)
 	AddXp = function(player, arg)
 		if typeof(arg) == "number" then

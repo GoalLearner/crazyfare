@@ -100,6 +100,10 @@ export type SlotEntry = { name: string, id: number, bot: boolean? } -- id: UserI
 -- The next-map vote on the match-end podium (MapVoteService -> everyone).
 export type MapVoteStatePayload = { open: boolean, options: { string }, counts: { [string]: number } }
 
+-- Today's streak prize was paid: `days` in a row (1 = a new run), `slot` its Config.Streak.Calendar index, and the
+-- Gems paid instead when the prize was already yours.
+export type StreakPayload = { days: number, slot: number, duplicateGems: number? }
+
 export type ProfilePayload = {
 	gems: number,
 	level: number,

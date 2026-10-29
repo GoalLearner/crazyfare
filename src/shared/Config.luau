@@ -1190,13 +1190,14 @@ Config.Cosmetics = {
 				Color3.fromRGB(170, 80, 255),
 			},
 		},
-		-- level rewards (Config.Levels), never in drops (they're not in TrailOrder)
+		-- won by playing, never in drops (they're not in TrailOrder): DAY 7 of the streak, then level rewards
+		OnFire = { Name = "ON FIRE", Rarity = "Epic", Weight = 0, Colors = { Color3.fromRGB(255, 245, 170), Color3.fromRGB(255, 150, 30), Color3.fromRGB(200, 30, 20), Color3.fromRGB(60, 10, 10) } },
 		Checkered = { Name = "CHECKERED", Rarity = "Epic", Weight = 0, Colors = { Color3.fromRGB(245, 245, 245), Color3.fromRGB(20, 20, 24), Color3.fromRGB(245, 245, 245), Color3.fromRGB(20, 20, 24) } },
 		Afterburner = { Name = "AFTERBURNER", Rarity = "Legendary", Weight = 0, Colors = { Color3.fromRGB(230, 245, 255), Color3.fromRGB(60, 140, 255), Color3.fromRGB(30, 40, 160) } },
 		HallOfFame = { Name = "HALL OF FAME", Rarity = "Legendary", Weight = 0, Colors = { Color3.fromRGB(255, 215, 80), Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 80, 255) } },
 		MaxedOut = { Name = "MAXED OUT", Rarity = "Mythic", Weight = 0, Colors = { Color3.fromRGB(255, 60, 200), Color3.fromRGB(255, 215, 80), Color3.fromRGB(60, 220, 255) } },
 	} :: { [string]: TrailDef },
-	LevelTrailOrder = { "Checkered", "Afterburner", "HallOfFame", "MaxedOut" }, -- after TrailOrder in the Garage
+	EarnedTrailOrder = { "OnFire", "Checkered", "Afterburner", "HallOfFame", "MaxedOut" }, -- after TrailOrder in the Garage
 	-- Roblox-licensed Pro Sound Effects clips from the Creator Store (picked 2026-10-28); only you hear your horn
 	HornOrder = { "Squeaky", "EuroBeep", "Bus", "BigRig", "Kazoo", "ChooChoo", "Ferry" },
 	Horns = {
@@ -1315,9 +1316,31 @@ Config.Quests = {
 }
 
 -- Login streak: consecutive UTC days. Pays PerDay * min(days, MaxDays) Gems on the first join of each day.
+-- The 7-day reward calendar (checklist 2026-10-28: framed as loss). The first join of each UTC day pays that day's prize;
+-- a missed day starts the run over at DAY 1. Past DAY 7 the run keeps counting and the calendar goes round again (an
+-- owned trail pays its DuplicateGems). The card shows after PLAY, when you're not racing.
 Config.Streak = {
-	PerDay = 5,
-	MaxDays = 7,
+	Calendar = {
+		{ Id = "Day1", Kind = "Gems", Rarity = "Common", Amount = 10 },
+		{ Id = "Day2", Kind = "Gems", Rarity = "Common", Amount = 15 },
+		{ Id = "Day3", Kind = "Gems", Rarity = "Common", Amount = 20 },
+		{ Id = "Day4", Kind = "Boost", Rarity = "Rare", Ref = "LemonNitro" },
+		{ Id = "Day5", Kind = "Gems", Rarity = "Rare", Amount = 30 },
+		{ Id = "Day6", Kind = "Gems", Rarity = "Rare", Amount = 40 },
+		{ Id = "Day7", Kind = "Trail", Rarity = "Epic", Ref = "OnFire" },
+	} :: { Prize },
+	ClaimDelay = 3, -- seconds after a join (lets the client boot)
+	Title = "DAILY STREAK",
+	StreakLine = "DAY %d",
+	DayLabel = "DAY %d",
+	TodayLabel = "TODAY",
+	TomorrowLine = "Come back tomorrow for DAY %d: %s",
+	LoseLine = "Miss a day and it's back to DAY 1.",
+	DuplicateLabel = "+%d GEMS",
+	Button = "NICE!",
+	TileWidth = 84,
+	TileHeight = 96,
+	AutoCloseSeconds = 15,
 }
 
 -- Sessions: Roblox ranks experiences by play time, return days and playing with friends, so the next match, a friend

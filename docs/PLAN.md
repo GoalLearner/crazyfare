@@ -381,6 +381,14 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [ ] Not seen yet: the number rising at a real match end; the line hiding while the rival carries a passenger
 - [ ] Ships with the next publish (v19)
 
+## 7-day streak calendar (checklist: "A 7-day reward calendar, framed as loss", 2026-10-28)
+- [x] `Config.Streak.Calendar` replaces PerDay x days (5..35 Gems): 10 / 15 / 20 Gems, a Lemon Nitro start token, 30 / 40 Gems, the ON FIRE trail on DAY 7 (streak-only, in `EarnedTrailOrder` with the level trails; an owned one pays DuplicateGems Epic = 100). Past DAY 7 the run keeps counting and the calendar goes round again; a missed UTC day starts at DAY 1 (unchanged rule)
+- [x] `ProgressionService.checkStreak` pays the day's prize through `DropService.GrantPrize(..., "Streak", "TimedReward")`, fires the new `StreakEvent` remote (`Types.StreakPayload`) and `OnStreak` (QuestService re-sends the count); the old "DAY n STREAK +X GEMS" notice is gone. Debug `StreakDay` + DebugPanel "Streak day 4" / "Streak day 7"
+- [x] `CalendarController`: a card with 7 tiles (done ticked, today outlined in gold), "Come back tomorrow for DAY n: X" and "Miss a day and it's back to DAY 1." in red, NICE!; it waits for a quiet moment (the lobby once the Starter Pack offer is closed, a pit stop, or not driving), closes when a race starts, and after `AutoCloseSeconds`. Matches run back to back with no lobby between them, so the pit stop is where a racing player sees it
+- [x] Studio-tested 2026-10-28 (1 client): day 1 paid on join while on the title screen, card held until the Starter Pack LATER, then shown; closed at the race start; day 4 fired mid-race waited for the pit stop and showed there; day 7 showed ON FIRE TRAIL with all days ticked and "DAY 8: 10 GEMS"; a second day 7 paid +100 Gems (10 -> 110); metrics `TimedReward Streak:Day1`; no errors
+- [ ] Not seen yet: the card on a phone screen; the ON FIRE trail on the car
+- [ ] Ships with the next publish (v19)
+
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
 - [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)

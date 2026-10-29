@@ -93,13 +93,13 @@ local function findPrize(id: string): Config.DropEntry?
 end
 
 -- Hands the prize over. Returns the Gems paid instead when it was already yours (0 when new). `source` tags the Gems
--- in analytics ("Drop", "Level").
-local function grant(player: Player, d: DataService.ProfileData, entry: Config.Prize, source: string): number
+-- in analytics ("Drop", "Level", "Streak"), `kind` is their Roblox transaction type ("Gameplay" by default).
+local function grant(player: Player, d: DataService.ProfileData, entry: Config.Prize, source: string, kind: string?): number
 	local ref = entry.Ref or ""
 	local duplicate = false
 	if entry.Kind == "Gems" then
 		local amount = entry.Amount or 0
-		DataService.AddGems(player, amount, "Gameplay", source .. ":" .. entry.Id)
+		DataService.AddGems(player, amount, kind or "Gameplay", source .. ":" .. entry.Id)
 		d.TotalGemsEarned += amount
 	elseif entry.Kind == "Paint" then
 		if (d.Inventory.Paints[ref] or 0) > 0 then
@@ -193,14 +193,14 @@ local function open(player: Player, place: number, forceRarity: string?, forcePr
 	return payload
 end
 
--- LevelRewardService: a prize outside a crate (no reveal, no pity). Returns the Gems paid instead when it was already
--- yours (0 when new); the caller syncs the profile.
-function DropService.GrantPrize(player: Player, prize: Config.Prize, source: string): number
+-- Level rewards and the streak calendar: a prize outside a crate (no reveal, no pity). Returns the Gems paid instead
+-- when it was already yours (0 when new); the caller syncs the profile.
+function DropService.GrantPrize(player: Player, prize: Config.Prize, source: string, kind: string?): number
 	local d = DataService.Get(player)
 	if not d then
 		return 0
 	end
-	return grant(player, d, prize, source)
+	return grant(player, d, prize, source, kind)
 end
 
 -- MatchController.MatchEnd: everyone on the podium who is a person opens a crate by their place.

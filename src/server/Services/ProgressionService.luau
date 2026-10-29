@@ -1,13 +1,17 @@
 --!strict
--- Player level (XP per match) and the login streak. Both live in the profile (DataService).
+-- Player level (XP per match) and the login streak with its 7-day calendar (Config.Streak). Both live in the profile
+-- (DataService).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Signal)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Metrics = require(script.Parent.Parent.Metrics)
 local DataService = require(script.Parent.DataService)
+local DropService = require(script.Parent.DropService)
 local MonetizationService = require(script.Parent.MonetizationService)
 
 local ProgressionService = {}
@@ -16,6 +20,10 @@ local onNotice: Signal.Signal<Player, string> = Signal.new()
 ProgressionService.OnNotice = onNotice -- (player, text) one-shot messages for the HUD
 local onLevelUp: Signal.Signal<Player, number> = Signal.new()
 ProgressionService.OnLevelUp = onLevelUp -- (player, new level), after the LEVEL notice (LevelRewardService)
+local onStreak: Signal.Signal<Player> = Signal.new()
+ProgressionService.OnStreak = onStreak -- today's calendar prize was paid (QuestService re-sends the streak count)
+
+local streakEvent: RemoteEvent
 
 -- XP needed to go from `level` to `level + 1`.
 function ProgressionService.XpForLevel(level: number): number
@@ -122,7 +130,7 @@ local function utcDay(): number
 	return math.floor(os.time() / 86400)
 end
 
--- First join of a UTC day extends or restarts the streak and pays it.
+-- First join of a UTC day extends the run (or starts it over after a missed day) and pays that day's calendar prize.
 local function checkStreak(player: Player)
 	local d = DataService.Get(player)
 	if not d then
@@ -138,9 +146,27 @@ local function checkStreak(player: Player)
 		d.Streak.Days = 1
 	end
 	d.Streak.LastDay = today
-	local reward = Config.Streak.PerDay * math.min(d.Streak.Days, Config.Streak.MaxDays)
-	DataService.AddGems(player, reward, "TimedReward", "Streak")
-	onNotice:Fire(player, string.format("DAY %d STREAK  +%d GEMS", d.Streak.Days, reward))
+	local calendar = Config.Streak.Calendar
+	local slot = (d.Streak.Days - 1) % #calendar + 1
+	local duplicateGems = DropService.GrantPrize(player, calendar[slot], "Streak", "TimedReward")
+	DataService.Sync(player)
+	local payload: Types.StreakPayload = { days = d.Streak.Days, slot = slot, duplicateGems = if duplicateGems > 0 then duplicateGems else nil }
+	streakEvent:FireClient(player, payload)
+	onStreak:Fire(player)
+	if RunService:IsStudio() then
+		print(string.format("[ProgressionService] %s day %d streak: %s%s", player.Name, d.Streak.Days, calendar[slot].Id, if duplicateGems > 0 then string.format(" (duplicate +%d)", duplicateGems) else ""))
+	end
+end
+
+-- Studio: as if yesterday was day `day - 1` of a run, then today's first join.
+function ProgressionService.DebugStreak(player: Player, day: number)
+	local d = DataService.Get(player)
+	if not d then
+		return
+	end
+	d.Streak.Days = math.max(0, day - 1)
+	d.Streak.LastDay = utcDay() - 1
+	checkStreak(player)
 end
 
 function ProgressionService.GetStreakDays(player: Player): number
@@ -149,13 +175,14 @@ function ProgressionService.GetStreakDays(player: Player): number
 end
 
 function ProgressionService.Init()
+	streakEvent = Remotes.Get("StreakEvent")
 	DataService.OnLoaded:Connect(function(player: Player)
 		local d = DataService.Get(player)
 		if d then
 			player:SetAttribute("Level", d.Level)
 		end
-		-- Let the client boot before the streak toast.
-		task.delay(3, checkStreak, player)
+		-- Let the client boot before the calendar card.
+		task.delay(Config.Streak.ClaimDelay, checkStreak, player)
 	end)
 end
 

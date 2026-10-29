@@ -26,6 +26,8 @@ local BUTTONS: { Button } = {
 	{ label = "+$10", command = "AddCash", arg = 10 },
 	{ label = "+100 gems", command = "AddGems", arg = 100 },
 	{ label = "+1000 XP", command = "AddXp", arg = 1000 },
+	{ label = "Streak day 4", command = "StreakDay", arg = 4 },
+	{ label = "Streak day 7", command = "StreakDay", arg = 7 },
 	{ label = "Spawn NPC", command = "SpawnNpc", arg = nil },
 	{ label = "Golden", command = "SpawnGolden", arg = nil },
 	{ label = "End round", command = "ForceEnd", arg = nil },
