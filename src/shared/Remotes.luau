@@ -38,7 +38,7 @@ local EVENT_NAMES = {
 	"Play", -- () PLAY on the title screen: leave the menu for the depot, a seat or the sidewalk
 	"SaveSettings", -- (settings: { music: number, sfx: number, shake: boolean, speedFx: boolean }) OPTIONS changed
 	"MapVote", -- (map: string) your pick for the next map on the match-end podium
-	"DailyBuy", -- (id: string) buy one of today's daily shop cosmetics for Gems (Config.DailyShop)
+	"DailyBuy", -- (id: string, withRobux: boolean?) buy one of today's daily shop cosmetics for Gems, or pick it before a Robux prompt
 	"Debug", -- (command: string, arg: any) Studio only
 }
 

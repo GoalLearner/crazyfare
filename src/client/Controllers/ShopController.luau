@@ -24,7 +24,10 @@ local SoundController = require(script.Parent.SoundController)
 local ShopController = {}
 
 local BUY_COLOR = Color3.fromRGB(60, 140, 80)
+local GEMS_COLOR = Color3.fromRGB(70, 110, 190) -- a Gem price (Robux prices are BUY_COLOR)
 local OFF_COLOR = Color3.fromRGB(50, 50, 58)
+local ROBUX_BUTTON_WIDTH = 96
+local DAILY_RESERVE = 250 -- a daily row with both prices keeps this much clear on the right
 local TAB_ON = Color3.fromRGB(70, 110, 190)
 local TAB_OFF = Color3.fromRGB(36, 38, 48)
 
@@ -92,18 +95,20 @@ local function clearList()
 	end
 end
 
--- One row: a title in a color, a line of detail, and a button on the right. `inset` leaves room on the left (a swatch).
-local function row(order: number, title: string, titleColor: Color3, detail: string, inset: number?): Frame
+-- One row: a title in a color, a line of detail, and a button on the right. `inset` leaves room on the left (a swatch),
+-- `reserve` on the right (150 = one button).
+local function row(order: number, title: string, titleColor: Color3, detail: string, inset: number?, reserve: number?): Frame
 	local x = 12 + (inset or 0)
+	local right = reserve or 150
 	local frame = UI.Frame({ Size = UDim2.new(1, -10, 0, 58), LayoutOrder = order, BackgroundTransparency = 0.45 }, list)
 	UI.Corner(8, frame)
-	UI.Label({ Position = UDim2.fromOffset(x, 7), Size = UDim2.new(1, -150 - x + 12, 0, 22), Text = string.upper(title), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = titleColor }, frame)
-	UI.Label({ Position = UDim2.fromOffset(x, 32), Size = UDim2.new(1, -150 - x + 12, 0, 18), Text = detail, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13 }, frame)
+	UI.Label({ Position = UDim2.fromOffset(x, 7), Size = UDim2.new(1, -right - x + 12, 0, 22), Text = string.upper(title), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = titleColor }, frame)
+	UI.Label({ Position = UDim2.fromOffset(x, 32), Size = UDim2.new(1, -right - x + 12, 0, 18), Text = detail, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Muted, Font = UI.FontMedium, TextScaled = false, TextSize = 13 }, frame)
 	return frame
 end
 
-local function rightButton(frame: Frame, text: string, enabled: boolean, onBuy: (() -> ())?)
-	local b = button(frame, text, enabled, UDim2.fromOffset(120, 34))
+local function rightButton(frame: Frame, text: string, enabled: boolean, onBuy: (() -> ())?, color: Color3?)
+	local b = button(frame, text, enabled, UDim2.fromOffset(120, 34), color)
 	b.AnchorPoint = Vector2.new(1, 0.5)
 	b.Position = UDim2.new(1, -12, 0.5, 0)
 	if enabled and onBuy then
@@ -173,11 +178,29 @@ local function renderDaily(profile: Types.ProfilePayload?)
 			detail ..= "  ·  " .. cfg.HornHint
 		end
 		local color = Config.Drops.Colors[item.Rarity] or UI.Accent
-		local frame = row(i, Prizes.Name(item), color:Lerp(UI.White, 0.3), detail, cfg.SwatchSize + 10)
+		-- Robux too (Config.Monetization.DailyProducts): the server notes the pick, then Roblox's prompt opens
+		local productKey, product = "", nil
+		for key, def in M.DailyProducts do
+			if def.Rarity == item.Rarity then
+				productKey, product = key, def
+			end
+		end
+		local withRobux = not owned and product ~= nil and buyable(product.Id)
+		local frame = row(i, Prizes.Name(item), color:Lerp(UI.White, 0.3), detail, cfg.SwatchSize + 10, if withRobux then DAILY_RESERVE else nil)
 		swatch(frame, item)
 		rightButton(frame, if owned then cfg.OwnedLabel else string.format(cfg.PriceLabel, price), not owned and gems >= price, function()
 			dailyBuy:FireServer(item.Id)
-		end)
+		end, GEMS_COLOR)
+		if withRobux and product then
+			local productId = product.Id
+			local robux = button(frame, priceText(productId, product.Robux), true, UDim2.fromOffset(ROBUX_BUTTON_WIDTH, 34))
+			robux.AnchorPoint = Vector2.new(1, 0.5)
+			robux.Position = UDim2.new(1, -140, 0.5, 0)
+			robux.Activated:Connect(function()
+				dailyBuy:FireServer(item.Id, true)
+				buy(productKey, productId, false)
+			end)
+		end
 	end
 end
 

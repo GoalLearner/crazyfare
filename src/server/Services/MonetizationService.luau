@@ -25,6 +25,7 @@ local passes: { [Player]: { [string]: boolean } } = {}
 local debugPasses: { [Player]: { [string]: boolean } } = {} -- Studio: passes granted by the Debug remote
 local starterDismissed: { [Player]: boolean } = {}
 local boostHandlers: { [string]: (Player) -> () } = {}
+local dailyHandler: ((Player, string) -> ())? = nil
 
 local function setPasses(player: Player, owned: { [string]: boolean })
 	passes[player] = owned
@@ -89,11 +90,25 @@ function MonetizationService.SetBoostHandler(key: string, handler: (Player) -> (
 	boostHandlers[key] = handler
 end
 
+-- DailyShopService: what a daily-shop product of this rarity hands over (the item the buyer picked, or Gems).
+function MonetizationService.SetDailyHandler(handler: (Player, string) -> ())
+	dailyHandler = handler
+end
+
 -- Everything a product key gives. False for an unknown key (or a boost nobody handles yet).
 local function grantKey(player: Player, key: string): boolean
 	local d = DataService.Get(player)
 	if not d then
 		return false
+	end
+	local daily = Config.Monetization.DailyProducts[key]
+	if daily then
+		local handler = dailyHandler
+		if not handler then
+			return false
+		end
+		handler(player, daily.Rarity)
+		return true
 	end
 	local product = Config.Monetization.Products[key]
 	if product then
@@ -141,6 +156,11 @@ local function keyFor(productId: number): string
 		end
 	end
 	for key, def in Config.Monetization.Boosts do
+		if def.Id == productId then
+			return key
+		end
+	end
+	for key, def in Config.Monetization.DailyProducts do
 		if def.Id == productId then
 			return key
 		end

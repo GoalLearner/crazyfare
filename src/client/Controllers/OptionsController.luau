@@ -2,7 +2,8 @@
 -- OPTIONS (Config.Options): music and sound volume in steps, camera shake and speed effects on or off. Opens from the
 -- title screen and from the side stack (under COLLECTION) whenever you're not mid-round at the wheel. A change applies
 -- at once (State.SettingsChanged: SoundController, CameraController, SpeedFxController) and is saved to your profile
--- a moment after the last tap (SaveSettings).
+-- a moment after the last tap (SaveSettings). A speaker button left of the minimap mutes the music (and brings back
+-- the level it had), on every screen including the title.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -21,10 +22,12 @@ local OFF_COLOR = Color3.fromRGB(70, 70, 82)
 local PIP_OFF = Color3.fromRGB(50, 50, 60)
 
 local openButton: TextButton
+local muteButton: TextButton
 local panel: Frame
 local isOpen = false
 local saveToken = 0
 local redraws: { () -> () } = {}
+local unmutedMusic = 0 -- the music level before the mute button silenced it (0 = none yet: back to full)
 
 local function redraw()
 	for _, fn in redraws do
@@ -187,6 +190,35 @@ local function build()
 	UI.Corner(8, close)
 	close.Activated:Connect(OptionsController.Close)
 
+	-- the mute button: silent step <-> the level it had (full the first time)
+	local mute = Config.Options.Mute
+	muteButton = UI.New("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -24 - Config.Hud.MinimapSize - mute.Gap, 0, 24),
+		Size = UDim2.fromOffset(mute.Size, mute.Size),
+		BackgroundColor3 = Color3.fromRGB(40, 44, 56),
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Font = UI.Font,
+		TextSize = mute.TextSize,
+		TextColor3 = UI.White,
+		Text = "",
+	}, screen) :: TextButton
+	UI.Corner(mute.Size // 2, muteButton)
+	muteButton.Activated:Connect(function()
+		change(function(s)
+			if s.music > 1 then
+				unmutedMusic = s.music
+				s.music = 1
+			else
+				s.music = if unmutedMusic > 1 then unmutedMusic else #Config.Options.VolumeSteps
+			end
+		end)
+	end)
+	table.insert(redraws, function()
+		muteButton.Text = if State.settings.music > 1 then mute.OnIcon else mute.OffIcon
+	end)
+
 	volumeRow(labels.Music, 70, function()
 		return State.settings.music
 	end, function(s, v)
@@ -219,10 +251,9 @@ function OptionsController.Init()
 		end
 	end)
 	State.SettingsChanged:Connect(function()
-		if isOpen then
-			redraw()
-		end
+		redraw() -- the mute button follows a change from anywhere (and the saved settings arriving)
 	end)
+	redraw()
 end
 
 function OptionsController.Start() end

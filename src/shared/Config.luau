@@ -572,6 +572,8 @@ Config.Options = {
 	SaveDelay = 0.6, -- seconds after the last change before it's sent to the server
 	MusicGroup = "CrazyFareMusic", -- SoundGroups in SoundService (client): the music, and every other sound
 	SfxGroup = "CrazyFareSfx",
+	-- the music mute button (owner 2026-10-29): left of the minimap, on every screen
+	Mute = { Size = 40, Gap = 10, TextSize = 22, OnIcon = "\u{1F50A}", OffIcon = "\u{1F507}" },
 }
 
 Config.Fares = {
@@ -1394,10 +1396,12 @@ Config.DailyShop = {
 	Prices = { Common = 60, Rare = 150, Epic = 400 } :: { [string]: number }, -- Gems, by rarity
 	Kinds = { Paint = "PAINT", Trail = "TRAIL", Horn = "HORN" } :: { [string]: string },
 	ResetLine = "New items in %s",
-	HornHint = "Tap the swatch to hear it.",
+	HornHint = "Tap \u{266A} to hear it", -- short: it shares the row with two price buttons
 	BoughtLine = "%s IS YOURS! EQUIP IT IN THE GARAGE",
+	FallbackLine = "ALREADY YOURS  +%d GEMS INSTEAD",
 	OwnedLabel = "OWNED",
 	PriceLabel = "%d GEMS",
+	RobuxLabel = "R$ %d",
 	SwatchSize = 40,
 }
 
@@ -1730,6 +1734,14 @@ Config.Monetization = {
 		MaxUpgrades = { Id = 3723348059, Label = "MAX UPGRADES", Effect = "Every upgrade to the top level, for every car", Robux = 199, FallbackGems = 500, Color = Color3.fromRGB(170, 110, 255) },
 	} :: { [string]: BoostDef },
 	BoostOrder = { "MaxUpgrades" },
+	-- The daily shop's Robux prices (Config.DailyShop): one product per rarity. The item is the one the buyer picked
+	-- (DailyShopService remembers it when the prompt opens); already owned by then pays its Gem price instead.
+	DailyProducts = {
+		-- created in Creator Hub 2026-10-29 (managed pricing off, so the price matches what the shop shows)
+		DailyCommon = { Id = 3723652091, Robux = 25, Rarity = "Common" },
+		DailyRare = { Id = 3723652322, Robux = 59, Rarity = "Rare" },
+		DailyEpic = { Id = 3723652528, Robux = 129, Rarity = "Epic" },
+	} :: { [string]: { Id: number, Robux: number, Rarity: string } },
 	BoughtLine = "%s!", -- the HUD line when one lands
 	FallbackLine = "%s COULDN'T APPLY  +%d GEMS", -- already maxed
 	Tabs = { "DAILY", "PASSES", "CARS", "UPGRADES", "GEMS" }, -- the first one opens (DAILY: Config.DailyShop)
