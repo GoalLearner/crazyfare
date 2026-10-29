@@ -29,6 +29,7 @@ export type PlayerSnap = {
 	vip: boolean,
 	bot: boolean, -- an AI rival taxi
 	phantom: boolean?, -- drives a Mythic car (the Phantom): a target, marked on every minimap
+	lifetime: number?, -- lifetime fares (Config.Hud.LifetimeStat) for their name tag; nil for bots and new players
 }
 
 -- One NPC in the snapshot. state: 0 available, 1 boarded (hidden), 2 walking back, 3 thanking

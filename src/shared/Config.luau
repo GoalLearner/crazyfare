@@ -2083,6 +2083,13 @@ Config.Net = {
 Config.Hud = {
 	WorldTagDistance = 150, -- "$value" + HP bar over loaded rivals
 	WorldTagNameDistance = 70, -- a rival's name only this close (owner 2026-10-27: too many words at once)
+	-- A rival's lifetime fares (profile Stats) under their name while they carry nobody: the big number everyone grinds
+	-- and sees (checklist 2026-10-28). The Roblox player list stays off; it covers the minimap.
+	LifetimeStat = "Fares",
+	LifetimeAttribute = "LifetimeFares", -- mirrored on the Player by DataService, read into the snapshot
+	LifetimeLine = "%s FARES",
+	LifetimeColor = Color3.fromRGB(255, 214, 110),
+	LifetimeTextSize = 13,
 	NpcHideCheckSeconds = 0.25, -- how often waiting passengers' badges are hidden / shown as you pick up and drop off
 	MinimapSize = 190, -- px
 	NoticeSeconds = 2.2, -- a one-line notice (quest done, streak, level up) stays this long

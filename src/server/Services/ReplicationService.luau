@@ -30,6 +30,14 @@ local function levelOf(player: Player): number
 	return if typeof(level) == "number" then level else 1
 end
 
+local function lifetimeOf(player: Player): number?
+	if Racers.IsBot(player) then
+		return nil
+	end
+	local count = player:GetAttribute(Config.Hud.LifetimeAttribute)
+	return if typeof(count) == "number" and count > 0 then count else nil
+end
+
 local function buildSnapshot(): Types.Snapshot
 	local ranks = FareService.GetRanks()
 	local players: { Types.PlayerSnap } = {}
@@ -57,6 +65,7 @@ local function buildSnapshot(): Types.Snapshot
 			vip = player:GetAttribute("VIP") == true,
 			bot = Racers.IsBot(player),
 			phantom = if stats and stats.Mythic then true else nil, -- a target: every minimap marks it
+			lifetime = lifetimeOf(player),
 		})
 	end
 	local leader = FareService.GetLeader()

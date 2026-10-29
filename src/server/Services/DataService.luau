@@ -160,6 +160,9 @@ function DataService.AddStat(player: Player, name: string, amount: number)
 	local d = data(player)
 	if d then
 		d.Stats[name] = (d.Stats[name] or 0) + amount
+		if name == Config.Hud.LifetimeStat then
+			player:SetAttribute(Config.Hud.LifetimeAttribute, d.Stats[name])
+		end
 	end
 end
 
@@ -355,6 +358,7 @@ local function loadProfile(player: Player)
 	end
 	profiles[player] = profile
 	applyUpgradeAttributes(player, profile.Data :: ProfileData)
+	player:SetAttribute(Config.Hud.LifetimeAttribute, (profile.Data :: ProfileData).Stats[Config.Hud.LifetimeStat] or 0)
 	DataService.Sync(player)
 	onLoaded:Fire(player)
 end

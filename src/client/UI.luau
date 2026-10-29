@@ -212,6 +212,16 @@ function UI.FormatTime(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
+-- A whole number with thousands commas: "12,345".
+function UI.Count(n: number): string
+	local digits = tostring(math.floor(math.abs(n)))
+	local grouped = string.reverse((string.gsub(string.reverse(digits), "(%d%d%d)", "%1,")))
+	if string.sub(grouped, 1, 1) == "," then
+		grouped = string.sub(grouped, 2)
+	end
+	return (if n < 0 then "-" else "") .. grouped
+end
+
 -- Money arrives in cents from the server (see Shared/Money).
 function UI.Money(cents: number): string
 	return Money.Format(cents)

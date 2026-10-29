@@ -1,7 +1,7 @@
 --!strict
 -- Over-the-roof tags on rival taxis: "$value" and an HP bar while they carry a passenger, visible within
 -- Config.Hud.WorldTagDistance, and the name only within WorldTagNameDistance. Driven by the snapshot; attached to the
--- rival's chassis. Also: while you carry a passenger, every waiting passenger's badge, words and bubble are hidden on
+-- rival's chassis. Under the name, while they carry nobody: their lifetime fares (Config.Hud.LifetimeStat). Also: while you carry a passenger, every waiting passenger's badge, words and bubble are hidden on
 -- your screen (you can't pick anyone up anyway; owner 2026-10-27: too many words at once).
 
 local Players = game:GetService("Players")
@@ -15,7 +15,7 @@ local Types = require(Shared:WaitForChild("Types"))
 local State = require(script.Parent.Parent.State)
 local UI = require(script.Parent.Parent.UI)
 
-type Tag = { gui: BillboardGui, name: TextLabel, value: TextLabel, hp: UI.Bar, model: Model }
+type Tag = { gui: BillboardGui, name: TextLabel, value: TextLabel, lifetime: TextLabel, hp: UI.Bar, model: Model }
 
 local WorldTagController = {}
 
@@ -48,8 +48,9 @@ local function makeTag(model: Model): Tag?
 	}, chassis) :: BillboardGui
 	local name = UI.Label({ Size = UDim2.new(1, 0, 0, 16), Text = "", TextColor3 = UI.Muted, Font = UI.FontMedium }, gui)
 	local value = UI.Label({ Position = UDim2.fromOffset(0, 16), Size = UDim2.new(1, 0, 0, 26), Text = "", TextColor3 = UI.Cash }, gui)
+	local lifetime = UI.Label({ Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 18), Text = "", TextColor3 = Config.Hud.LifetimeColor, Font = UI.FontMedium, TextScaled = false, TextSize = Config.Hud.LifetimeTextSize }, gui)
 	local hp = UI.Bar({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46), Size = UDim2.fromOffset(80, 6) }, UI.Danger, gui)
-	return { gui = gui, name = name, value = value, hp = hp, model = model }
+	return { gui = gui, name = name, value = value, lifetime = lifetime, hp = hp, model = model }
 end
 
 local function onSnapshot(snapshot: Types.Snapshot)
@@ -80,7 +81,10 @@ local function onSnapshot(snapshot: Types.Snapshot)
 			tag.name.TextColor3 = if p.vip then Config.Monetization.VipColor else UI.Muted -- the VIP pass's gold tag
 			local camera = workspace.CurrentCamera
 			local chassis = tag.model.PrimaryPart
-			tag.name.Visible = camera ~= nil and chassis ~= nil and (chassis.Position - camera.CFrame.Position).Magnitude <= Config.Hud.WorldTagNameDistance
+			local close = camera ~= nil and chassis ~= nil and (chassis.Position - camera.CFrame.Position).Magnitude <= Config.Hud.WorldTagNameDistance
+			tag.name.Visible = close
+			tag.lifetime.Text = if p.lifetime then string.format(Config.Hud.LifetimeLine, UI.Count(p.lifetime)) else ""
+			tag.lifetime.Visible = close and not loaded -- the fare's value takes the line while they carry someone
 			tag.value.Text = if loaded then UI.Money(p.fare) else ""
 			tag.value.TextColor3 = (Config.Fares.Tiers[p.tier] or Config.Fares.Tiers.Green).Color
 			tag.hp.back.Visible = loaded

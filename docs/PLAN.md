@@ -374,6 +374,13 @@ Order, one at a time: T1 title screen, T2 pay-to-win store (owner decision: "100
 - [ ] Not seen yet: join-time catch-up on an older profile, the duplicate path, the chips on a phone
 - [ ] Ships with the next publish (v19)
 
+## Lifetime fares on the name tag (checklist: "A big lifetime stat everyone can see", 2026-10-28)
+- [x] The Roblox player list stays off (hidden 2026-10-26: it covers the minimap), so the stat goes where every rival looks: under the name on each cab's world tag, "1,234 FARES" in gold, only while that driver carries nobody (the fare's value takes the line otherwise) and only within `WorldTagNameDistance`. Bots and players with 0 show nothing
+- [x] `DataService` mirrors profile `Stats[Config.Hud.LifetimeStat]` ("Fares", added at each match end by GemService) to the `LifetimeFares` player attribute on load and in `AddStat`; `ReplicationService` puts it in `PlayerSnap.lifetime`; `UI.Count` adds thousands commas
+- [x] Studio-tested 2026-10-28 (2 clients): attributes set from the server command bar (Player1 1234567, Player2 4812); Player2 saw "Player1 · LV 1" over "1,234,567 FARES" on Player1's cab; no errors. Gotcha: a server-side PivotTo of a cab trips the speed sanity check and snaps back, so look from the other client instead
+- [ ] Not seen yet: the number rising at a real match end; the line hiding while the rival carries a passenger
+- [ ] Ships with the next publish (v19)
+
 ## Published
 - [x] **v15 live 2026-10-28 1:28 PM PST** (commit b08eb44, owner's go): title screen + loading screen, the pay-to-win store (8 passes, Gem packs, Starter Pack, Robux cars, Max Upgrades; temporary boosts cut), post-match drops D1-D3 (crates, odds, pity; trails, horns, material paints, Weirdo cards and weirdo fares; the Phantom with its owners board, Robux offer window OFF), the lobby flow, and Yellow Cab paint. Pre-publish check: Rojo connected, no baked Map, new controllers + PaintSkins present, offer window 0/0, no TEMP lines; Creator Hub version history shows 15 as the published version
 - [x] Max Players set to **10** 2026-10-28 ~1:35 PM PST (Creator Hub > place > Access > Maximum Visitor Count, was 50; owner's go; Social Slots left on Roblox optimized)
